@@ -1,0 +1,16 @@
+{% extends "api/base.html" %}
+{% load render_bundle from webpack_loader %}
+
+{% block head %}
+
+{% endblock %}
+
+{% block content %}
+<div id="app">
+
+</div>
+{% endblock %}
+
+{% block bottom-scripts %}
+{% render_bundle 'app' %}
+{% endblock %}

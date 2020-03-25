@@ -38,52 +38,61 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
+ICONS = [
+    'i-gen',
+    'i-platform',
+    (('windows',  'i-windows'), ('linux', 'i-linux')),
+    (('windows', 'i-windows'), ('linux', 'i-linux')),
+    'i-simulation',
+    'i-validation'
+]
+
+
 class ValidationsView(APIView):
     def get(self, request, *args, **kwargs):
-        ICONS = [
-            'i-gen',
-            'i-platform',
-            (('windows',  'i-windows'), ('linux', 'i-linux')),
-            (('windows', 'i-windows'), ('linux', 'i-linux')),
-            'i-simulation',
-            'i-validation'
-        ]
-
         tree = Node('')
 
         validations_qs = Validation.objects.all().select_related('os__group', 'platform__generation', 'env')
         for validation in validations_qs.order_by('platform__generation__weight', 'platform__weight', 'os__group__name',
                                                   'os__name', 'env__name', 'name'):
+            # shortcuts
             platform = validation.platform
             os = validation.os
 
-            parent = tree
+            # tree branch data: gen -> platform -> os.group -> os -> env -> validation name
             branch = (
-                {'obj': platform.generation, 'name': platform.generation.name},
-                {'obj': platform, 'name': platform.short_name},
-                {'obj': os.group, 'name': os.group.name},
-                {'obj': os.group, 'name': os.name},
-                {'obj': validation.env, 'name': validation.env.name},
-                {'obj': validation, 'name': validation.name}
+                {'obj': platform.generation, 'name': platform.generation.name, 'level': 0},
+                {'obj': platform, 'name': platform.short_name, 'level': 1},
+                {'obj': os.group, 'name': os.group.name, 'level': 2},
+                {'obj': os.group, 'name': os.name, 'level': 3},
+                {'obj': validation.env, 'name': validation.env.name, 'level': 4},
+                {'obj': validation, 'name': validation.name, 'level': 5}
             )
-            for v, icon_map in zip(branch, ICONS):
-                icon = ''
-                if isinstance(icon_map, tuple) and isinstance(v['obj'], Os):
+
+            parent = tree
+            for node_data, icon_map in zip(branch, ICONS):
+                # according to ICONS structure detect which icon should be used for each level
+                icon, name = '', ''
+                if isinstance(icon_map, tuple):
                     for alias in icon_map:
-                        if v['obj'].name.lower() == alias[0]:
+                        if node_data['obj'].name.lower() == alias[0]:
                             icon = alias[1]
                 else:
                     icon = icon_map
-                name = v['name']
+                name = node_data['name']
 
+                # find node, if not create new one
                 node = find_by_attr(parent, name='text', value=name)
                 if not node:
-                    node = AnyNode(parent=parent, icon=icon, text=name, opened=True, selected=False)
+                    node = AnyNode(
+                        parent=parent, icon=icon, text=name, selected=False,
+                        opened=True if node_data['level'] < 2 else False
+                    )
                 parent = node
 
-        #print(RenderTree(tree))
         exporter = JsonExporter()
         d = exporter.export(tree)
-        d = json.loads(d)['children']
 
+        # cut off first level, frontend requirement
+        d = json.loads(d)['children']
         return Response(d)

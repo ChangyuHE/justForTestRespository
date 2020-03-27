@@ -21,10 +21,7 @@
 
 <script>
     import VJstree from 'vue-jstree';
-    import axios from 'axios';
-
-    import treeData from './data';
-    //console.log(treeData);
+    import server from './server.js';
 
 	export default {
         components: {
@@ -44,25 +41,22 @@
         methods: {
             itemClick(node) {
                 //console.log(node.model.text + ' clicked !');
-                //console.log('node:', node);
+                console.log('node:', node);
             }
         },
         beforeCreate() {
-            axios
-                .get(process.env.VUE_APP_API_BASE_URL + '/api/validations/')
+            server
+                .get('api/validations/')
                 .then(response => {
                     console.log(response.data);
                     this.data = response.data;
-
                 })
                 .catch(error => {
                     console.log(error)
                     this.errored = true
                   })
                 .finally(() => this.loading = false)
-
         }
-
 	}
 </script>
 
@@ -91,6 +85,4 @@
         margin: 2px !important;
         padding: 2px !important;
     }
-
 </style>
-

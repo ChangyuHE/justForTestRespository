@@ -76,6 +76,13 @@ class Result(models.Model):
     result_reason = models.TextField(null=True, blank=True)
 
 
+class ResultGroup(models.Model):
+    name = models.CharField(max_length=255)
+    mask = models.CharField(max_length=255, null=True, blank=True)
+    alt_name = models.CharField(max_length=255, null=True, blank=True)
+    category = models.CharField(max_length=255, null=True, blank=True)
+
+
 class Validation(models.Model):
     name = models.CharField(max_length=255)
     env = models.ForeignKey(Env, null=True, blank=True, on_delete=models.CASCADE)

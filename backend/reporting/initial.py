@@ -13,24 +13,25 @@ fixtures_dir = Path('./api/fixtures')
 from api.models import *
 
 files_mapping = {
-    # 'driver': 'PUBLIC_DRIVERS.json',
-    # 'env': 'PUBLIC_ENV.json',
-    # 'component': 'PUBLIC_COMPONENTS.json',
-    # 'generation': 'PUBLIC_GENERATIONS.json',
-    # 'platform': 'PUBLIC_PLATFORMS.json',
-    # 'item': 'PUBLIC_ITEMS.json',
-    # 'os': 'PUBLIC_OS.json',
-    # 'status': 'PUBLIC_STATUSES.json',
-    # 'run': 'PUBLIC_TESTRUNS.json',
-    'result': 'PUBLIC_RESULTS.json',
-    'validation': 'PUBLIC_VALIDATIONS.json',
+    # 'Driver': 'PUBLIC_DRIVERS.json',
+    # 'Env': 'PUBLIC_ENV.json',
+    # 'Component': 'PUBLIC_COMPONENTS.json',
+    # 'Generation': 'PUBLIC_GENERATIONS.json',
+    # 'Platform': 'PUBLIC_PLATFORMS.json',
+    # 'Item': 'PUBLIC_ITEMS.json',
+    # 'Os': 'PUBLIC_OS.json',
+    # 'Status': 'PUBLIC_STATUSES.json',
+    # 'Run': 'PUBLIC_TESTRUNS.json',
+    # 'Result': 'PUBLIC_RESULTS.json',
+    # 'Validation': 'PUBLIC_VALIDATIONS.json',
+    'ResultGroup': 'PUBLIC_RESULTGROUPS.json'
 
 }
 
 for model_name, json_file in files_mapping.items():
     data = []
     print(model_name)
-    klass = globals()[model_name.capitalize()]
+    klass = globals()[model_name]
     field_names = [field.name for field in klass._meta.fields if field.name != 'id']
     print(field_names)
 

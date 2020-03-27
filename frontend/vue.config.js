@@ -1,14 +1,23 @@
 const BundleTracker = require("webpack-bundle-tracker");
 
+let publicPathUrl = '', publicApiPathUrl = '';
+if (process.env.PRODUCTION == 0){
+    publicPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.PORT;
+    publicApiPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.API_PORT;
+} else {
+    publicPathUrl = process.env.VUE_APP_API_BASE_URL;
+    publicApiPathUrl = process.env.VUE_APP_API_BASE_URL;
+}
+
 module.exports = {
-    publicPath: "http://127.0.0.1:8080/",
+    publicPath: publicPathUrl,
     outputDir: './dist/',
     assetsDir: 'static',
 
     devServer: {
         proxy: {
             '^/api/': {
-                target: 'http://127.0.0.1:8000/api/',
+                target: publicApiPathUrl + '/api/',
             }
         }
     },
@@ -25,7 +34,7 @@ module.exports = {
             .set('__STATIC__', 'static')
 
         config.devServer
-            .public('http://127.0.0.1:8080')
+            .public(publicPathUrl)
             .host('127.0.0.1')
             .port(8080)
             .hotOnly(true)

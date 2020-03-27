@@ -49,7 +49,7 @@
         },
         beforeCreate() {
             axios
-                .get('http://127.0.0.1:8000/api/validations/')
+                .get(process.env.VUE_APP_API_BASE_URL + '/api/validations/')
                 .then(response => {
                     console.log(response.data);
                     this.data = response.data;

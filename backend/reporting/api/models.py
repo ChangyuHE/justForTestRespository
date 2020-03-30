@@ -89,6 +89,20 @@ class Validation(models.Model):
     platform = models.ForeignKey(Platform, null=True, blank=True, on_delete=models.CASCADE)
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
 
+    class SubSystems(models.IntegerChoices):
+        VALib = 1, 'valib'
+
+        DX9 = 9, 'DirectX 9'
+        DX11 = 11, 'DirectX 11'
+
+        __empty__ = '(Unknown)'
+
+    subsystem = models.IntegerField(
+        choices=SubSystems.choices,
+        null=True
+    )
+
+
     notes = models.TextField(null=True, blank=True)
     source_file = models.TextField(null=True, blank=True)
     date = models.DateTimeField(null=True, blank=True)

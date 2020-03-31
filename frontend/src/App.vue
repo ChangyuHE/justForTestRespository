@@ -1,22 +1,46 @@
-/*<template>
-  <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view/>
-  </div>
-</template>*/
 <template>
-    <div>
-        <div class="container">
-            <div class="row">
-                <v-jstree
-                    :data="data" show-checkbox allow-batch multiple @item-click="itemClick">
-                </v-jstree>
-            </div>
-        </div>
-    </div>
+    <v-app>
+        <v-navigation-drawer v-model="drawer" app color="blue-grey lighten-5">
+            <v-list dense>
+                <v-list-item link>
+                    <v-list-item-action>
+                        <v-icon>mdi-home</v-icon>
+                    </v-list-item-action>
+                    <v-list-item-content>
+                        <v-list-item-title>Link 1</v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+                <v-list-item link>
+                    <v-list-item-action>
+                        <v-icon>mdi-card-account-mail</v-icon>
+                    </v-list-item-action>
+                    <v-list-item-content>
+                        <v-list-item-title>Link 2</v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+            </v-list>
+        </v-navigation-drawer>
+
+        <v-app-bar app color="teal darken-1" dark>
+            <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+            <v-toolbar-title>GRep tool</v-toolbar-title>
+        </v-app-bar>
+
+        <v-content>
+            <v-container fluid>
+                <v-row align="center" justify="center">
+                    <v-col>
+                        <v-jstree
+                            :data="data" show-checkbox allow-batch multiple @item-click="itemClick">
+                        </v-jstree>
+                    </v-col>
+                </v-row>
+            </v-container>
+        </v-content>
+        <v-footer app class="justify-end">
+            <span >&copy; 2020</span>
+        </v-footer>
+    </v-app>
 </template>
 
 <script>
@@ -29,10 +53,10 @@
         },
         data() {
             return {
-                //data: treeData,
                 data: null,
                 loading: true,
-                errored: false
+                errored: false,
+                drawer: false,
             }
         },
 		computed: {

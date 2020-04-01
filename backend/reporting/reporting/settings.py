@@ -22,7 +22,8 @@ FRONTEND_DIR = Path(BASE_DIR).parent.parent / 'frontend'
 STATICFILES_DIRS = [
     os.path.join(FRONTEND_DIR, 'dist/static'),
 ]
-if production:
+
+if True:
     STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Quick-start development settings - unsuitable for production
@@ -47,14 +48,17 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+
     'api.apps.ApiConfig',
     'debug_toolbar',
     'rest_framework_swagger',
     'webpack_loader',
+    'corsheaders'
     # 'django_filters'
 ]
-
+CORS_ORIGIN_ALLOW_ALL = True
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',

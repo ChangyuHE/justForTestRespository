@@ -62,6 +62,7 @@ class Result(models.Model):
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.CASCADE)
     run = models.ForeignKey(Run, null=True, blank=True, on_delete=models.CASCADE)
+    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.CASCADE)
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)
@@ -81,6 +82,17 @@ class ResultGroup(models.Model):
     mask = models.CharField(max_length=255, null=True, blank=True)
     alt_name = models.CharField(max_length=255, null=True, blank=True)
     category = models.CharField(max_length=255, null=True, blank=True)
+
+
+class ResultGroupNew(models.Model):
+    name = models.CharField(max_length=255)
+    alt_name = models.CharField(max_length=255, null=True, blank=True)
+    category = models.CharField(max_length=255, null=True, blank=True)
+
+
+class ResultGroupMask(models.Model):
+    group = models.ForeignKey(ResultGroupNew, on_delete=models.CASCADE, related_query_name='group_mask')
+    mask = models.CharField(max_length=255)
 
 
 class Validation(models.Model):

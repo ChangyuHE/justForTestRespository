@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'rest_framework',
 
     'api.apps.ApiConfig',
+    'api.collate.apps.ImportConfig',
     'debug_toolbar',
     'rest_framework_swagger',
     'webpack_loader',
@@ -156,4 +157,43 @@ WEBPACK_LOADER = {
         'BUNDLE_DIR_NAME': '/bundles/',
         'STATS_FILE': os.path.join(FRONTEND_DIR, 'webpack-stats.json'),
     }
+}
+
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbosed': {
+            'class': 'logging.Formatter',
+            'format': '%(levelname)-5s [%(asctime)-15s] [%(module)s:%(funcName)s:%(lineno)d] %(message)s',
+        },
+        'brief': {
+            'class': 'logging.Formatter',
+            'format': '%(levelname)-5s [%(asctime)-15s] %(message)s',
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': ('verbosed' if DEBUG else 'brief'),
+        },
+    },
+    'loggers': {
+        'api': {
+            'handlers': ['console'],
+            'propagate': False,
+            'level': ('DEBUG' if DEBUG else 'INFO'),
+        },
+        'django': {
+            'handlers': ['console'],
+            'propagate': False,
+            'level': 'INFO',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
 }

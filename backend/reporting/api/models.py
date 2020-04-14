@@ -15,10 +15,16 @@ class Platform(models.Model):
     weight = models.IntegerField(default=0, null=True, blank=True)
     planning = models.BooleanField(default=False)
 
+    def __str__(self):
+        return self.name
+
 
 class Env(models.Model):
     name = models.CharField(max_length=32)
     short_name = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.name
 
 
 class Component(models.Model):
@@ -40,6 +46,9 @@ class Os(models.Model):
     group = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     aliases = models.CharField(max_length=255, null=True, blank=True)
     planning = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
 
 
 class Status(models.Model):

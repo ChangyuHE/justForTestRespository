@@ -20,6 +20,7 @@ urlpatterns = [
     # url(r'^test$', views.test, name='test'),
     url(r'^api/validations/$', views.ValidationsView.as_view()),
 
+    url(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),
 
     path('admin/', admin.site.urls),
 ]\

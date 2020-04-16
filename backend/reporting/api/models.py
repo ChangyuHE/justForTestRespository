@@ -32,6 +32,7 @@ class Driver(models.Model):
 class Item(models.Model):
     name = models.CharField(max_length=255)
     args = models.CharField(max_length=255)
+    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.DO_NOTHING)
 
 
 class Os(models.Model):
@@ -62,7 +63,6 @@ class Result(models.Model):
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.CASCADE)
     run = models.ForeignKey(Run, null=True, blank=True, on_delete=models.CASCADE)
-    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.CASCADE)
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)
@@ -113,7 +113,6 @@ class Validation(models.Model):
         choices=SubSystems.choices,
         null=True
     )
-
 
     notes = models.TextField(null=True, blank=True)
     source_file = models.TextField(null=True, blank=True)

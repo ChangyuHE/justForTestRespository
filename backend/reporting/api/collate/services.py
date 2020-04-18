@@ -1,4 +1,5 @@
 import logging
+import re
 
 from datetime import datetime
 from django.utils import timezone
@@ -17,6 +18,7 @@ from api.models import Status
 from api.models import Platform
 from api.models import Validation
 from api.models import Result
+from api.models import ResultGroupMask
 
 """ Business logic """
 log = logging.getLogger(__name__)
@@ -182,6 +184,14 @@ def __create_entity(validation, row, column_mapping, only_verify=False):
                 setattr(existing_entity, attribute, getattr(entity, attribute))
             entity = existing_entity
 
+    # Assign item group if necessary
+    item = entity.item
+    if item.group is None:
+        group = __find_group(item.name)
+        if group is not None:
+            item.group = group
+            item.save()
+
     return warnings, entity
 
 def __find_existing_entity(reference):
@@ -213,11 +223,11 @@ def __find_object(cls, warnings, **params):
                 found &= getattr(obj, key) == value
 
         if found:
-            break
+            return obj
     else:
         warnings.append(f"{cls.__name__} with properties {params} does not exist.")
 
-    return obj
+    return None
 
 def __find_with_alias(cls, warnings, name):
     cached_query = __get_cached_query(cls)
@@ -234,6 +244,15 @@ def __find_with_alias(cls, warnings, name):
         warnings.append(f"{cls.__name__} with name or aliases '{name}' does not exist.")
 
     return found_obj
+
+def __find_group(item_name):
+    group_mask_queryset = __get_cached_query(ResultGroupMask)
+
+    for group_mask in group_mask_queryset:
+        if re.match(group_mask.mask, item_name):
+            return group_mask.group
+
+    return None
 
 def __get_cached_query(cls):
     queryset_key = cls.__name__

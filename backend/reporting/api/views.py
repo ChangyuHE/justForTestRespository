@@ -192,7 +192,7 @@ class ReportBestView(APIView):
         # reindex columns by priority and adding notrun and passrate empty ones
         ct = ct.reindex(columns=all_status_ids + ['Total', 'Not run', 'Passrate'])
         ct.rename(columns=status_mapping, inplace=True)
-        ct.index.names = ['']   # remove group_name index name
+        ct.index.names = ['Group name']   # rename group_name index name
 
         # Not run column
         notrun = (ct['Blocked'].fillna(0) + ct['Skipped'].fillna(0) + ct['Canceled'].fillna(0)).round(3).astype(int)
@@ -211,7 +211,24 @@ class ReportBestView(APIView):
 
         # If no excel report needed just finish here with json return
         if not do_excel:
-            return Response(json.loads(ct.to_json()))
+            d = json.loads(ct.to_json(orient='table'))
+
+            headers = []
+            for f_dict in d['schema']['fields']:
+                text = f_dict['name']
+                value = text.lower().replace(' ', '_')
+                headers.append({'text': text, 'value': value})
+            # print(headers)
+
+            items = []
+            for d_dict in d['data']:
+                i_dict = {}
+
+                for h_map in headers:
+                    i_dict[h_map['value']] = d_dict[h_map['text']]
+                items.append(i_dict)
+            # print(items)
+            return Response({'headers': headers, 'items': items})
 
         # Excel part
         workbook = excel.do_best_report(data=ct, extra=validations)

@@ -73,7 +73,7 @@ def do_best_report(data=None, extra=None):
 
     # Apply table style (zebra + color + header sort/filters)
     medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
-    print(table_columns, to_letter(table_columns))
+
     table = Table(
         ref=f'{to_letter(1)}{table_row_start}:{to_letter(table_columns)}{table_row_end - 1}',
         displayName='Results', tableStyleInfo=medium_style)

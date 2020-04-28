@@ -71,89 +71,92 @@
                             <!-- Right part -->
                             <pane>
                                 <div class="ml-4 mr-1 mt-2">
-                                <!-- Buttons toolbar -->
-                                <v-toolbar tile class="elevation-3">
-                                    <!-- Best report button -->
-                                    <v-btn small outlined color="teal darken-1"
-                                        :disabled="!validations.length"
-                                        :loading="bestLoading"
-                                        @click="bestReportWeb"
-                                    >Best results report</v-btn>
-                                    <!-- Clear report -->
-                                    <v-btn small outlined color="grey darken-1" class="mx-2"
-                                        :disabled="!showBestTable"
-                                        @click="showBestTable=false"
-                                    >
-                                        Clear
-                                    </v-btn>
-                                </v-toolbar>
-
-                                <!-- Results card -->
-                                <v-card class="my-4 elevation-3" v-if="showBestTable">
-                                    <v-card-title class="mb-n4 ml-4">
-                                        Best result for validations:
-                                        <v-spacer></v-spacer>
-                                        <!-- Search field -->
-                                        <v-text-field
-                                            v-model="search"
-                                            append-icon="mdi-magnify"
-                                            label="Search"
-                                            hide-details
-                                            class="pt-0 mt-0"
-                                        ></v-text-field>
-
-                                        <v-btn light small fab class="ml-4 elevation-5" @click="bestReportExcel">
-                                            <v-icon>$excel</v-icon>
+                                    <div class="d-flex justify-end">
+                                        <alert />
+                                    </div>
+                                    <!-- Buttons toolbar -->
+                                    <v-toolbar tile class="elevation-3">
+                                        <!-- Best report button -->
+                                        <v-btn small outlined color="teal darken-1"
+                                            :disabled="!validations.length"
+                                            :loading="bestLoading"
+                                            @click="bestReportWeb"
+                                        >Best results report</v-btn>
+                                        <!-- Clear report -->
+                                        <v-btn small outlined color="grey darken-1" class="mx-2"
+                                            :disabled="!showBestTable"
+                                            @click="showBestTable=false"
+                                        >
+                                            Clear
                                         </v-btn>
-                                    </v-card-title>
+                                    </v-toolbar>
 
-                                    <!-- Validations list -->
-                                    <v-list dense flat class="ml-4 mt-2">
-                                        <v-list-item v-for="(item, i) in branches" :key="i">
-                                            <v-list-item-content class="py-0 my-1">
-                                                <v-list-item-title v-text="item"></v-list-item-title>
-                                            </v-list-item-content>
-                                        </v-list-item>
-                                    </v-list>
-                                    <v-divider style="border-color: rgba(0, 0, 0, 0.3); height:2px;"></v-divider>
+                                    <!-- Results card -->
+                                    <v-card class="my-4 elevation-3" v-if="showBestTable">
+                                        <v-card-title class="mb-n4 ml-4">
+                                            Best result for validations:
+                                            <v-spacer></v-spacer>
+                                            <!-- Search field -->
+                                            <v-text-field
+                                                v-model="search"
+                                                append-icon="mdi-magnify"
+                                                label="Search"
+                                                hide-details
+                                                class="pt-0 mt-0"
+                                            ></v-text-field>
 
-                                    <!-- DataTable -->
-                                    <v-data-table
-                                        :headers="headers"
-                                        :items="items"
-                                        :search="search"
-                                        :loading="bestTableLoading"
-                                        disable-pagination hide-default-footer multi-sort
+                                            <v-btn light small fab class="ml-4 elevation-5" @click="bestReportExcel">
+                                                <v-icon>$excel</v-icon>
+                                            </v-btn>
+                                        </v-card-title>
+
+                                        <!-- Validations list -->
+                                        <v-list dense flat class="ml-4 mt-2">
+                                            <v-list-item v-for="(item, i) in branches" :key="i">
+                                                <v-list-item-content class="py-0 my-1">
+                                                    <v-list-item-title v-text="item"></v-list-item-title>
+                                                </v-list-item-content>
+                                            </v-list-item>
+                                        </v-list>
+                                        <v-divider style="border-color: rgba(0, 0, 0, 0.3); height:2px;"></v-divider>
+
+                                        <!-- DataTable -->
+                                        <v-data-table
+                                            :headers="headers"
+                                            :items="items"
+                                            :search="search"
+                                            :loading="bestTableLoading"
+                                            disable-pagination hide-default-footer multi-sort
+                                        >
+                                            <template v-slot:item.passrate="{ item }">
+                                                <v-chip :color="getColor(item.passrate)" light label>{{ item.passrate }}</v-chip>
+                                            </template>
+                                        </v-data-table>
+                                    </v-card>
+
+                                    <!-- Selected validations -->
+                                    <template v-if="!showBestTable && validations.length">
+                                        <v-subheader class="mt-4" style="height: 32px;">
+                                            Selected Validations
+                                        </v-subheader>
+                                        <v-list dense flat subheader class="ml-4" >
+                                            <v-list-item v-for="(item, i) in branches" :key="i">
+                                                <v-list-item-content class="py-0 my-1">
+                                                    <v-list-item-title v-text="item"></v-list-item-title>
+                                                </v-list-item-content>
+                                            </v-list-item>
+                                        </v-list>
+                                    </template>
+
+                                    <!-- Scrolling to top -->
+                                    <v-btn
+                                        v-scroll="onScroll" v-show="showScroll"
+                                        fab fixed bottom right
+                                        color="blue-grey lighten-4"
+                                        @click="toTop"
                                     >
-                                        <template v-slot:item.passrate="{ item }">
-                                            <v-chip :color="getColor(item.passrate)" light label>{{ item.passrate }}</v-chip>
-                                        </template>
-                                    </v-data-table>
-                                </v-card>
-
-                                <!-- Selected validations -->
-                                <template v-if="!showBestTable && validations.length">
-                                    <v-subheader class="mt-4" style="height: 32px;">
-                                        Selected Validations
-                                    </v-subheader>
-                                    <v-list dense flat subheader class="ml-4" >
-                                        <v-list-item v-for="(item, i) in branches" :key="i">
-                                            <v-list-item-content class="py-0 my-1">
-                                                <v-list-item-title v-text="item"></v-list-item-title>
-                                            </v-list-item-content>
-                                        </v-list-item>
-                                    </v-list>
-                                </template>
-
-                                <!-- Scrolling to top -->
-                                <v-btn
-                                    v-scroll="onScroll" v-show="showScroll"
-                                    fab fixed bottom right
-                                    color="blue-grey lighten-4"
-                                    @click="toTop"
-                                >
-                                    <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
-                                </v-btn>
+                                        <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
+                                    </v-btn>
                                 </div>
                             </pane>
                         </splitpanes>
@@ -168,25 +171,25 @@
 </template>
 
 <script>
-    import server from './server.js';
-    import validationsTree from './components/ValidationsTree';
+    import server from './server.js'
+    import validationsTree from './components/ValidationsTree'
+    import alert from './components/Alert'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
-    import { mapState, mapGetters, mapMutations, mapActions } from 'vuex';
+    import { mapState, mapGetters, mapMutations, mapActions } from 'vuex'
 
 	export default {
         components: {
             validationsTree,
-            Splitpanes, Pane
+            Splitpanes, Pane,
+            alert
         },
         data() {
             return {
                 drawer: false,
                 showScroll: false,      // "^" button
                 showExpand: false,      // ">" button
-
-                errored: false,
 
                 // best report
                 bestLoading: false,
@@ -198,7 +201,7 @@
             }
         },
 		computed: {
-            ...mapState(['validations', 'branches', 'treeLoading']),
+            ...mapState(['validations', 'branches', 'treeLoading', 'alert']),
         },
         watch: {
             validations() {
@@ -220,8 +223,9 @@
                  */
                 let ids = this.validations.join(',');
                 this.bestTableLoading = true;
+                const url = `api/report/best/${ids}?report=excel`;
                 server
-                    .get(`api/report/best/${ids}?report=excel`, {responseType: 'blob'})
+                    .get(url, {responseType: 'blob'})
                     .then(response => {
                         let fileName = 'unknown';
                         const contentDisposition = response.headers['content-disposition'];
@@ -239,8 +243,8 @@
                         link.remove();
                     })
                     .catch(error => {
-                        console.log(error)
-                        this.errored = true
+                        console.log(error);
+                        this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
                     })
                     .finally(() => this.bestTableLoading = false);
             },
@@ -250,16 +254,17 @@
                  */
                 let ids = this.validations.join(',');
                 this.bestLoading = true;
+                const url = `api/report/best/${ids}`;
                 server
-                    .get(`api/report/best/${ids}`).
-                    then(response => {
+                    .get(url)
+                    .then(response => {
                         // console.log(response.data);
                         this.headers = response.data.headers;
                         this.items = response.data.items;
                     })
                     .catch(error => {
-                        console.log(error)
-                        this.errored = true
+                        console.log(error);
+                        this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
                     })
                     .finally(() => {
                         this.bestLoading = false;
@@ -284,10 +289,7 @@
                 else if (p >= 80 && p < 100) return 'green lighten-4'
                 else return 'green lighten-1'
             },
-        },
-        // mounted() {
-        //     this.showExpand = this.$refs['split'].panes[0].size == 0;
-        // }
+        }
 	}
 </script>
 
@@ -308,6 +310,7 @@
         background-color: #FFFFFF !important;
     }
     .splitpanes__splitter {
+        width: 5px !important;
         background-color: #ECEFF1 !important;
         box-shadow: 0px 3px 3px -2px rgba(0, 0, 0, 0.2), 0px 3px 4px 0px rgba(0, 0, 0, 0.34), 0px 1px 8px 0px rgba(0, 0, 0, 0.12) !important;
     }    

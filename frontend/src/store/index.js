@@ -8,7 +8,7 @@ let store = new Vuex.Store({
         validations: [],
         branches: [],
         treeLoading: true,
-
+        alert: {message: '', type: 'error'}
     },
     getters: {
         
@@ -19,9 +19,12 @@ let store = new Vuex.Store({
             state.validations = validations;
         },
         setTreeLoading: (state, status) =>  state.treeLoading = status,
+
+        setAlert: (state, { message, type }) => {
+            state.alert = Object.assign(state.alert, {message, type});
+        },
     },
     actions: {
-        
     },
     modules: {
     },

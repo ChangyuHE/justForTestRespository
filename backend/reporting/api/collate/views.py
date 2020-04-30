@@ -7,8 +7,30 @@ from django.shortcuts import reverse
 from .forms import SelectFileForm
 from .services import import_results
 
+from rest_framework.exceptions import ParseError
+from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
 
 log = logging.getLogger(__name__)
+
+
+class ImportFromFile(APIView):
+    parser_class = (FileUploadParser,)
+
+    def put(self, request):
+        if 'file' not in request.data:
+            raise ParseError("Empty content")
+
+        f = request.data['file']
+        validation_id = request.data.get('validation_id')
+
+        result = import_results(f, validation_id)
+        print(result)
+
+        return Response(status=status.HTTP_200_OK)
+
 
 def index(request):
     if request.method != 'POST':
@@ -20,7 +42,8 @@ def index(request):
             request.session['validation_id'] = request.POST.get('validation_id', 0)
             return HttpResponseRedirect(reverse('collate:verify'))
 
-    return render(request, 'collate/index.html', {'form':form})
+    return render(request, 'collate/index.html', {'form': form})
+
 
 def verify(request):
     log.debug('Begin verify.')

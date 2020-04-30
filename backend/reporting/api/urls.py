@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
 
 from api import views
-
+from api.collate import views as import_views
 
 schema_view = get_swagger_view(title='Reporting API')
 
@@ -17,10 +17,14 @@ urlpatterns = [
     url('^$', views.index, name='index'),
 
     url(r'^api/$', schema_view),
-    # url(r'^test$', views.test, name='test'),
     url(r'^api/validations/$', views.ValidationsView.as_view()),
+    url(r'^api/validations/flat$', views.ValidationsFlatView.as_view()),
 
+    # reports
     url(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # with optional param "report=excel"
+
+    # import
+    url(r'^api/import/', import_views.ImportFromFile.as_view(), name='import'),
 
     path('admin/', admin.site.urls),
 ]\

@@ -24,6 +24,7 @@ from api.models import ResultGroupMask
 log = logging.getLogger(__name__)
 queryset_cache = dict()
 
+
 def import_results(file, validation_id):
     result, mapping = verify_results(file, validation_id)
     if not result.get('is_valid', False):
@@ -31,6 +32,7 @@ def import_results(file, validation_id):
 
     result = store_results(mapping, validation_id)
     return result
+
 
 def verify_results(file, validation_id):
     log.debug('Calling verify_file')
@@ -49,6 +51,7 @@ def verify_results(file, validation_id):
         log.debug(message)
 
     return result, mapping
+
 
 def store_results(mapping, validation_id):
     # Assuming that all related objects already exist.
@@ -71,17 +74,14 @@ def store_results(mapping, validation_id):
 
     return dict(is_valid=True, changes=changes.__dict__)
 
+
 def verify_file(file):
     log.debug(f'Begin verify_file, type: {type(file)}')
-    stream = BytesIO(file.read())
     try:
-        workbook = load_workbook(stream)
-    except:
-        _, exc_value, *_ = exc_info()
-        log.warning(f"Failed to open workbook: {exc_value}")
-        return dict(is_valid=False, message=f'Verification failed: {exc_value}'), None
-    finally:
-        stream.close()
+        workbook = load_workbook(file)
+    except Exception as e:
+        log.warning(f"Failed to open workbook: {e}")
+        return dict(is_valid=False, message=f'Verification failed: {e}'), None
 
     log.debug('workbook is opened.')
 
@@ -90,8 +90,8 @@ def verify_file(file):
         missing_columns = ', '.join(column_mapping.keys())
         log.debug(f'Missing columns {missing_columns}.')
 
-        return dict(is_valid=False, message='Not all columns found, please check import file for correctness.' \
-                + f' \nFound columns: {missing_columns}'), None
+        return dict(is_valid=False, message='Not all columns found, please check import file for correctness.'
+                    + f' \nFound columns: {missing_columns}'), None
 
     # Verification and preparing lookup tables before insertion
     log.debug('best sheet is located.')
@@ -114,9 +114,11 @@ def verify_file(file):
     log.debug('Finish verify_file.')
     return dict(is_valid=is_valid, message=message, warnings=sheet_warnings), (sheet, column_mapping)
 
+
 def verify_validation(validation_id):
     log.debug(f'Checking if validation with id {validation_id} exists.')
     return Validation.objects.filter(pk=validation_id).exists()
+
 
 def __create_entity(validation, row, column_mapping, only_verify=False):
     warnings = []
@@ -194,20 +196,19 @@ def __create_entity(validation, row, column_mapping, only_verify=False):
 
     return warnings, entity
 
+
 def __find_existing_entity(reference):
     query = __get_cached_query(Result)
-    found = False
 
     for obj in query:
         if obj.validation_id == reference.validation.id \
                 and obj.item_id == reference.item.id \
                 and obj.platform_id == reference.platform.id \
                 and obj.env_id == reference.env.id \
-                and obj.os_id == reference.os.id :
-            found = True
-            break
+                and obj.os_id == reference.os.id:
+            return obj
+    return None
 
-    return obj if found else None
 
 def __find_object(cls, warnings, **params):
     cached_query = __get_cached_query(cls)
@@ -216,7 +217,6 @@ def __find_object(cls, warnings, **params):
         found = True
 
         for key, value in params.items():
-
             if type(value) == str:
                 found &= getattr(obj, key).lower() == value.lower()
             else:
@@ -228,6 +228,7 @@ def __find_object(cls, warnings, **params):
         warnings.append(f"{cls.__name__} with properties {params} does not exist.")
 
     return None
+
 
 def __find_with_alias(cls, warnings, name):
     cached_query = __get_cached_query(cls)
@@ -245,6 +246,7 @@ def __find_with_alias(cls, warnings, name):
 
     return found_obj
 
+
 def __find_group(item_name):
     group_mask_queryset = __get_cached_query(ResultGroupMask)
 
@@ -253,6 +255,7 @@ def __find_group(item_name):
             return group_mask.group
 
     return None
+
 
 def __get_cached_query(cls):
     queryset_key = cls.__name__
@@ -264,6 +267,7 @@ def __get_cached_query(cls):
 
     return cached_query
 
+
 def __get_best_sheet(workbook):
     column_mapping = {}
 
@@ -273,9 +277,10 @@ def __get_best_sheet(workbook):
             column_mapping = __create_column_mapping(workbook[title])
 
             if len(column_mapping) >= 15:
-                return (sheet, column_mapping)
+                return sheet, column_mapping
 
-    return (None, column_mapping)
+    return None, column_mapping
+
 
 def __create_column_mapping(sheet):
     captions = next(sheet.rows)

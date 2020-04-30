@@ -111,6 +111,18 @@ class ValidationsView(APIView):
         return Response(d)
 
 
+class ValidationsFlatView(APIView):
+    def get(self, request, *args, **kwargs):
+        d = []
+        validations_qs = Validation.objects.all().order_by('-id')
+        for v in validations_qs:
+            d.append({
+                'name': f'{v.name} ({v.platform.name}, {v.env.name}, {v.os.name})',
+                'id': v.id
+            })
+        return Response(d)
+
+
 class ReportBestView(APIView):
     def get(self, request, *args, **kwargs):
         do_excel = False

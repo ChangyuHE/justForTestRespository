@@ -1,7 +1,13 @@
 <template>
-    <v-jstree ref="tree"
-        :data="data" show-checkbox allow-batch multiple @item-click="itemClick">
-    </v-jstree>
+    <div>
+        <!-- Grey loading overlay -->
+        <v-overlay :value="treeLoading">
+            <v-progress-circular indeterminate size="64"></v-progress-circular>
+        </v-overlay>
+        <v-jstree ref="tree"
+            :data="data" show-checkbox allow-batch multiple @item-click="itemClick">
+        </v-jstree>
+    </div>
 </template>
 <script>
     import VJstree from 'vue-jstree';
@@ -38,8 +44,10 @@
             return {
                 data: null,
                 loading: true,
-                errored: false,
             }
+        },
+        computed: {
+            ...mapState(['treeLoading']),
         },
         methods: {
             itemClick(node) {
@@ -70,14 +78,16 @@
         },
         beforeCreate() {
             // getting initial data
+            const url = 'api/validations/';
+            this.$store.commit('setTreeLoading', true);
             server
-                .get('api/validations/')
+                .get(url)
                 .then(response => {
                     this.data = response.data;
                 })
                 .catch(error => {
                     console.log(error)
-                    this.errored = true
+                    this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
                     })
                 .finally(() => this.$store.commit('setTreeLoading', false))
         }

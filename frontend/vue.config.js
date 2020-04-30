@@ -15,6 +15,7 @@ module.exports = {
     assetsDir: 'static',
 
     devServer: {
+        historyApiFallback: true,
         proxy: {
             '^/api/': {
                 target: publicApiPathUrl + '/api/',
@@ -42,5 +43,4 @@ module.exports = {
             .https(false)
             .headers({"Access-Control-Allow-Origin": ["\*"]})
     }
-
 };

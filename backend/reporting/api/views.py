@@ -19,7 +19,7 @@ from rest_framework import generics, viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .serializers import *
+from .models import *
 
 from reporting.settings import production
 
@@ -59,12 +59,33 @@ ICONS = [
 ]
 
 
+def convert_to_datatable_json(dataframe):
+    d = json.loads(dataframe.to_json(orient='table'))
+
+    headers = []
+    for f_dict in d['schema']['fields']:
+        text = str(f_dict['name'])
+        value = text.lower().replace(' ', '_')
+        headers.append({'text': text, 'value': value})
+    # print(headers)
+
+    items = []
+    for d_dict in d['data']:
+        i_dict = {}
+
+        for h_map in headers:
+            i_dict[h_map['value']] = d_dict[h_map['text']]
+        items.append(i_dict)
+    # print(items)
+    return {'headers': headers, 'items': items}
+
+
 class ValidationsView(APIView):
     def get(self, request, *args, **kwargs):
         tree = Node('')
 
         validations_qs = Validation.objects.all().select_related('os__group', 'platform__generation', 'env')
-        for validation in validations_qs.order_by('platform__generation__weight', 'platform__weight', 'os__group__name',
+        for validation in validations_qs.order_by('-platform__generation__weight', 'platform__weight', 'os__group__name',
                                                   'os__name', 'env__name', 'name'):
             # shortcuts
             platform = validation.platform
@@ -97,7 +118,7 @@ class ValidationsView(APIView):
                 if not node:
                     node = AnyNode(
                         parent=parent, icon=icon, text=name, selected=False,
-                        opened=True if node_data['level'] < 2 else False,
+                        opened=True,    # if node_data['level'] < 2 else False,
                         id=node_data['obj'].id,
                         klass=type(node_data['obj']).__name__
                     )
@@ -223,29 +244,77 @@ class ReportBestView(APIView):
 
         # If no excel report needed just finish here with json return
         if not do_excel:
-            d = json.loads(ct.to_json(orient='table'))
-
-            headers = []
-            for f_dict in d['schema']['fields']:
-                text = f_dict['name']
-                value = text.lower().replace(' ', '_')
-                headers.append({'text': text, 'value': value})
-            # print(headers)
-
-            items = []
-            for d_dict in d['data']:
-                i_dict = {}
-
-                for h_map in headers:
-                    i_dict[h_map['value']] = d_dict[h_map['text']]
-                items.append(i_dict)
-            # print(items)
-            return Response({'headers': headers, 'items': items})
+            return Response(convert_to_datatable_json(ct))
 
         # Excel part
         workbook = excel.do_best_report(data=ct, extra=validations)
 
         filename = f'best_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
+class ReportCompareView(APIView):
+    def get(self, request, *args, **kwargs):
+        do_excel = False
+        if 'report' in request.GET and request.GET['report'] == 'excel':
+            do_excel = True
+        
+        validation_ids = kwargs.get('id', '').split(',')
+
+        q = Result.sa \
+            .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), Result.sa.item_id,
+                   ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
+            .select_from(Result.sa) \
+            .filter(Result.sa.validation_id.in_(validation_ids)) \
+            .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
+            .group_by(Item.sa.name, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
+
+        df = pd.read_sql(q.statement, q.session.bind)
+        ct = pd.crosstab(index=[df.item_name], columns=[df.validation_id], values=df.status_id, aggfunc='max')
+        ct = ct.replace(np.nan, '', regex=False)
+
+        ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
+        ct.index.names = ['Item name']  # rename group_name index name
+        del ct['status_id']
+        del ct['validation_id']
+
+        # replace status_id with test_status values
+        status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
+        for v_id in validation_ids:
+            ct[int(v_id)] = ct[int(v_id)].map(status_mapping)
+
+        # move item_id and group_id columns to front
+        cols = ct.columns.tolist()
+        cols = cols[-2:] + list(map(lambda x: int(x), validation_ids))
+        ct = ct.reindex(columns=cols)
+
+        # turning validation ids to verbose names
+        v_mapping = {}
+        v_data = Result.objects.filter(validation_id__in=validation_ids) \
+            .values_list('validation_id', 'validation__name', 'platform__short_name', 'env__name', 'os__name')\
+            .distinct()
+        for d in v_data:
+            v_mapping[d[0]] = '{}\n({}, {}, {})'.format(*d[1:])
+
+        ct.rename(columns=v_mapping, inplace=True)
+
+        # renaming, nans to empty strings
+        ct.rename(columns={'item_id': 'Item ID', 'group_name': 'Group Name'}, inplace=True)
+        ct = ct.replace(np.nan, '', regex=False)
+
+        if not production:
+            print(ct)
+
+        # If no excel report needed just finish here with json return
+        if not do_excel:
+            return Response(convert_to_datatable_json(ct))
+
+        # Excel part
+        workbook = excel.do_comparison_report(data=ct)
+
+        filename = f'comparison_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
         response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response

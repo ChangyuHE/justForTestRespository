@@ -37,22 +37,28 @@
                         <!-- Buttons toolbar -->
                         <v-toolbar tile class="elevation-3">
                             <!-- Best report button -->
-                            <v-btn small outlined color="teal darken-1"
+                            <v-btn small outlined color="teal darken-1" class="mr-1"
                                 :disabled="!validations.length"
-                                :loading="bestLoading"
-                                @click="bestReportWeb"
+                                @click="reportWeb('best')"
                             >Best results report</v-btn>
+
+                            <!-- Comparison report -->
+                            <v-btn small outlined color="teal darken-1"
+                                :disabled="!validations.length || (validations.length < 2)"
+                                @click="reportWeb('compare')"
+                            >Compare selected</v-btn>
+
                             <!-- Clear report -->
-                            <v-btn small outlined color="grey darken-1" class="mx-2"
-                                :disabled="!showBestTable"
-                                @click="showBestTable=false"
+                            <v-btn small outlined color="grey darken-1" class="mx-1"
+                                :disabled="!showResultsTable"
+                                @click="showResultsTable=false"
                             >
                                 Clear
                             </v-btn>
                         </v-toolbar>
 
                         <!-- Results card -->
-                        <v-card class="my-4 elevation-3" v-if="showBestTable">
+                        <v-card class="my-4 elevation-3" v-if="showResultsTable">
                             <v-card-title class="mb-n4 ml-4">
                                 Best result for validations:
                                 <v-spacer></v-spacer>
@@ -65,7 +71,7 @@
                                     class="pt-0 mt-0"
                                 ></v-text-field>
 
-                                <v-btn light small fab class="ml-4 elevation-5" @click="bestReportExcel">
+                                <v-btn light small fab class="ml-4 elevation-5" @click="reportExcel">
                                     <v-icon>$excel</v-icon>
                                 </v-btn>
                             </v-card-title>
@@ -81,21 +87,29 @@
                             <v-divider style="border-color: rgba(0, 0, 0, 0.3); height:2px;"></v-divider>
 
                             <!-- DataTable -->
-                            <v-data-table
+                            <v-data-table class="results-table"
                                 :headers="headers"
                                 :items="items"
                                 :search="search"
-                                :loading="bestTableLoading"
+                                :loading="reportLoading || tableLoading"
                                 disable-pagination hide-default-footer multi-sort
                             >
-                                <template v-slot:item.passrate="{ item }">
-                                    <v-chip :color="getColor(item.passrate)" light label>{{ item.passrate }}</v-chip>
+                                <template v-if="report_type == 'best'" v-slot:item.passrate="{ item }">
+                                    <v-chip :color="getPassrateColor(item.passrate)" label>{{ item.passrate }}</v-chip>
+                                </template>
+                                <template v-else-if="report_type == 'compare'" v-slot:item="{ item }">
+                                    <tr>
+                                        <td v-for="i in item">
+                                            <v-chip v-if="STATUSES.includes(i)" :color="getStatusColor(i)" text-color="white" label>{{ i }}</v-chip>
+                                            <span v-else>{{ i }}</span>
+                                        </td>
+                                    </tr>
                                 </template>
                             </v-data-table>
                         </v-card>
 
                         <!-- Selected validations -->
-                        <template v-if="!showBestTable && validations.length">
+                        <template v-if="!showResultsTable && validations.length">
                             <v-subheader class="mt-4" style="height: 32px;">
                                 Selected Validations
                             </v-subheader>
@@ -144,10 +158,12 @@
                 showScroll: false,      // "^" button
                 showExpand: false,      // ">" button
 
-                // best report
-                bestLoading: false,
-                bestTableLoading: false,
-                showBestTable: false,
+                // reports
+                STATUSES: ['Passed', 'Failed', 'Skipped', 'Error', 'Blocked', 'Canceled'],
+                report_type: null,
+                reportLoading: false,
+                tableLoading: false,
+                showResultsTable: false,
                 headers: [],
                 items: [],
                 search: '',
@@ -158,7 +174,7 @@
         },
         watch: {
             validations() {
-                this.showBestTable = false;
+                this.showResultsTable = false;
             }
         },
         methods: {
@@ -170,18 +186,19 @@
                 // direct call method from referenced component
                 this.$refs['validations-tree'].clearValidations();
             },
-            bestReportExcel() {
+            reportExcel() {
                 /**
-                 * Download Excel report generated on back based on selected validations ids
+                 * Download Excel report generated on backend based on selected validations ids
                  */
                 let ids = this.validations.join(',');
-                this.bestTableLoading = true;
-                const url = `api/report/best/${ids}?report=excel`;
+                this.tableLoading = true;
+                const url = `api/report/${this.report_type}/${ids}?report=excel`;
                 server
                     .get(url, {responseType: 'blob'})
                     .then(response => {
                         let fileName = 'unknown';
                         const contentDisposition = response.headers['content-disposition'];
+                        console.log(contentDisposition)
                         if (contentDisposition) {
                             const m = contentDisposition.match(/filename="(.+)"/);
                             if (m.length == 2)
@@ -199,15 +216,17 @@
                         console.log(error);
                         this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
                     })
-                    .finally(() => this.bestTableLoading = false);
+                    .finally(() => this.tableLoading = false);
             },
-            bestReportWeb() {
+            reportWeb(type) {
                 /**
                  * Get report data from backend based on selected validations ids
                  */
+                this.report_type = type;
+
                 let ids = this.validations.join(',');
-                this.bestLoading = true;
-                const url = `api/report/best/${ids}`;
+                this.reportLoading = true;
+                const url = `api/report/${type}/${ids}`;
                 server
                     .get(url)
                     .then(response => {
@@ -220,8 +239,8 @@
                         this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
                     })
                     .finally(() => {
-                        this.bestLoading = false;
-                        this.showBestTable = true;
+                        this.reportLoading = false;
+                        this.showResultsTable = true;
                     });
             },
             onScroll(e) {
@@ -232,15 +251,28 @@
             toTop() {
                 this.$vuetify.goTo(0);
             },
-            getColor(p) {
+            getPassrateColor(p) {
                 /**
                  * Coloring passaretes in report
                  */
                 p = Number(p.slice(0, -1));
+                if (Number.isNaN(p))
+                    p = 0;
                 if (p >= 0 && p < 50) return 'red lighten-3'
                 else if (p >= 50 && p < 80) return 'yellow lighten-4'
                 else if (p >= 80 && p < 100) return 'green lighten-4'
                 else return 'green lighten-1'
+            },
+            getStatusColor(s) {
+                /**
+                 * Coloring status column in comparison report
+                 */
+                if (s == 'Passed') return 'green darken-1'
+                else if (s == 'Failed') return 'red darken-4'
+                else if (s == 'Error') return 'deep-orange darken-2'
+                else if (s == 'Blocked') return 'grey darken-1'
+                else if (s == 'Skipped') return 'cyan darken-3'
+                else if (s == 'Canceled') return 'brown darken-3'
             },
         }
 	}
@@ -248,7 +280,7 @@
 
 <style>
     /* DataTable colored zebra */
-    tbody tr:nth-of-type(odd) {
+    .results-table tbody tr:nth-of-type(odd) {
         background-color: rgba(0, 142, 100, .03);
     }
     /* DataTable header font */
@@ -266,5 +298,8 @@
         width: 5px !important;
         background-color: #ECEFF1 !important;
         box-shadow: 0px 3px 3px -2px rgba(0, 0, 0, 0.2), 0px 3px 4px 0px rgba(0, 0, 0, 0.34), 0px 1px 8px 0px rgba(0, 0, 0, 0.12) !important;
+    }
+    .results-table table {
+        table-layout: fixed !important;
     }
 </style>

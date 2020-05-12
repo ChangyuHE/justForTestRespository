@@ -36,31 +36,40 @@
                         </div>
                         <!-- Buttons toolbar -->
                         <v-toolbar tile class="elevation-3">
-                            <!-- Best report button -->
-                            <v-btn small outlined color="teal darken-1" class="mr-1"
-                                :disabled="!validations.length"
-                                @click="reportWeb('best')"
-                            >Best results report</v-btn>
-
-                            <!-- Comparison report -->
-                            <v-btn small outlined color="teal darken-1"
-                                :disabled="!validations.length || (validations.length < 2)"
-                                @click="reportWeb('compare')"
-                            >Compare selected</v-btn>
-
-                            <!-- Clear report -->
-                            <v-btn small outlined color="grey darken-1" class="mx-1"
-                                :disabled="!showResultsTable"
-                                @click="showResultsTable=false"
+                            <v-btn-toggle
+                                color="teal darken-1"
+                                v-model="reportType" @change="reportClick"
                             >
-                                Clear
-                            </v-btn>
+                                <!-- Best report button -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length"
+                                    :loading="reportTypeLoading('best')"
+                                    value="best"
+                                >
+                                    Best results report
+                                </v-btn>
+
+                                <!-- Comparison report -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length || (validations.length < 2)"
+                                    :loading="reportTypeLoading('compare')"
+                                    value="compare"
+                                > 
+                                    Compare selected
+                                </v-btn>
+                            </v-btn-toggle>
                         </v-toolbar>
 
                         <!-- Results card -->
                         <v-card class="my-4 elevation-3" v-if="showResultsTable">
                             <v-card-title class="mb-n4 ml-4">
-                                Best result for validations:
+                                <span v-if="reportType == 'best'">
+                                    Best result for validations:
+                                </span>
+                                <span v-else-if="reportType == 'compare'">
+                                    Validations comparison:
+                                </span>
+                                
                                 <v-spacer></v-spacer>
                                 <!-- Search field -->
                                 <v-text-field
@@ -94,10 +103,10 @@
                                 :loading="reportLoading || tableLoading"
                                 disable-pagination hide-default-footer multi-sort
                             >
-                                <template v-if="report_type == 'best'" v-slot:item.passrate="{ item }">
+                                <template v-if="reportType == 'best'" v-slot:item.passrate="{ item }">
                                     <v-chip :color="getPassrateColor(item.passrate)" label>{{ item.passrate }}</v-chip>
                                 </template>
-                                <template v-else-if="report_type == 'compare'" v-slot:item="{ item }">
+                                <template v-else-if="reportType == 'compare'" v-slot:item="{ item }">
                                     <tr>
                                         <td v-for="i in item">
                                             <v-chip v-if="STATUSES.includes(i)" :color="getStatusColor(i)" text-color="white" label>{{ i }}</v-chip>
@@ -160,7 +169,7 @@
 
                 // reports
                 STATUSES: ['Passed', 'Failed', 'Skipped', 'Error', 'Blocked', 'Canceled'],
-                report_type: null,
+                reportType: null,
                 reportLoading: false,
                 tableLoading: false,
                 showResultsTable: false,
@@ -178,6 +187,9 @@
             }
         },
         methods: {
+            reportTypeLoading(type) {
+                return this.reportLoading && (type == this.reportType);
+            },
             expandPane() {
                 this.$refs['split'].panes[0].size = 50;
                 this.showExpand = false;
@@ -192,7 +204,7 @@
                  */
                 let ids = this.validations.join(',');
                 this.tableLoading = true;
-                const url = `api/report/${this.report_type}/${ids}?report=excel`;
+                const url = `api/report/${this.reportType}/${ids}?report=excel`;
                 server
                     .get(url, {responseType: 'blob'})
                     .then(response => {
@@ -218,15 +230,21 @@
                     })
                     .finally(() => this.tableLoading = false);
             },
-            reportWeb(type) {
+            reportClick() {
+                if (this.reportType == undefined) {
+                    this. showResultsTable = false;
+                } else {
+                    this.reportWeb();
+                }
+            },
+            reportWeb() {
                 /**
                  * Get report data from backend based on selected validations ids
                  */
-                this.report_type = type;
 
                 let ids = this.validations.join(',');
                 this.reportLoading = true;
-                const url = `api/report/${type}/${ids}`;
+                const url = `api/report/${this.reportType}/${ids}`;
                 server
                     .get(url)
                     .then(response => {

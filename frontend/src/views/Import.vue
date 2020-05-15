@@ -70,15 +70,10 @@
                 this.isLoading = true
 
                 // Lazily load input items
-                //fetch('https://api.publicapis.org/entries')
                 const url = 'api/validations/flat';
                 server
                     .get(url)
-                    // .then(res => res.json())
                     .then(res => {
-                        // const { count, entries } = res
-                        // this.count = count
-                        // this.entries = entries
                         this.entries = res.data
                         console.log(res.data[0])
                     })

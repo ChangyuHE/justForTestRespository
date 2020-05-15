@@ -23,9 +23,9 @@
         </v-navigation-drawer>
 
         <!-- Application bar on top -->
-        <v-app-bar app color="teal darken-1 elevation-4" dark short>
+        <v-app-bar app color="teal darken-2 elevation-4" dark short>
             <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
-            <v-toolbar-title class="mr-2">GRep tool</v-toolbar-title>
+            <v-toolbar-title class="mr-2">Reporter</v-toolbar-title>
             <v-btn v-for="rItem in routeMap" :key="rItem.name" :to="{name: rItem.name}" text exact>
                 {{ rItem.show }}
             </v-btn>

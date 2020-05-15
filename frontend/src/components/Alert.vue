@@ -2,8 +2,8 @@
     <v-alert
         :value="!!alert['message']"
         :type="alert['type']"
-        dark dismissible min-width="600"
-        class="elevation-12" style="position: fixed; z-index: 100"
+        dismissible min-width="600"
+        class="elevation-12" style="position: fixed; z-index: 100" color="red darken-2"
         @input="closeAlert"
     >
         <span v-html="alert['message']"></span>

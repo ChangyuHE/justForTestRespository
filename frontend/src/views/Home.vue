@@ -14,12 +14,12 @@
                             <v-icon>mdi-chevron-right</v-icon>
                         </v-btn>
                         <!-- Validations tree -->
-                        <v-card width="100%" class="elevation-0 mt-4" color="transparent">
-                            <validations-tree ref="validations-tree" style="" class=""/>
+                        <v-card width="100%" class="elevation-0 ml-1" color="transparent">
+                            <validations-tree ref="validations-tree"/>
                         </v-card>
                         <!-- Clear selection button -->
                         <div class="d-flex justify-end">
-                            <v-btn x-small fixed color="blue-grey lighten-4" class="mx-n4 mt-4"
+                            <v-btn x-small fixed color="blue-grey lighten-4" class="mx-n4 mt-2"
                                 :disabled="!validations.length"
                                 @click="clearSelected"
                             >
@@ -62,7 +62,7 @@
 
                         <!-- Results card -->
                         <v-card class="my-4 elevation-3" v-if="showResultsTable">
-                            <v-card-title class="mb-n4 ml-4">
+                            <v-card-title class="mb-n6 ml-4">
                                 <span v-if="reportType == 'best'">
                                     Best result for validations:
                                 </span>
@@ -86,7 +86,7 @@
                             </v-card-title>
 
                             <!-- Validations list -->
-                            <v-list dense flat class="ml-4 mt-2">
+                            <v-list dense flat class="ml-4">
                                 <v-list-item v-for="(item, i) in branches" :key="i">
                                     <v-list-item-content class="py-0 my-1">
                                         <v-list-item-title v-text="item"></v-list-item-title>
@@ -198,10 +198,10 @@
                 // direct call method from referenced component
                 this.$refs['validations-tree'].clearValidations();
             },
+            /**
+             * Download Excel report generated on backend based on selected validations ids
+             */
             reportExcel() {
-                /**
-                 * Download Excel report generated on backend based on selected validations ids
-                 */
                 let ids = this.validations.join(',');
                 this.tableLoading = true;
                 const url = `api/report/${this.reportType}/${ids}?report=excel`;
@@ -237,11 +237,10 @@
                     this.reportWeb();
                 }
             },
+            /**
+             * Get report data from backend based on selected validations ids
+             */
             reportWeb() {
-                /**
-                 * Get report data from backend based on selected validations ids
-                 */
-
                 let ids = this.validations.join(',');
                 this.reportLoading = true;
                 const url = `api/report/${this.reportType}/${ids}`;
@@ -269,10 +268,10 @@
             toTop() {
                 this.$vuetify.goTo(0);
             },
+            /**
+             * Coloring passaretes in report
+             */
             getPassrateColor(p) {
-                /**
-                 * Coloring passaretes in report
-                 */
                 p = Number(p.slice(0, -1));
                 if (Number.isNaN(p))
                     p = 0;
@@ -281,10 +280,10 @@
                 else if (p >= 80 && p < 100) return 'green lighten-4'
                 else return 'green lighten-1'
             },
+            /**
+             * Coloring status column in comparison report
+             */
             getStatusColor(s) {
-                /**
-                 * Coloring status column in comparison report
-                 */
                 if (s == 'Passed') return 'green darken-1'
                 else if (s == 'Failed') return 'red darken-4'
                 else if (s == 'Error') return 'deep-orange darken-2'

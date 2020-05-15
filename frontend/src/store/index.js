@@ -21,6 +21,7 @@ let store = new Vuex.Store({
         setTreeLoading: (state, status) =>  state.treeLoading = status,
 
         setAlert: (state, { message, type }) => {
+            message = `Наташа, мы там всё уронили! Вообще всё, Наташ, честно!<br>${message}`;
             state.alert = Object.assign(state.alert, {message, type});
         },
     },

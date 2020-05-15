@@ -52,7 +52,7 @@ class PassToVue(TemplateView):
 ICONS = [
     'i-gen',
     'i-platform',
-    (('windows',  'i-windows'), ('linux', 'i-linux')),
+    (('windows', 'i-windows'), ('linux', 'i-linux')),
     (('windows', 'i-windows'), ('linux', 'i-linux')),
     'i-simulation',
     'i-validation'
@@ -82,6 +82,10 @@ def convert_to_datatable_json(dataframe):
 
 class ValidationsView(APIView):
     def get(self, request, *args, **kwargs):
+        filters_data = request.GET.get('data', {})
+        if filters_data:
+            filters_data = json.loads(filters_data)
+
         tree = Node('')
 
         validations_qs = Validation.objects.all().select_related('os__group', 'platform__generation', 'env')
@@ -101,9 +105,29 @@ class ValidationsView(APIView):
                 {'obj': validation, 'name': validation.name, 'level': 5}
             )
 
+            # filter by input data
+            if filters_data:
+                ok = []
+                for f in filters_data:
+                    for node in branch:
+                        if node['level'] == f['level']:
+                            # validation name pattern check
+                            if f['level'] == 5:
+                                if f['text'].lower() in node['name'].lower():
+                                    ok.append(True)
+                                    break
+                            else:
+                                if node['name'] in f['text']:
+                                    ok.append(True)
+                                    break
+                    else:
+                        ok.append(False)
+                if not all(ok):
+                    continue
+
             parent = tree
             for node_data, icon_map in zip(branch, ICONS):
-                # according to ICONS structure detect which icon should be used for each level
+                # set icon according to tree level ICONS mapping
                 icon, name = '', ''
                 if isinstance(icon_map, tuple):
                     for alias in icon_map:
@@ -117,7 +141,7 @@ class ValidationsView(APIView):
                 node = find_by_attr(parent, name='text', value=name)
                 if not node:
                     node = AnyNode(
-                        parent=parent, icon=icon, text=name, selected=False,
+                        parent=parent, icon=icon, text=name, text_flat=name, selected=False, level=node_data['level'],
                         opened=True,    # if node_data['level'] < 2 else False,
                         id=node_data['obj'].id,
                         klass=type(node_data['obj']).__name__
@@ -128,7 +152,7 @@ class ValidationsView(APIView):
         d = exporter.export(tree)
 
         # cut off first level, frontend requirement
-        d = json.loads(d)['children']
+        d = json.loads(d).get('children', [])
         return Response(d)
 
 
@@ -141,6 +165,27 @@ class ValidationsFlatView(APIView):
                 'name': f'{v.name} ({v.platform.name}, {v.env.name}, {v.os.name})',
                 'id': v.id
             })
+        return Response(d)
+
+
+class ValidationsStructureView(APIView):
+    def get(self, request, *args, **kwargs):
+        d = [
+            {'name': 'gen', 'label': 'Generation', 'items': [], 'level': 0},
+            {'name': 'platform', 'label': 'Platform', 'items': [], 'level': 1},
+            {'name': 'os_group', 'label': 'OS Family', 'items': [], 'level': 2},
+            {'name': 'os', 'label': 'OS', 'items': [], 'level': 3},
+            # {'name': 'env', 'label': 'Env', 'items': [], 'level': 4},
+        ]
+
+        d[0]['items'] = Validation.objects.all().values_list('platform__generation__name', flat=True)\
+            .order_by('-platform__generation__weight').distinct()
+        d[1]['items'] = Validation.objects.all().values_list('platform__short_name', flat=True) \
+            .order_by('-platform__weight').distinct()
+        d[2]['items'] = Validation.objects.all().values_list('os__group__name', flat=True) \
+            .order_by('os__group__name').distinct()
+        d[3]['items'] = Validation.objects.all().values_list('os__name', flat=True) \
+            .order_by('os__name').distinct()
         return Response(d)
 
 
@@ -257,6 +302,7 @@ class ReportBestView(APIView):
 
 class ReportCompareView(APIView):
     def get(self, request, *args, **kwargs):
+        # TODO: change validations order from most recent to old
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
@@ -292,9 +338,8 @@ class ReportCompareView(APIView):
 
         # turning validation ids to verbose names
         v_mapping = {}
-        v_data = Result.objects.filter(validation_id__in=validation_ids) \
-            .values_list('validation_id', 'validation__name', 'platform__short_name', 'env__name', 'os__name')\
-            .distinct()
+        v_data = Validation.objects.filter(id__in=validation_ids)\
+            .values_list('id', 'name', 'platform__short_name', 'env__name', 'os__name').distinct()
         for d in v_data:
             v_mapping[d[0]] = '{}\n({}, {}, {})'.format(*d[1:])
 

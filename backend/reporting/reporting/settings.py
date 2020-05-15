@@ -36,7 +36,7 @@ SECRET_KEY = 'azn@lvr77l5%_yj=zylpj6-8abzm!g)p0zy+7*#vgm=k79w4+f'
 DEBUG = not production
 
 ALLOWED_HOSTS = ['*']
-INTERNAL_IPS = ['127.0.0.1']
+INTERNAL_IPS = ['127.0.0.1', '10.125.50.240']
 
 # Application definition
 

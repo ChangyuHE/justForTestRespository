@@ -1,13 +1,9 @@
-import copy
 import json
-import time
-import yaml
+import pandas as pd
+import numpy as np
+import dateutil.parser
 
-from pathlib import Path
-from collections import defaultdict
-from itertools import product
 from datetime import datetime
-from jinja2 import Environment, PackageLoader
 
 from django.http import HttpResponse
 from django.views.generic import TemplateView
@@ -19,10 +15,6 @@ from rest_framework import generics, viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from .models import *
-
-from reporting.settings import production
-
 from anytree import Node, RenderTree, AnyNode
 from anytree.search import find_by_attr
 from anytree.exporter import JsonExporter
@@ -31,11 +23,12 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import aliased
 from sqlalchemy import and_, or_, Table, Column, select, distinct, MetaData, Text, Integer, text, desc, asc
 
-import pandas as pd
-import numpy as np
-
 from openpyxl.writer.excel import save_virtual_workbook
+
 from . import excel
+from .models import *
+
+from reporting.settings import production
 
 
 @never_cache
@@ -85,6 +78,10 @@ class ValidationsView(APIView):
         filters_data = request.GET.get('data', {})
         if filters_data:
             filters_data = json.loads(filters_data)
+            for f in filters_data:
+                if all(key in f for key in ['start', 'end']):
+                    f['start'] = dateutil.parser.isoparse(f['start'])
+                    f['end'] = dateutil.parser.isoparse(f['end'])
 
         tree = Node('')
 
@@ -109,19 +106,26 @@ class ValidationsView(APIView):
             if filters_data:
                 ok = []
                 for f in filters_data:
-                    for node in branch:
-                        if node['level'] == f['level']:
-                            # validation name pattern check
-                            if f['level'] == 5:
-                                if f['text'].lower() in node['name'].lower():
-                                    ok.append(True)
-                                    break
-                            else:
-                                if node['name'] in f['text']:
-                                    ok.append(True)
-                                    break
+                    # date range check
+                    if all(key in f for key in ['start', 'end']):
+                        ok.append(f['start'] <= validation.date <= f['end'])
+
+                    # tree levels check
                     else:
-                        ok.append(False)
+                        for node in branch:
+                            if node['level'] == f['level']:
+                                # validation name pattern check
+                                if f['level'] == 5:
+                                    if f['text'].lower() in node['name'].lower():
+                                        ok.append(True)
+                                        break
+                                else:
+                                    if node['name'] in f['text']:
+                                        ok.append(True)
+                                        break
+                        else:
+                            ok.append(False)
+
                 if not all(ok):
                     continue
 
@@ -302,12 +306,12 @@ class ReportBestView(APIView):
 
 class ReportCompareView(APIView):
     def get(self, request, *args, **kwargs):
-        # TODO: change validations order from most recent to old
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
-        
-        validation_ids = kwargs.get('id', '').split(',')
+
+        validation_ids = Validation.objects.filter(id__in=kwargs.get('id', '').split(',')) \
+            .order_by('-date').values_list('id', flat=True)
 
         q = Result.sa \
             .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), Result.sa.item_id,

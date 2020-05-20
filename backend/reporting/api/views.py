@@ -199,10 +199,11 @@ class ReportBestView(APIView):
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
 
+        grouping = request.GET.get('group-by', 'feature')
+
         validation_ids = kwargs.get('id', '').split(',')
 
         validations = Validation.objects.filter(pk__in=validation_ids)
-        # print(validations.values_list('name', flat=True))
 
         # Looking for best items in target validations
         ibest = Result.sa\
@@ -248,7 +249,8 @@ class ReportBestView(APIView):
         # joining referenced tables to get names and so on
         res = res.subquery('res')
         q = Result.sa.query(
-            ResultGroupNew.sa.name.label('group_name'), Item.sa.name.label('item_name'),
+            ResultGroupNew.sa.name.label('group_name') if grouping == 'feature' else ResultGroupNew.sa.alt_name.label('alt_name'),
+            Item.sa.name.label('item_name'),
             res.c.best_status_id, Validation.sa.name.label('val_name'), Driver.sa.name.label('driver_name'),
             Result.sa.item_id, Result.sa.validation_id, Validation.sa.source_file, Result.sa.result_url)\
             .select_from(res)\
@@ -257,14 +259,15 @@ class ReportBestView(APIView):
             .join(ResultGroupNew.sa, ResultGroupNew.sa.id == Item.sa.group_id) \
             .join(Validation.sa)\
             .join(Driver.sa)\
-            .order_by(ResultGroupNew.sa.name, Item.sa.name)
+            .order_by(ResultGroupNew.sa.name if grouping == 'feature' else ResultGroupNew.sa.alt_name, Item.sa.name)
 
         # print(str(q.statement.compile(compile_kwargs={"literal_binds": True})))
         # print(q.all())
 
         # Create DataFrame crosstab from SQL request
         df = pd.read_sql(q.statement, q.session.bind)
-        ct = pd.crosstab(index=df.group_name, values=df.item_name, columns=df.best_status_id, aggfunc='count',
+        ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
+                         values=df.item_name, columns=df.best_status_id, aggfunc='count',
                          colnames=[''],
                          margins=True, margins_name='Total', dropna=False)
 
@@ -329,6 +332,7 @@ class ReportCompareView(APIView):
         ct.index.names = ['Item name']  # rename group_name index name
         del ct['status_id']
         del ct['validation_id']
+        ct = ct.drop_duplicates()
 
         # replace status_id with test_status values
         status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))

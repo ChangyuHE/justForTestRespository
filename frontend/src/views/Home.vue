@@ -86,14 +86,31 @@
                             </v-card-title>
 
                             <!-- Validations list -->
-                            <v-list dense flat class="ml-4">
-                                <v-list-item v-for="(item, i) in branches" :key="i">
-                                    <v-list-item-content class="py-0 my-1">
-                                        <v-list-item-title v-text="item"></v-list-item-title>
-                                    </v-list-item-content>
-                                </v-list-item>
-                            </v-list>
-                            <v-divider style="border-color: rgba(0, 0, 0, 0.3); height:2px;"></v-divider>
+                            <v-col class="d-flex justify-space-between">
+                                <v-list dense flat class="ml-4">
+                                    <v-list-item v-for="(item, i) in branches" :key="i">
+                                        <v-list-item-content class="py-0 my-1">
+                                            <v-list-item-title v-text="item"></v-list-item-title>
+                                        </v-list-item-content>
+                                    </v-list-item>
+                                </v-list>
+
+                                <!-- Grouping type buttons -->
+                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'best'">
+                                    Group by:
+                                    <v-btn-toggle
+                                        v-model="bestReportGrouping"
+                                        class="d-flex justify-end ml-2" color="teal" mandatory
+                                        @change="changeGrouping"
+                                    >
+                                        <v-btn small v-for="name in bestReportGroups" :key="name">
+                                            {{ name }}
+                                        </v-btn>
+                                    </v-btn-toggle>
+                                </label>
+                            </v-col>
+
+                            <v-divider style="border-color: rgba(0, 0, 0, 0.3); height: 2px;"></v-divider>
 
                             <!-- DataTable -->
                             <v-data-table class="results-table"
@@ -176,6 +193,9 @@
                 headers: [],
                 items: [],
                 search: '',
+
+                bestReportGrouping: 0,
+                bestReportGroups: ['feature', 'component']
             }
         },
 		computed: {
@@ -205,7 +225,10 @@
             reportExcel() {
                 let ids = this.validations.join(',');
                 this.tableLoading = true;
-                const url = `api/report/${this.reportType}/${ids}?report=excel`;
+                let url = `api/report/${this.reportType}/${ids}?report=excel`;
+                if (this.reportType == 'best')
+                    url += `?group-by=${this.bestReportGroups[this.bestReportGrouping]}`
+
                 server
                     .get(url, {responseType: 'blob'})
                     .then(response => {
@@ -238,13 +261,19 @@
                     this.reportWeb();
                 }
             },
+            changeGrouping() {
+                this.reportWeb()
+            },
             /**
              * Get report data from backend based on selected validations ids
              */
             reportWeb() {
                 let ids = this.validations.join(',');
                 this.reportLoading = true;
-                const url = `api/report/${this.reportType}/${ids}`;
+                let url = `api/report/${this.reportType}/${ids}`;
+                if (this.reportType == 'best')
+                    url += `?group-by=${this.bestReportGroups[this.bestReportGrouping]}`
+
                 server
                     .get(url)
                     .then(response => {

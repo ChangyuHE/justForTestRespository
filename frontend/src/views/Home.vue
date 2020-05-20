@@ -149,7 +149,7 @@
 
 <script>
     import server from '@/server.js'
-    import validationsTree from '@/components/ValidationsTree'
+    import validationsTree from '@/components/tree/ValidationsTree.vue'
     import alert from '@/components/Alert'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
@@ -184,6 +184,7 @@
         watch: {
             validations() {
                 this.showResultsTable = false;
+                this.reportType = undefined;
             }
         },
         methods: {

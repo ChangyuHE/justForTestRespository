@@ -6,8 +6,6 @@ from django.shortcuts import reverse
 
 from .forms import SelectFileForm
 from .services import import_results
-from .services import create_entities
-from .services import EntityException
 
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
@@ -18,43 +16,48 @@ from rest_framework import status
 log = logging.getLogger(__name__)
 
 
+class ImportFromFile(APIView):
+    parser_class = (FileUploadParser,)
+
+    def put(self, request):
+        if 'file' not in request.data:
+            raise ParseError("Empty content")
+
+        f = request.data['file']
+        validation_id = request.data.get('validation_id')
+
+        result = import_results(f, validation_id)
+        print(result)
+
+        return Response(status=status.HTTP_200_OK)
+
+
 def index(request):
-    form = SelectFileForm()
+    if request.method != 'POST':
+        form = SelectFileForm()
+    else:
+        form = SelectFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            request.session['file'] = request.FILES.get('file', None)
+            request.session['validation_id'] = request.POST.get('validation_id', 0)
+            return HttpResponseRedirect(reverse('collate:verify'))
+
     return render(request, 'collate/index.html', {'form': form})
 
 
-class ImportFileView(APIView):
-    parser_class = (FileUploadParser,)
+def verify(request):
+    log.debug('Begin verify.')
 
-    def post(self, request):
-        log.debug('Processing POST request in ImportFileView')
+    file = request.session.get('file', None)
+    log.debug('Retrieved file from session.')
+    validation_id = int(request.session.get('validation_id', 0))
 
-        if 'file' not in request.data:
-            raise ParseError("'file' parameter is missing in form data.")
+    if file is None:
+        return HttpResponseRedirect(reverse('collate:index'))
 
-        file = request.data['file']
-        validation_id = request.data.get('validation_id')
+    result = import_results(file, validation_id)
+    if result.get('is_valid', False):
+        request.session['file'] = None
 
-        outcome = import_results(file, validation_id)
-
-        log.debug('About to return Response.')
-        data = outcome.build()
-        code = status.HTTP_200_OK if outcome.success else status.HTTP_422_UNPROCESSABLE_ENTITY
-
-        return Response(data=data, status=code)
-
-
-class CreateEntitiesView(APIView):
-    def post(self, request):
-        log.debug(f'request data: {request.data}')
-        if 'entities' not in request.data:
-            raise ParseError("'entities' parameter is missing in request.")
-
-        entities = request.data['entities']
-
-        try:
-            create_entities(entities)
-        except EntityException as e:
-            raise ParseError(e)
-
-        return Response(status=status.HTTP_201_CREATED)
+    log.debug('Rendering verify.')
+    return render(request, 'collate/verify.html', dict(file=file, result=result, validation_id=validation_id))

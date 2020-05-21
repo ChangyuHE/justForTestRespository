@@ -12,6 +12,7 @@ from api.collate import views as import_views
 
 schema_view = get_swagger_view(title='Reporting API')
 
+
 urlpatterns = [
     url('^$', views.index, name='index'),
 
@@ -25,8 +26,7 @@ urlpatterns = [
     url(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),   # with optional param "report=excel"
 
     # import
-    url(r'^api/import/$', import_views.ImportFileView.as_view(), name='import'),
-    url(r'^api/import/create/$', import_views.CreateEntitiesView.as_view()),
+    url(r'^api/import/', import_views.ImportFromFile.as_view(), name='import'),
 
     path('admin/', admin.site.urls),
 ]\

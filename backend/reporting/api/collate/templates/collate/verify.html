@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Verify</title>
+	{% load static %}
+	<link rel="stylesheet" type="text/css" href="{% static 'collate/verify.css' %}">
+</head>
+<body>
+	<h2>Verification results</h2>
+	<p>File name: {{ file.name }}</p>
+	<p>File size: {{ file.size }}</p>
+	<p>File is {% if not result.is_valid %}not {% endif %}valid.</p>
+	<p>Validation id: {{ validation_id }}</p>
+	<p>Verification message: {{ result.message }}</p>
+	{% if result.changes %}
+	<p>Database entities touched: {{ result.changes }}</p>
+	{% endif %}
+	{% if result.warnings|length > 0 %}
+	<h3>Warnings:</h3>
+	{{ result.warnings }}
+	{% endif %}
+</body>
+</html>

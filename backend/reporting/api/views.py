@@ -86,7 +86,8 @@ class ValidationsView(APIView):
         tree = Node('')
 
         validations_qs = Validation.objects.all().select_related('os__group', 'platform__generation', 'env')
-        for validation in validations_qs.order_by('-platform__generation__weight', 'platform__weight', 'os__group__name',
+        for validation in validations_qs.order_by('-platform__generation__weight', 'platform__weight',
+                                                  'os__group__name',
                                                   'os__name', 'env__name', 'name'):
             # shortcuts
             platform = validation.platform
@@ -146,7 +147,7 @@ class ValidationsView(APIView):
                 if not node:
                     node = AnyNode(
                         parent=parent, icon=icon, text=name, text_flat=name, selected=False, level=node_data['level'],
-                        opened=True,    # if node_data['level'] < 2 else False,
+                        opened=True,  # if node_data['level'] < 2 else False,
                         id=node_data['obj'].id,
                         klass=type(node_data['obj']).__name__
                     )
@@ -182,7 +183,7 @@ class ValidationsStructureView(APIView):
             # {'name': 'env', 'label': 'Env', 'items': [], 'level': 4},
         ]
 
-        d[0]['items'] = Validation.objects.all().values_list('platform__generation__name', flat=True)\
+        d[0]['items'] = Validation.objects.all().values_list('platform__generation__name', flat=True) \
             .order_by('-platform__generation__weight').distinct()
         d[1]['items'] = Validation.objects.all().values_list('platform__short_name', flat=True) \
             .order_by('-platform__weight').distinct()
@@ -206,41 +207,48 @@ class ReportBestView(APIView):
         validations = Validation.objects.filter(pk__in=validation_ids)
 
         # Looking for best items in target validations
-        ibest = Result.sa\
-            .query(Result.sa.item_id, func.max(Status.sa.priority).label('best_status_priority'))\
+        ibest = Result.sa \
+            .query(Result.sa.item_id, func.max(Status.sa.priority).label('best_status_priority')) \
             .filter(Result.sa.validation_id.in_(validation_ids)
-                    ,)\
-            .join(Status.sa)\
+                    , ) \
+            .join(Status.sa) \
             .group_by(Result.sa.item_id).subquery('ibest')
         # print(ibest)
 
         # looking for date of best validation
-        best = Result.sa.query(ibest.c.item_id, func.max(Status.sa.id).label('best_status'), func.max(Validation.sa.date).label('best_validation_date'))\
-            .select_from(Result.sa)\
-            .join(Status.sa, Status.sa.id == Result.sa.status_id).join(Validation.sa, Validation.sa.id == Result.sa.validation_id) \
+        best = Result.sa.query(ibest.c.item_id, func.max(Status.sa.id).label('best_status'),
+                               func.max(Validation.sa.date).label('best_validation_date')) \
+            .select_from(Result.sa) \
+            .join(Status.sa, Status.sa.id == Result.sa.status_id).join(Validation.sa,
+                                                                       Validation.sa.id == Result.sa.validation_id) \
             .join(ibest, Result.sa.item_id == ibest.c.item_id) \
             .filter(Result.sa.validation_id.in_(validation_ids), Status.sa.priority == ibest.c.best_status_priority) \
             .group_by(ibest.c.item_id).subquery('best')
         # print(best)
 
-        v2 = Result.sa.query(Result.sa.item_id, Validation.sa.id, Result.sa.status_id, Validation.sa.date)\
+        v2 = Result.sa.query(Result.sa.item_id, Validation.sa.id, Result.sa.status_id, Validation.sa.date) \
             .filter(Result.sa.validation_id.in_(validation_ids)
-                    ,)\
-            .join(Validation.sa)\
+                    , ) \
+            .join(Validation.sa) \
             .subquery('v2')
         # print(v2)
 
         # Looking for best validation in found date
-        vbest = Result.sa.query(best.c.item_id, func.max(v2.c.id).label('best_validation'), func.max(best.c.best_status).label('best_status_id'))\
-            .select_from(best)\
-            .join(v2, and_(v2.c.item_id == best.c.item_id, v2.c.status_id == best.c.best_status, v2.c.date == best.c.best_validation_date))\
-            .group_by(best.c.item_id)\
+        vbest = Result.sa.query(best.c.item_id, func.max(v2.c.id).label('best_validation'),
+                                func.max(best.c.best_status).label('best_status_id')) \
+            .select_from(best) \
+            .join(v2, and_(v2.c.item_id == best.c.item_id, v2.c.status_id == best.c.best_status,
+                           v2.c.date == best.c.best_validation_date)) \
+            .group_by(best.c.item_id) \
             .subquery('vbest')
 
         # Looking for best results in found validations
-        res = Result.sa.query(vbest.c.item_id, vbest.c.best_validation, vbest.c.best_status_id, func.max(Result.sa.id).label('result'))\
-            .select_from(vbest)\
-            .join(Result.sa, and_(Result.sa.item_id == vbest.c.item_id, Result.sa.validation_id == vbest.c.best_validation, Result.sa.status_id == vbest.c.best_status_id))\
+        res = Result.sa.query(vbest.c.item_id, vbest.c.best_validation, vbest.c.best_status_id,
+                              func.max(Result.sa.id).label('result')) \
+            .select_from(vbest) \
+            .join(Result.sa,
+                  and_(Result.sa.item_id == vbest.c.item_id, Result.sa.validation_id == vbest.c.best_validation,
+                       Result.sa.status_id == vbest.c.best_status_id)) \
             .group_by(vbest.c.item_id, vbest.c.best_validation, vbest.c.best_status_id)
 
         # print(str(res.statement.compile(compile_kwargs={"literal_binds": True})))
@@ -249,16 +257,17 @@ class ReportBestView(APIView):
         # joining referenced tables to get names and so on
         res = res.subquery('res')
         q = Result.sa.query(
-            ResultGroupNew.sa.name.label('group_name') if grouping == 'feature' else ResultGroupNew.sa.alt_name.label('alt_name'),
+            ResultGroupNew.sa.name.label('group_name') if grouping == 'feature' else ResultGroupNew.sa.alt_name.label(
+                'alt_name'),
             Item.sa.name.label('item_name'),
             res.c.best_status_id, Validation.sa.name.label('val_name'), Driver.sa.name.label('driver_name'),
-            Result.sa.item_id, Result.sa.validation_id, Validation.sa.source_file, Result.sa.result_url)\
-            .select_from(res)\
-            .join(Item.sa, Item.sa.id == res.c.item_id)\
+            Result.sa.item_id, Result.sa.validation_id, Validation.sa.source_file, Result.sa.result_url) \
+            .select_from(res) \
+            .join(Item.sa, Item.sa.id == res.c.item_id) \
             .join(Result.sa, Result.sa.id == res.c.result) \
             .join(ResultGroupNew.sa, ResultGroupNew.sa.id == Item.sa.group_id) \
-            .join(Validation.sa)\
-            .join(Driver.sa)\
+            .join(Validation.sa) \
+            .join(Driver.sa) \
             .order_by(ResultGroupNew.sa.name if grouping == 'feature' else ResultGroupNew.sa.alt_name, Item.sa.name)
 
         # print(str(q.statement.compile(compile_kwargs={"literal_binds": True})))
@@ -271,26 +280,8 @@ class ReportBestView(APIView):
                          colnames=[''],
                          margins=True, margins_name='Total', dropna=False)
 
-        all_status_ids = list(Status.objects.all().order_by('priority').values_list('id', flat=True))
-        status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
-
-        # reindex columns by priority and adding notrun and passrate empty ones
-        ct = ct.reindex(columns=all_status_ids + ['Total', 'Not run', 'Passrate'])
-        ct.rename(columns=status_mapping, inplace=True)
-        ct.index.names = ['Group name']   # rename group_name index name
-
-        # Not run column
-        notrun = (ct['Blocked'].fillna(0) + ct['Skipped'].fillna(0) + ct['Canceled'].fillna(0)).round(3).astype(int)
-        ct['Not run'] = notrun
-
-        # Passrate column
-        passrate = 100 * ct['Passed'].fillna(0) / (ct['Total'] - ct['Not run'])
-        ct['Passrate'] = passrate.round(2).astype(str) + '%'
-
-        # leave only needed columns
-        ct = ct[['Not run', 'Error', 'Failed', 'Passed', 'Total', 'Passrate']]
-        ct = ct.replace(np.nan, '', regex=False).replace(0, '', regex=False)
-
+        # prepare DataFrame crosstab for response
+        ct = prepare_crosstab(ct)
         if not production:
             print(ct)
 
@@ -299,12 +290,119 @@ class ReportBestView(APIView):
             return Response(convert_to_datatable_json(ct))
 
         # Excel part
-        workbook = excel.do_best_report(data=ct, extra=validations)
+        workbook = excel.do_report(data=ct, extra=validations, report_name='Best status report')
 
         filename = f'best_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
         response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
+class ReportLastView(APIView):
+    def get(self, request, *args, **kwargs):
+        do_excel = False
+        if 'report' in request.GET and request.GET['report'] == 'excel':
+            do_excel = True
+
+        grouping = request.GET.get('group-by', 'feature')
+
+        validation_ids = kwargs.get('id', '').split(',')
+
+        validations = Validation.objects.filter(pk__in=validation_ids)
+
+        # Looking for last items in target validations
+        ibest = Result.sa \
+            .query(Result.sa.item_id, func.max(Validation.sa.date).label('last_validation_date'),
+                   func.max(Status.sa.priority).label('best_status_priority')) \
+            .select_from(Result.sa) \
+            .join(Validation.sa, Validation.sa.id == Result.sa.validation_id) \
+            .join(Status.sa, Status.sa.id == Result.sa.status_id) \
+            .filter(Validation.sa.id.in_(validation_ids), ) \
+            .group_by(Result.sa.item_id).subquery('ibest')
+        # print(ibest)
+
+        vBest = Result.sa \
+            .query(ibest.c.item_id, func.max(Result.sa.validation_id).label('last_validation_id'),
+                   ibest.c.best_status_priority) \
+            .select_from(Result.sa) \
+            .join(ibest, Result.sa.item_id == ibest.c.item_id) \
+            .join(Validation.sa, Validation.sa.id == Result.sa.validation_id) \
+            .filter(Validation.sa.id.in_(validation_ids), Validation.sa.date == ibest.c.last_validation_date) \
+            .group_by(ibest.c.item_id, ibest.c.best_status_priority).subquery('vbest')
+        # print(vBest)
+
+        res = Result.sa \
+            .query(vBest.c.item_id, vBest.c.last_validation_id, func.max(Result.sa.status_id).label('last_status_id'),
+                   func.max(Result.sa.id).label('result_id'), vBest.c.best_status_priority) \
+            .select_from(vBest) \
+            .join(Result.sa,
+                  and_(Result.sa.item_id == vBest.c.item_id, Result.sa.validation_id == vBest.c.last_validation_id)) \
+            .filter(Result.sa.id.isnot(None)) \
+            .group_by(vBest.c.item_id, vBest.c.last_validation_id, vBest.c.best_status_priority)
+        # print(res)
+
+        # joining referenced tables to get names and so on
+        res = res.subquery('res')
+        q = Result.sa.query(
+            ResultGroupNew.sa.name.label('group_name') if grouping == 'feature'
+            else ResultGroupNew.sa.alt_name.label('alt_name'),
+            Item.sa.name.label('item_name'),
+            res.c.last_status_id, Validation.sa.name.label('val_name'), Driver.sa.name.label('driver_name'),
+            Result.sa.item_id, Result.sa.validation_id, Validation.sa.source_file, Result.sa.result_url) \
+            .select_from(res) \
+            .join(Item.sa, Item.sa.id == res.c.item_id) \
+            .join(Result.sa, Result.sa.id == res.c.result_id) \
+            .join(ResultGroupNew.sa, ResultGroupNew.sa.id == Item.sa.group_id) \
+            .join(Validation.sa) \
+            .join(Driver.sa) \
+            .order_by(ResultGroupNew.sa.name if grouping == 'feature' else ResultGroupNew.sa.alt_name, Item.sa.name)
+
+        # Create DataFrame crosstab from SQL request
+        df = pd.read_sql(q.statement, q.session.bind)
+        ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
+                         values=df.item_name, columns=df.last_status_id, aggfunc='count',
+                         colnames=[''],
+                         margins=True, margins_name='Total', dropna=False)
+
+        # prepare DataFrame crosstab for response
+        ct = prepare_crosstab(ct)
+        if not production:
+            print(ct)
+
+        # If no excel report needed just finish here with json return
+        if not do_excel:
+            return Response(convert_to_datatable_json(ct))
+
+        # Excel part
+        workbook = excel.do_report(data=ct, extra=validations, report_name='Last status report')
+
+        filename = f'last_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+
+def prepare_crosstab(ct: pd.DataFrame):
+    all_status_ids = list(Status.objects.all().order_by('priority').values_list('id', flat=True))
+    status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
+
+    # reindex columns by priority and adding notrun and passrate empty ones
+    ct = ct.reindex(columns=all_status_ids + ['Total', 'Not run', 'Passrate'])
+    ct.rename(columns=status_mapping, inplace=True)
+    ct.index.names = ['Group name']  # rename group_name index name
+
+    # Not run column
+    notrun = (ct['Blocked'].fillna(0) + ct['Skipped'].fillna(0) + ct['Canceled'].fillna(0)).round(3).astype(int)
+    ct['Not run'] = notrun
+
+    # Passrate column
+    passrate = 100 * ct['Passed'].fillna(0) / (ct['Total'] - ct['Not run'])
+    ct['Passrate'] = passrate.round(2).astype(str) + '%'
+
+    # leave only needed columns
+    ct = ct[['Not run', 'Error', 'Failed', 'Passed', 'Total', 'Passrate']]
+    ct = ct.replace(np.nan, '', regex=False).replace(0, '', regex=False)
+    return ct
 
 
 class ReportCompareView(APIView):
@@ -346,7 +444,7 @@ class ReportCompareView(APIView):
 
         # turning validation ids to verbose names
         v_mapping = {}
-        v_data = Validation.objects.filter(id__in=validation_ids)\
+        v_data = Validation.objects.filter(id__in=validation_ids) \
             .values_list('id', 'name', 'platform__short_name', 'env__name', 'os__name').distinct()
         for d in v_data:
             v_mapping[d[0]] = '{}\n({}, {}, {})'.format(*d[1:])

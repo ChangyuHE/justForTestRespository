@@ -49,6 +49,15 @@
                                     Best results report
                                 </v-btn>
 
+                                <!-- Last report button -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length"
+                                    :loading="reportTypeLoading('last')"
+                                    value="last"
+                                >
+                                    Last results report
+                                </v-btn>
+
                                 <!-- Comparison report -->
                                 <v-btn small class="outlined"
                                     :disabled="!validations.length || (validations.length < 2)"
@@ -65,6 +74,9 @@
                             <v-card-title class="mb-n6 ml-4">
                                 <span v-if="reportType == 'best'">
                                     Best result for validations:
+                                </span>
+                                <span v-if="reportType == 'last'">
+                                    Last result for validations:
                                 </span>
                                 <span v-else-if="reportType == 'compare'">
                                     Validations comparison:
@@ -96,14 +108,14 @@
                                 </v-list>
 
                                 <!-- Grouping type buttons -->
-                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'best'">
+                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'best' || reportType == 'last'">
                                     Group by:
                                     <v-btn-toggle
-                                        v-model="bestReportGrouping"
+                                        v-model="ReportGrouping"
                                         class="d-flex justify-end ml-2" color="teal" mandatory
                                         @change="changeGrouping"
                                     >
-                                        <v-btn small v-for="name in bestReportGroups" :key="name">
+                                        <v-btn small v-for="name in ReportGroups" :key="name">
                                             {{ name }}
                                         </v-btn>
                                     </v-btn-toggle>
@@ -120,7 +132,7 @@
                                 :loading="reportLoading || tableLoading"
                                 disable-pagination hide-default-footer multi-sort
                             >
-                                <template v-if="reportType == 'best'" v-slot:item.passrate="{ item }">
+                                <template v-if="reportType == 'best' || reportType == 'last'" v-slot:item.passrate="{ item }">
                                     <v-chip :color="getPassrateColor(item.passrate)" label>{{ item.passrate }}</v-chip>
                                 </template>
                                 <template v-else-if="reportType == 'compare'" v-slot:item="{ item }">
@@ -194,8 +206,8 @@
                 items: [],
                 search: '',
 
-                bestReportGrouping: 0,
-                bestReportGroups: ['feature', 'component']
+                ReportGrouping: 0,
+                ReportGroups: ['feature', 'component']
             }
         },
 		computed: {
@@ -226,8 +238,8 @@
                 let ids = this.validations.join(',');
                 this.tableLoading = true;
                 let url = `api/report/${this.reportType}/${ids}?report=excel`;
-                if (this.reportType == 'best')
-                    url += `?group-by=${this.bestReportGroups[this.bestReportGrouping]}`
+                if (this.reportType == 'best' || this.reportType == 'last')
+                    url += `&group-by=${this.ReportGroups[this.ReportGrouping]}`
 
                 server
                     .get(url, {responseType: 'blob'})
@@ -271,8 +283,8 @@
                 let ids = this.validations.join(',');
                 this.reportLoading = true;
                 let url = `api/report/${this.reportType}/${ids}`;
-                if (this.reportType == 'best')
-                    url += `?group-by=${this.bestReportGroups[this.bestReportGrouping]}`
+                if (this.reportType == 'best' || this.reportType == 'last')
+                    url += `?group-by=${this.ReportGroups[this.ReportGrouping]}`
 
                 server
                     .get(url)

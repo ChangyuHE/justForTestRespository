@@ -22,6 +22,7 @@ urlpatterns = [
 
     # reports
     url(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # with optional param "report=excel"
+    url(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # with optional param "report=excel"
     url(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),   # with optional param "report=excel"
 
     # import

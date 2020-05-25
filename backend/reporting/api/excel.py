@@ -12,14 +12,14 @@ from .models import *
 BOLD_FONT = Font(bold=True)
 
 
-def do_best_report(data=None, extra=None):
+def do_report(data=None, extra=None, report_name=''):
     validations = extra or []
     ct = data
 
     wb = Workbook()
     ws = wb.active
 
-    rdate = 'Best status report: {0} ww{1}.{2}'.format(*intel_calendar.ww_date())
+    rdate = '{0}: {1} ww{2}.{3}'.format(report_name, *intel_calendar.ww_date())
     ws['A2'] = rdate
     ws['A2'].font = Font(bold=True, size=14)
     ws.merge_cells('A2:G2')

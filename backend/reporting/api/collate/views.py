@@ -1,13 +1,12 @@
 import logging
 
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.shortcuts import reverse
 
 from .forms import SelectFileForm
 from .services import import_results
 from .services import create_entities
 from .services import EntityException
+from .services import ImportDescriptor
 
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
@@ -33,13 +32,22 @@ class ImportFileView(APIView):
             raise ParseError("'file' parameter is missing in form data.")
 
         file = request.data['file']
-        validation_id = request.data.get('validation_id')
+        descriptor = ImportDescriptor(
+            request.data.get('validation_id', None),
+            request.data.get('validation_name', None),
+            request.data.get('validation_date', None),
+            request.data.get('notes', None),
+            request.data.get('source_file', None),
+            request.data.get('force_run', False),
+        )
 
-        outcome = import_results(file, validation_id)
+        log.debug(f'request data: {request.data}')
+
+        outcome = import_results(file, descriptor)
 
         log.debug('About to return Response.')
         data = outcome.build()
-        code = status.HTTP_200_OK if outcome.success else status.HTTP_422_UNPROCESSABLE_ENTITY
+        code = status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
 
         return Response(data=data, status=code)
 

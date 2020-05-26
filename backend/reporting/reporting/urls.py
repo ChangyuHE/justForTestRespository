@@ -20,7 +20,6 @@ from django.conf.urls import url
 from api import views as api_views
 
 urlpatterns = [
-    path('import/', include('api.collate.urls')),
     path('', include('api.urls')),
     # path('admin/', admin.site.urls),
     url(r'^.*$', api_views.PassToVue.as_view()),

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import UniqueConstraint
 
 
 class Generation(models.Model):
@@ -129,3 +130,11 @@ class Validation(models.Model):
 
     ignore = models.BooleanField(default=False)
     hash_last = models.CharField(max_length=40, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'env', 'platform', 'os'],
+                name='unique_%(class)s_composite_constraint'
+            ),
+        ]

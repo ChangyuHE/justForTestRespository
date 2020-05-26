@@ -1,0 +1,11 @@
+# Run tests
+python manage.py test
+
+# Run specific test suite
+python manage.py test api.collate.tests.test_create
+
+# Collect code coverage
+coverage run --source='.' manage.py test api.collate.tests
+
+# Build coverage HTML report (after coverage run)
+coverage html

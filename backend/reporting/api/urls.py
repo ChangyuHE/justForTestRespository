@@ -26,8 +26,7 @@ urlpatterns = [
     url(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),   # with optional param "report=excel"
 
     # import
-    url(r'^api/import/$', import_views.ImportFileView.as_view(), name='import'),
-    url(r'^api/import/create/$', import_views.CreateEntitiesView.as_view()),
+    path('api/import/', include('api.collate.urls')),
 
     path('admin/', admin.site.urls),
 ]\

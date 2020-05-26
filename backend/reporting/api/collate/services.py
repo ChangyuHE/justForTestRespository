@@ -2,8 +2,11 @@ import logging
 import re
 
 from datetime import datetime
+from django.db import transaction
 from django.utils import timezone
 from openpyxl import load_workbook
+from openpyxl.utils.datetime import from_excel as date_from_excel
+from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 from types import SimpleNamespace
 
 from api.models import Env
@@ -40,27 +43,21 @@ NAME_MAPPING = {
     'test run': 'testRun',
     'test session': 'testSession',
     'url': 'resultURL',
+    'reason': 'reason',
 }
 
+REVERSE_NAME_MAPPING = {value: key for key, value in NAME_MAPPING.items()}
+excel_base_date = CALENDAR_WINDOWS_1900
 
-def import_results(file, validation_id):
-    # validation_id must refer to existing Validation
-    validation = _get_validation(validation_id)
-
-    if validation is None:
-        outcome = OutcomeBuilder()
-        outcome.add_invalid_validation_error(validation_id)
-
-        return outcome
-
+def import_results(file, descriptor):
     # check if file can be imported
-    outcome, mapping = _verify_file(file, validation)
+    outcome, mapping = _verify_file(file, descriptor)
 
-    if not outcome.success:
+    if not outcome.is_success():
         return outcome
 
     # store file content
-    outcome = _store_results(mapping, validation)
+    outcome = _store_results(mapping, descriptor)
     return outcome
 
 
@@ -107,29 +104,23 @@ def create_entities(entities):
         serializer.save()
 
 
-def _get_validation(validation_id):
-    # retrieve Validation object from db
-    try:
-        return Validation.objects.get(pk=validation_id)
-    except Validation.DoesNotExist:
-        pass
-
-    log.error(f"Validation with id '{validation_id}' does not exist.")
-    return None
-
-
-def _store_results(mapping, validation):
+@transaction.atomic
+def _store_results(mapping, descriptor):
     # Assuming that all related objects already exist.
     sheet, column_mapping = mapping
     rows = sheet.rows
     next(rows)
     changes = SimpleNamespace(added=0, updated=0, skipped=0)
+    outcome = OutcomeBuilder()
+
+    # Save transient validation entity
+    if descriptor.validation.pk is None:
+        descriptor.validation.save()
 
     # process file content row by row.
-    # TODO: bulk save to db
-    for row in rows:
-        builder = RecordBuilder(validation, row, column_mapping)
-        entity = builder.build()
+    for row in non_empty_row(rows):
+        builder = RecordBuilder(descriptor.validation, row, column_mapping, outcome)
+        entity = builder.build(descriptor.force_run)
 
         if entity is None:
             changes.skipped += 1
@@ -140,64 +131,94 @@ def _store_results(mapping, validation):
             entity.save()
             changes.updated += 1
 
-    outcome = OutcomeBuilder()
-    outcome.success = True
     outcome.changes = changes.__dict__
 
     log.debug(f'File store outcome: {outcome.build()}')
+    if not outcome.is_success():
+        transaction.set_rollback(True)
 
     return outcome
 
+def _verify_file(file, descriptor):
+    global excel_base_date
 
-def _verify_file(file, validation):
+    outcome = OutcomeBuilder()
+
     # try to open file as excel workbook
-    log.debug(f'Begin _verify_file, type: {type(file)}')
+    log.debug(f'Verifying file of type {type(file)}')
     try:
         workbook = load_workbook(file)
     except Exception as e:
         message = getattr(e, 'message', repr(e))
         log.warning(f'Failed to open workbook: {message}')
-        outcome = OutcomeBuilder()
         outcome.add_workbook_error(message)
         return outcome, None
 
     log.debug('workbook is opened.')
 
+    # read excel base date from workbook property
+    excel_base_date = workbook.excel_base_date
+
     # decide which sheet will be used as data source
     sheet, column_mapping = _get_best_sheet(workbook)
     if sheet is None:
-        reverse_name_mapping = {value: key for key, value in NAME_MAPPING.items()}
-        missing_columns = ', '.join(reverse_name_mapping[key] for key in column_mapping.keys())
-        outcome = OutcomeBuilder()
+        existing_columns = set(column_mapping.keys())
+        missing_columns = ', '.join(
+            key for key, value in NAME_MAPPING.items() if value not in existing_columns
+        )
         outcome.add_missing_columns_error(missing_columns)
 
         return outcome, None
 
     log.debug(f"Using sheet '{sheet.title}'")
 
-    # Verification and preparing lookup tables before insertion
+    # Purge all cached entities
     queryset_cache.clear()
-    is_valid = True
+
+    # Create Validation entity
+    if not _buildValidation(descriptor, (sheet, column_mapping), outcome):
+        return outcome, None
+
+    validation = descriptor.validation
+
+    # Verification and preparing lookup tables before insertion
     rows = sheet.rows
-    outcome = OutcomeBuilder()
     next(rows)
+    effective_max_row = 0
 
-    for row in rows:
+    for row in non_empty_row(rows):
+        effective_max_row += 1
+
         # verify row content
-        builder = RecordBuilder(validation, row, column_mapping)
-        is_valid &= builder.verify()
-
-        # gather warnings after verification
-        for warning in builder.get_warnings():
-            outcome.add_warning(warning)
-
-        # gather missing entities info
-        for missing_field in builder.get_suggested_fields().items():
-            outcome.add_missing_field_error(missing_field)
+        builder = RecordBuilder(validation, row, column_mapping, outcome)
+        builder.verify(descriptor.force_run)
 
     log.debug('processed all rows.')
 
-    outcome.success = is_valid
+    # Verify that os, env and platform columns contain only one distinct value.
+    for column_key in ['osName', 'osVersion', 'envName', 'platformName']:
+
+        column = column_mapping[column_key]
+        distinct_values = set(value for (value, *_) in sheet.iter_rows(
+            min_row=2,
+            max_row=effective_max_row,
+            min_col=column,
+            max_col=column,
+            values_only=True
+        ))
+
+        if len(distinct_values) > 1:
+            column_name = REVERSE_NAME_MAPPING[column_key]
+            message = f"Column '{column_name}' contains several distinct values."
+
+            outcome.add_ambigous_column_error(column_name, list(distinct_values))
+            outcome.add_warning(message)
+
+            log.error(message)
+
+    if validation is None:
+        outcome.add_invalid_validation_error("Unable to read or create Validation using file content.")
+
     return outcome, (sheet, column_mapping)
 
 
@@ -270,6 +291,85 @@ def _create_column_mapping(sheet):
     return column_mapping
 
 
+def _buildValidation(descriptor, mapping, outcome):
+    # sanity check
+    if descriptor.validation is not None:
+        return False
+
+    # Use existing validation if validation_id was provided
+    if descriptor.pk is not None:
+        validation = Validation.objects.filter(pk=descriptor.pk).first()
+
+        if validation is None:
+            outcome.add_invalid_validation_error(f'Validation with id {descriptor.pk} does not exist.')
+            return False
+
+        descriptor.validation = validation
+        return True
+
+    sheet, column_mapping = mapping
+    rows = sheet.rows
+
+    # use 2nd row of related worksheet as data source
+    try:
+        next(rows)
+        row = next(rows)
+        if set(cell.value for cell in row) == {None}:
+            raise StopIteration()
+    except StopIteration:
+        message = f"Worksheet '{sheet.title}' is empty."
+        log.error(message)
+
+        outcome.add_workbook_error(message)
+        return False
+
+    # read fields for Validation creation from data source
+    builder = RecordBuilder(None, row, column_mapping, outcome)
+    if not builder.verify(force_run=True):
+        return False
+
+    fields = builder.get_fields()
+    query_filter = dict(
+        name=descriptor.name,
+        env=fields.env,
+        platform=fields.platform,
+        os=fields.os,
+    )
+
+    # Validation record must have unique group of fields
+    if Validation.objects.filter(**query_filter).exists():
+        parameters = ", ".join(f"{key}: '{value}'" for (key, value) in query_filter.items())
+        message = f'Validation with such parameters already exists: {parameters}.'
+        outcome.add_existing_validation_error(message)
+        log.error(message)
+        return False
+
+    validation = Validation(**query_filter,
+        notes=descriptor.notes,
+        date=descriptor.date,
+        source_file=descriptor.source_file,
+    )
+
+    log.debug(f'Composed new transient validation')
+    descriptor.validation = validation
+
+    return True
+
+
+# generator that stops row iteration on first empty row
+def non_empty_row(rows):
+    while True:
+        try:
+            row = next(rows)
+        except StopIteration:
+            break
+
+        if set(cell.value for cell in row) == {None}:
+            break
+
+        yield row
+
+
 class OutcomeBuilder():
     def __init__(self):
         self.success = False
@@ -278,34 +378,47 @@ class OutcomeBuilder():
         self.changes = dict(added=0, updated=0, skipped=0)
 
     def build(self):
-        outcome={}
-        if self.success:
+        outcome = {}
+        success = self.is_success()
+        if success:
             outcome = dict(
-                success=self.success,
+                success=success,
                 changes=self.changes,
             )
         else:
             outcome = dict(
-                success=self.success,
+                success=success,
                 errors=self.errors,
                 warnings=self.warnings,
             )
 
         return outcome
 
+    def is_success(self):
+        return len(self.errors) + len(self.warnings) == 0
+
     def add_warning(self, warning):
         self.warnings[warning] = self.warnings.get(warning, 0) + 1
 
-    def add_invalid_validation_error(self, validation_id):
+    def add_invalid_validation_error(self, message):
         err = dict(
             code='ERR_INVALID_VALIDATION_ID',
-            message=f'Validation with id {validation_id} does not exist.'
+            message=message,
         )
 
         if err not in self.errors:
             self.errors.append(err)
 
-    def add_missing_field_error(self, missing_field):
+    def add_existing_validation_error(self, message):
+        err = dict(
+            code='ERR_EXISTING_VALIDATION',
+            message=message,
+        )
+
+        if err not in self.errors:
+            self.errors.append(err)
+
+    def add_missing_field_error(self, missing_field, is_alias=False):
         model_name, fields = missing_field
 
         err = dict(
@@ -314,11 +427,15 @@ class OutcomeBuilder():
             entity=dict(model=model_name, fields=fields),
         )
 
+        if is_alias:
+            self.add_warning(f"{model_name} with name or alias '{fields['name']}' does not exist.")
+        else:
+            self.add_warning(f'{model_name} with properties {fields} does not exist.')
+
         if err not in self.errors:
             self.errors.append(err)
 
     def add_missing_columns_error(self, columns):
-        log.debug(f"missing column(s): {columns}")
         err = dict(
             code='ERR_MISSING_COLUMNS',
             message='Not all columns found, please check import file for correctness.' \
@@ -329,7 +446,6 @@ class OutcomeBuilder():
             self.errors.append(err)
 
     def add_workbook_error(self, message):
-        log.debug(message)
         err = dict(
             code='ERR_WORKBOOK_EXCEPTION',
             message=message,
@@ -338,14 +454,44 @@ class OutcomeBuilder():
         if err not in self.errors:
             self.errors.append(err)
 
+    def add_ambigous_column_error(self, column, values):
+        err = dict(
+            code='ERR_AMBIGOUS_COLUMN',
+            message='Two or more distinct values in column.',
+            column=column,
+            values=values,
+        )
+
+        if err not in self.errors:
+            self.errors.append(err)
+
+    def add_existing_run_error(self, run):
+        message = f"Run with name '{run.name}' and session '{run.session}' already exist."
+        err = dict(
+            code='ERR_EXISTING_RUN',
+            message=message,
+        )
+
+        self.add_warning(message)
+        if err not in self.errors:
+            self.errors.append(err)
+
+    def add_date_format_error(self, date, field_type='string'):
+        err = dict(
+            code='ERR_DATE_FORMAT',
+            message=f'Unable to auto-convert {field_type} "{date}" to excel date.',
+        )
+
+        if err not in self.errors:
+            self.errors.append(err)
+
 
 class RecordBuilder():
-    def __init__(self, validation, row, column_mapping):
+    def __init__(self, validation, row, column_mapping, outcome):
         self.__row = row
-        self.__warnings = list()
-        self.__suggestions = dict()
         self.__columns = dict((key, row[index - 1].value) for key,index in column_mapping.items())
         self.validation = validation
+        self.__outcome = outcome
         self.__record = SimpleNamespace(
             validation=None,
             env=None,
@@ -357,7 +503,7 @@ class RecordBuilder():
             platform=None,
         )
 
-    def verify(self):
+    def verify(self, force_run=False):
         columns = self.__columns
         record = self.__record
 
@@ -366,7 +512,6 @@ class RecordBuilder():
         record.driver = self._find_object(Driver, name=columns['driverName'])
         record.component = self._find_object(Component, name=columns['componentName'])
         record.item = self._find_object(Item, name=columns['itemName'], args=columns['itemArgs'])
-        record.run = self._find_object(Run, name=columns['testRun'], session=columns['testSession'])
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
@@ -374,17 +519,30 @@ class RecordBuilder():
         if record.os is None:
             record.os = self._find_with_alias(Os, columns['osName'])
 
+        # Create Run entities automatically if they was not found in database during import. If found - send warning.
+        record.run = self._find_object(Run, ignore_warnings=True, name=columns['testRun'], session=columns['testSession'])
+        if not force_run and record.run is not None:
+            self.__outcome.add_existing_run_error(record.run)
+        elif record.run is None:
+            record.run = Run(name=columns['testRun'], session=columns['testSession'])
+
         # Check if date can be parsed
         for field_name in ['execStart', 'execEnd']:
             date = columns[field_name]
-            if type(date) not in [datetime, None]:
-                self.__warnings.append(f'Unable to auto-convert "{date}" to datetime.')
+            # check if value is excel's date using floating point representation
+            if type(date) == str:
+                try:
+                    float(date)
+                except ValueError:
+                    self.__outcome.add_date_format_error(date)
 
-        is_valid = len(self.__warnings) <= 0
-        return is_valid
+            elif type(date) not in [datetime, float, type(None)]:
+                self.__outcome.add_date_format_error(date, type(date))
 
-    def build(self):
-        if not self.verify():
+        return self.__outcome.is_success()
+
+    def build(self, force_run=False):
+        if not self.verify(force_run):
             return None
 
         # Ensure that all fields are present.
@@ -393,8 +551,12 @@ class RecordBuilder():
             missing_fields = [x[0] for x in fields.items() if x[1] is None]
             message = f'Corrupted validation of column "{self.__row[0].row}": missing fields {missing_fields}'
             log.debug(message)
-            self.__warnings.append(message)
+            self.__outcome.add_workbook_error(message)
             return None
+
+        # Create Run entities automatically if they was not found in database during import.
+        if self.__record.run.id is None:
+            self.__record.run.save()
 
         entity = Result()
         for key, value in fields.items():
@@ -405,6 +567,12 @@ class RecordBuilder():
             date = self.__columns[field]
             if date is None:
                 date = timezone.now().replace(microsecond=0)
+            elif type(date) == float:
+                date = timezone.make_aware(date_from_excel(date, excel_base_date))
+                log.debug(f"used excel_base_date: {excel_base_date}")
+            elif type(date) == str:
+                date = timezone.make_aware(date_from_excel(float(date), excel_base_date))
+                log.debug(f"used excel_base_date from string: {excel_base_date}")
             elif timezone.is_naive(date):
                 date = timezone.make_aware(date)
 
@@ -412,6 +580,7 @@ class RecordBuilder():
 
         entity.result_key = self.__columns['resultKey']
         entity.result_url = self.__columns['resultURL']
+        entity.result_reason = self.__columns['reason']
 
         # Update existing result if new status priority is greater than or equal to existing.
         existing_entity = _find_existing_entity(entity)
@@ -433,13 +602,10 @@ class RecordBuilder():
 
         return entity
 
-    def get_warnings(self):
-        return list(self.__warnings)
+    def get_fields(self):
+        return SimpleNamespace(**self.__record.__dict__)
 
-    def get_suggested_fields(self):
-        return dict(self.__suggestions)
-
-    def _find_object(self, cls, **params):
+    def _find_object(self, cls, ignore_warnings=False, **params):
         cached_query = _get_cached_query(cls)
 
         for obj in cached_query:
@@ -461,11 +627,15 @@ class RecordBuilder():
             if found:
                 return obj
 
-        self.__warnings.append(f'{cls.__name__} with properties {params} does not exist.')
-        self.__suggestions[cls.__name__] = params
+        if not ignore_warnings:
+            self.__outcome.add_missing_field_error((cls.__name__, params))
+
         return None
 
     def _find_with_alias(self, cls, name, ignore_warnings=False):
+        if name is None:
+            return None
+
         cached_query = _get_cached_query(cls)
         iname = name.lower()
 
@@ -476,11 +646,30 @@ class RecordBuilder():
                 return obj
 
         if not ignore_warnings:
-            self.__warnings.append(f"{cls.__name__} with name or aliases '{name}' does not exist.")
-            self.__suggestions[cls.__name__] = dict(name=name)
+            self.__outcome.add_missing_field_error((cls.__name__, dict(name=name)), is_alias=True)
 
         return None
 
 
 class EntityException(Exception):
     pass
+
+
+class ImportDescriptor():
+    def __init__(self, pk=None, name=None, date=None, notes=None, source_file=None, force_run=False):
+        if str(pk).strip() == '':
+            pk = None
+
+        if str(date).strip() == '':
+            date = None
+
+        if date is None:
+            date = timezone.make_aware(datetime.now())
+
+        self.validation = None
+        self.pk = pk
+        self.name = name
+        self.notes = notes
+        self.date = date
+        self.source_file = source_file
+        self.force_run = force_run in [True, 'True', 'on']

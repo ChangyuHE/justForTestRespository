@@ -3,5 +3,7 @@ from . import views
 
 app_name = 'collate'
 urlpatterns = [
-    path('', views.index, name='index'),
+    path('', views.ImportFileView.as_view(), name='import'),
+    path('create/', views.CreateEntitiesView.as_view(), name='create'),
+    path('form/', views.index, name='index'),
 ]

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from .site_settings import production
 
@@ -110,6 +111,15 @@ DATABASES = {
         'PASSWORD': 'password'
     }
 }
+
+# Use sqlite in-memory database for testing
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'TEST_CHARSET': 'UTF8',
+        'NAME': ':memory:',
+        'TEST_NAME': ':memory:',
+    }
 
 
 # Password validation

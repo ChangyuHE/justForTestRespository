@@ -213,7 +213,6 @@ class ReportBestView(APIView):
                     , ) \
             .join(Status.sa) \
             .group_by(Result.sa.item_id).subquery('ibest')
-        # print(ibest)
 
         # looking for date of best validation
         best = Result.sa.query(ibest.c.item_id, func.max(Status.sa.id).label('best_status'),
@@ -224,14 +223,12 @@ class ReportBestView(APIView):
             .join(ibest, Result.sa.item_id == ibest.c.item_id) \
             .filter(Result.sa.validation_id.in_(validation_ids), Status.sa.priority == ibest.c.best_status_priority) \
             .group_by(ibest.c.item_id).subquery('best')
-        # print(best)
 
         v2 = Result.sa.query(Result.sa.item_id, Validation.sa.id, Result.sa.status_id, Validation.sa.date) \
             .filter(Result.sa.validation_id.in_(validation_ids)
                     , ) \
             .join(Validation.sa) \
             .subquery('v2')
-        # print(v2)
 
         # Looking for best validation in found date
         vbest = Result.sa.query(best.c.item_id, func.max(v2.c.id).label('best_validation'),
@@ -251,9 +248,6 @@ class ReportBestView(APIView):
                        Result.sa.status_id == vbest.c.best_status_id)) \
             .group_by(vbest.c.item_id, vbest.c.best_validation, vbest.c.best_status_id)
 
-        # print(str(res.statement.compile(compile_kwargs={"literal_binds": True})))
-        # print(res.all())
-
         # joining referenced tables to get names and so on
         res = res.subquery('res')
         q = Result.sa.query(
@@ -270,9 +264,6 @@ class ReportBestView(APIView):
             .join(Driver.sa) \
             .order_by(ResultGroupNew.sa.name if grouping == 'feature' else ResultGroupNew.sa.alt_name, Item.sa.name)
 
-        # print(str(q.statement.compile(compile_kwargs={"literal_binds": True})))
-        # print(q.all())
-
         # Create DataFrame crosstab from SQL request
         df = pd.read_sql(q.statement, q.session.bind)
         ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
@@ -282,9 +273,6 @@ class ReportBestView(APIView):
 
         # prepare DataFrame crosstab for response
         ct = prepare_crosstab(ct)
-        if not production:
-            print(ct)
-
         # If no excel report needed just finish here with json return
         if not do_excel:
             return Response(convert_to_datatable_json(ct))
@@ -310,8 +298,8 @@ class ReportLastView(APIView):
 
         validations = Validation.objects.filter(pk__in=validation_ids)
 
-        # Looking for last items in target validations
-        ibest = Result.sa \
+        # Looking for last items in target validations with best status priority
+        ilast = Result.sa \
             .query(Result.sa.item_id, func.max(Validation.sa.date).label('last_validation_date'),
                    func.max(Status.sa.priority).label('best_status_priority')) \
             .select_from(Result.sa) \
@@ -319,17 +307,15 @@ class ReportLastView(APIView):
             .join(Status.sa, Status.sa.id == Result.sa.status_id) \
             .filter(Validation.sa.id.in_(validation_ids), ) \
             .group_by(Result.sa.item_id).subquery('ibest')
-        # print(ibest)
 
         vBest = Result.sa \
-            .query(ibest.c.item_id, func.max(Result.sa.validation_id).label('last_validation_id'),
-                   ibest.c.best_status_priority) \
+            .query(ilast.c.item_id, func.max(Result.sa.validation_id).label('last_validation_id'),
+                   ilast.c.best_status_priority) \
             .select_from(Result.sa) \
-            .join(ibest, Result.sa.item_id == ibest.c.item_id) \
+            .join(ilast, Result.sa.item_id == ilast.c.item_id) \
             .join(Validation.sa, Validation.sa.id == Result.sa.validation_id) \
-            .filter(Validation.sa.id.in_(validation_ids), Validation.sa.date == ibest.c.last_validation_date) \
-            .group_by(ibest.c.item_id, ibest.c.best_status_priority).subquery('vbest')
-        # print(vBest)
+            .filter(Validation.sa.id.in_(validation_ids), Validation.sa.date == ilast.c.last_validation_date) \
+            .group_by(ilast.c.item_id, ilast.c.best_status_priority).subquery('vbest')
 
         res = Result.sa \
             .query(vBest.c.item_id, vBest.c.last_validation_id, func.max(Result.sa.status_id).label('last_status_id'),
@@ -339,11 +325,10 @@ class ReportLastView(APIView):
                   and_(Result.sa.item_id == vBest.c.item_id, Result.sa.validation_id == vBest.c.last_validation_id)) \
             .filter(Result.sa.id.isnot(None)) \
             .group_by(vBest.c.item_id, vBest.c.last_validation_id, vBest.c.best_status_priority)
-        # print(res)
 
         # joining referenced tables to get names and so on
         res = res.subquery('res')
-        q = Result.sa.query(
+        final_query = Result.sa.query(
             ResultGroupNew.sa.name.label('group_name') if grouping == 'feature'
             else ResultGroupNew.sa.alt_name.label('alt_name'),
             Item.sa.name.label('item_name'),
@@ -358,7 +343,7 @@ class ReportLastView(APIView):
             .order_by(ResultGroupNew.sa.name if grouping == 'feature' else ResultGroupNew.sa.alt_name, Item.sa.name)
 
         # Create DataFrame crosstab from SQL request
-        df = pd.read_sql(q.statement, q.session.bind)
+        df = pd.read_sql(final_query.statement, final_query.session.bind)
         ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
                          values=df.item_name, columns=df.last_status_id, aggfunc='count',
                          colnames=[''],
@@ -366,9 +351,6 @@ class ReportLastView(APIView):
 
         # prepare DataFrame crosstab for response
         ct = prepare_crosstab(ct)
-        if not production:
-            print(ct)
-
         # If no excel report needed just finish here with json return
         if not do_excel:
             return Response(convert_to_datatable_json(ct))
@@ -410,6 +392,9 @@ class ReportCompareView(APIView):
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
+        options = request.GET.get('show', 'all,show_passed').split(',')
+        filtering = options[0]
+        show_pased = options[1]
 
         validation_ids = Validation.objects.filter(id__in=kwargs.get('id', '').split(',')) \
             .order_by('-date').values_list('id', flat=True)
@@ -455,8 +440,13 @@ class ReportCompareView(APIView):
         ct.rename(columns={'item_id': 'Item ID', 'group_name': 'Group Name'}, inplace=True)
         ct = ct.replace(np.nan, '', regex=False)
 
-        if not production:
-            print(ct)
+        if filtering == 'diff':
+            # drop rows where all statuses are equal
+            ct = ct[ct.apply(lambda row: len(row.loc[v_mapping.values()].unique()) > 1, axis=1)]
+        elif show_pased == 'hide_passed':
+            # drop rows with only passed statuses
+            ct = ct[ct.apply(lambda row: (len(row.loc[v_mapping.values()].unique()) > 1
+                                          or 'Passed' not in row.loc[v_mapping.values()].unique()), axis=1)]
 
         # If no excel report needed just finish here with json return
         if not do_excel:

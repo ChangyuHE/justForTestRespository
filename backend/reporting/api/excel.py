@@ -18,13 +18,13 @@ def do_report(data=None, extra=None, report_name=''):
 
     wb = Workbook()
     ws = wb.active
-
-    rdate = '{0}: {1} ww{2}.{3}'.format(report_name, *intel_calendar.ww_date())
+    year, work_week, weekday = intel_calendar.ww_date()
+    rdate = f'{report_name}: {year} ww{work_week}.{weekday}'
     ws['A2'] = rdate
     ws['A2'].font = Font(bold=True, size=14)
     ws.merge_cells('A2:G2')
 
-    ws['A3'] = 'Report generated basing on validations:'
+    ws['A3'] = 'Report generated based on validations:'
     ws.merge_cells('A3:G3')
 
     # List of selected validations
@@ -93,7 +93,8 @@ def do_comparison_report(data=None):
     wb = Workbook()
     ws = wb.active
 
-    rdate = 'Validations comparison report: {0} ww{1}.{2}'.format(*intel_calendar.ww_date())
+    year, work_week, weekday = intel_calendar.ww_date()
+    rdate = f'Validations comparison report: {year} ww{work_week}.{weekday}'
     ws['A2'] = rdate
     ws['A2'].font = Font(bold=True, size=14)
     ws.merge_cells('A2:G2')

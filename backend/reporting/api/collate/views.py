@@ -38,7 +38,7 @@ class ImportFileView(APIView):
             request.data.get('validation_date', None),
             request.data.get('notes', None),
             request.data.get('source_file', None),
-            request.data.get('force_run', False),
+            True if request.data.get('force_run', False) == 'true' else False,
         )
 
         log.debug(f'request data: {request.data}')

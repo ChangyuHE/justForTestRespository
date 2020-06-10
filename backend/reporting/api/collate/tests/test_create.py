@@ -10,6 +10,7 @@ from api.models import Os
 
 log = logging.getLogger(__name__)
 
+
 class CreateEntitiesIntegrationTest(TestCase):
     def setUp(self):
         Os.objects.create(pk=23, name='Mock Os')
@@ -26,7 +27,6 @@ class CreateEntitiesIntegrationTest(TestCase):
                 'short_name': 'CNT',
                 'weight': 500
             }),
-            dict(model='Os', fields={'name': 'Mock Os'}),
             dict(model='Env', fields={'name': 'Mock Env', 'short_name': 'MK'}),
             dict(model='Driver', fields={'name': 'Mock Driver'}),
             dict(model='Component', fields={'name': 'Mock Component'}),
@@ -35,6 +35,14 @@ class CreateEntitiesIntegrationTest(TestCase):
         ])
         response = client.post(reverse('collate:create'), json.dumps(request), 'application/json')
         self.assertEqual(response.status_code, 201, 'Expected HTTP 201 Created.')
+
+    def test_duplicate_create(self):
+        client = Client()
+        request = dict(entities=[
+            dict(model='Os', fields={'name': 'Mock Os'}),
+        ])
+        response = client.post(reverse('collate:create'), json.dumps(request), 'application/json')
+        self.assertEqual(response.status_code, 400, 'Expected HTTP 400 Bad request.')
 
     def test_invalid_group(self):
         client = Client()

@@ -21,7 +21,7 @@ from api.models import Validation
 from api.models import Result
 from api.models import ResultGroupMask
 
-from api.serializers import createSerializer
+from api.serializers import create_serializer
 
 """ Business logic """
 
@@ -48,6 +48,7 @@ NAME_MAPPING = {
 
 REVERSE_NAME_MAPPING = {value: key for key, value in NAME_MAPPING.items()}
 excel_base_date = CALENDAR_WINDOWS_1900
+
 
 def import_results(file, descriptor):
     # check if file can be imported
@@ -78,7 +79,7 @@ def create_entities(entities):
             raise EntityException(f"'fields' property is missing in entity {raw_entity}")
 
         # deserialize data to entity object
-        serializer = createSerializer(model_name, data=fields)
+        serializer = create_serializer(model_name, data=fields)
         if serializer is None:
             raise EntityException(f"Serializer for model '{model_name}' is not found.")
 
@@ -96,8 +97,7 @@ def create_entities(entities):
 
         existing_entity = serializer.Meta.model.objects.filter(**ignore_case_data).first()
         if existing_entity is not None:
-            log.warning(f'Attempting to create already existing entity with id {existing_entity.id}')
-            continue
+            raise EntityException(f'Attempting to create already existing entity with id {existing_entity.id}')
 
         # save entity
         log.debug(f'Saving entity {serializer.validated_data}')
@@ -139,6 +139,7 @@ def _store_results(mapping, descriptor):
 
     return outcome
 
+
 def _verify_file(file, descriptor):
     global excel_base_date
 
@@ -176,7 +177,7 @@ def _verify_file(file, descriptor):
     queryset_cache.clear()
 
     # Create Validation entity
-    if not _buildValidation(descriptor, (sheet, column_mapping), outcome):
+    if not _build_validation(descriptor, (sheet, column_mapping), outcome):
         return outcome, None
 
     validation = descriptor.validation
@@ -211,7 +212,7 @@ def _verify_file(file, descriptor):
             column_name = REVERSE_NAME_MAPPING[column_key]
             message = f"Column '{column_name}' contains several distinct values."
 
-            outcome.add_ambigous_column_error(column_name, list(distinct_values))
+            outcome.add_ambiguous_column_error(column_name, list(distinct_values))
             outcome.add_warning(message)
 
             log.error(message)
@@ -255,12 +256,14 @@ def _get_cached_query(cls):
 
     return cached_query
 
+
 def _clear_cache(classes=None):
     if classes is None:
         pass
     else:
         for cls in classes:
             queryset_cache.pop(cls.__name__, None)
+
 
 def _get_best_sheet(workbook):
     column_mapping = {}
@@ -291,7 +294,7 @@ def _create_column_mapping(sheet):
     return column_mapping
 
 
-def _buildValidation(descriptor, mapping, outcome):
+def _build_validation(descriptor, mapping, outcome):
     # sanity check
     if descriptor.validation is not None:
         return False
@@ -339,12 +342,13 @@ def _buildValidation(descriptor, mapping, outcome):
     # Validation record must have unique group of fields
     if Validation.objects.filter(**query_filter).exists():
         parameters = ", ".join(f"{key}: '{value}'" for (key, value) in query_filter.items())
-        message = f'Validation with such parameters already exists: {parameters}.'
-        outcome.add_existing_validation_error(message)
-        log.error(message)
+        message = 'Validation with such parameters already exists'
+        outcome.add_existing_validation_error(message, query_filter.items())
+        log.error(f'{message} {parameters}.')
         return False
 
-    validation = Validation(**query_filter,
+    validation = Validation(
+        **query_filter,
         notes=descriptor.notes,
         date=descriptor.date,
         source_file=descriptor.source_file,
@@ -370,7 +374,7 @@ def non_empty_row(rows):
         yield row
 
 
-class OutcomeBuilder():
+class OutcomeBuilder:
     def __init__(self):
         self.success = False
         self.errors = list()
@@ -409,10 +413,12 @@ class OutcomeBuilder():
         if err not in self.errors:
             self.errors.append(err)
 
-    def add_existing_validation_error(self, message):
+    def add_existing_validation_error(self, message, fields_data):
+        fields = {str(key): str(value) for (key, value) in fields_data}
         err = dict(
             code='ERR_EXISTING_VALIDATION',
             message=message,
+            entity=dict(model='Validation', fields=fields),
         )
 
         if err not in self.errors:
@@ -438,8 +444,8 @@ class OutcomeBuilder():
     def add_missing_columns_error(self, columns):
         err = dict(
             code='ERR_MISSING_COLUMNS',
-            message='Not all columns found, please check import file for correctness.' \
-                + f' Missing columns: {columns}'
+            message='Not all columns found, please check import file for correctness.',
+            values=columns,
         )
 
         if err not in self.errors:
@@ -454,10 +460,10 @@ class OutcomeBuilder():
         if err not in self.errors:
             self.errors.append(err)
 
-    def add_ambigous_column_error(self, column, values):
+    def add_ambiguous_column_error(self, column, values):
         err = dict(
-            code='ERR_AMBIGOUS_COLUMN',
-            message='Two or more distinct values in column.',
+            code='ERR_AMBIGUOUS_COLUMN',
+            message='Two or more distinct values in column',
             column=column,
             values=values,
         )
@@ -486,7 +492,7 @@ class OutcomeBuilder():
             self.errors.append(err)
 
 
-class RecordBuilder():
+class RecordBuilder:
     def __init__(self, validation, row, column_mapping, outcome):
         self.__row = row
         self.__columns = dict((key, row[index - 1].value) for key,index in column_mapping.items())
@@ -641,8 +647,7 @@ class RecordBuilder():
 
         for obj in cached_query:
             if obj.name.lower() == iname \
-                    or obj.aliases is not None \
-                            and obj.aliases.lower().find(iname) >= 0:
+                    or obj.aliases is not None and obj.aliases.lower().find(iname) >= 0:
                 return obj
 
         if not ignore_warnings:
@@ -655,7 +660,7 @@ class EntityException(Exception):
     pass
 
 
-class ImportDescriptor():
+class ImportDescriptor:
     def __init__(self, pk=None, name=None, date=None, notes=None, source_file=None, force_run=False):
         if str(pk).strip() == '':
             pk = None

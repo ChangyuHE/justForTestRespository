@@ -8,7 +8,6 @@ from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
 
 from api import views
-from api.collate import views as import_views
 
 schema_view = get_swagger_view(title='Reporting API')
 
@@ -31,9 +30,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 ]\
     + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
-    + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) \
-#    + [url(r'^.*$', views.PassToVue.as_view()),]
-
+    + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 if settings.DEBUG:
     import debug_toolbar

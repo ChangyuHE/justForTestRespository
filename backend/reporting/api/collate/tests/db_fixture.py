@@ -14,6 +14,7 @@ from api.models import Validation
 from api.collate.tests.genetated_files import create_file
 from api.collate.tests.genetated_files import create_empty_workbook
 
+
 class DbFixture(TestCase):
     def setUp(self):
         self.request = dict(

@@ -27,6 +27,7 @@ COLUMNS = [
     'reason',
 ]
 
+
 def create_file(json_data_filename):
     filepath = Path(*__package__.split('.'), json_data_filename)
     workbook = Workbook()
@@ -68,6 +69,7 @@ def create_file(json_data_filename):
 
     return workbook
 
+
 def create_empty_workbook():
     workbook = Workbook()
     sheet = workbook.active
@@ -80,6 +82,7 @@ def create_empty_workbook():
     sheet.cell(3, 1).value = None
 
     return workbook
+
 
 def export_to_json(sheet, max_row):
     all_data = list()
@@ -98,5 +101,5 @@ def export_to_json(sheet, max_row):
     except StopIteration:
         pass
 
-    json_data =  json.dumps(all_data, sort_keys=True, indent=4, cls=DjangoJSONEncoder)
+    json_data = json.dumps(all_data, sort_keys=True, indent=4, cls=DjangoJSONEncoder)
     return json_data

@@ -98,7 +98,7 @@
                             </v-card-title>
 
                             <!-- Validations list -->
-                            <v-col class="d-flex justify-space-between">
+                            <v-col class="d-flex">
                                 <v-list dense flat class="ml-4">
                                     <v-list-item v-for="(item, i) in branches" :key="i">
                                         <v-list-item-content class="py-0 my-1">
@@ -107,15 +107,45 @@
                                     </v-list-item>
                                 </v-list>
 
+                                <v-spacer></v-spacer>
+
+                                <!-- Filtering type buttons -->
+                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'compare'">
+                                    Show:
+                                    <v-btn-toggle
+                                        v-model="compareFiltering"
+                                        class="ml-2" color="teal" mandatory
+                                        @change="changeGrouping"
+                                    >
+                                        <v-btn small v-for="name in compareFilters" :key="name">
+                                            {{ name }}
+                                        </v-btn>
+                                    </v-btn-toggle>
+                                </label>
+
+                                <!-- Hide passed button -->
+                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'compare'">
+                                    <v-btn-toggle
+                                        class="ml-2" color="teal"
+                                    >
+                                        <v-btn
+                                            small
+                                            @click="showHidePassed"
+                                        >
+                                            hide passed
+                                        </v-btn>
+                                    </v-btn-toggle>
+                                </label>
+
                                 <!-- Grouping type buttons -->
                                 <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'best' || reportType == 'last'">
                                     Group by:
                                     <v-btn-toggle
-                                        v-model="ReportGrouping"
+                                        v-model="reportGrouping"
                                         class="d-flex justify-end ml-2" color="teal" mandatory
                                         @change="changeGrouping"
                                     >
-                                        <v-btn small v-for="name in ReportGroups" :key="name">
+                                        <v-btn small v-for="name in reportGroups" :key="name">
                                             {{ name }}
                                         </v-btn>
                                     </v-btn-toggle>
@@ -206,8 +236,12 @@
                 items: [],
                 search: '',
 
-                ReportGrouping: 0,
-                ReportGroups: ['feature', 'component']
+                reportGrouping: 0,
+                reportGroups: ['feature', 'component'],
+                compareFiltering: 0,
+                compareFilters: ['all', 'diff'],
+                showPassedPolicy: 0,
+                showPassedPolicies: ['show_passed', 'hide_passed']
             }
         },
 		computed: {
@@ -239,7 +273,7 @@
                 this.tableLoading = true;
                 let url = `api/report/${this.reportType}/${ids}?report=excel`;
                 if (this.reportType == 'best' || this.reportType == 'last')
-                    url += `&group-by=${this.ReportGroups[this.ReportGrouping]}`
+                    url += `&group-by=${this.reportGroups[this.reportGrouping]}`
 
                 server
                     .get(url, {responseType: 'blob'})
@@ -273,6 +307,10 @@
                     this.reportWeb();
                 }
             },
+            showHidePassed(){
+                this.showPassedPolicy = 1 - this.showPassedPolicy
+                this.reportWeb()
+            },
             changeGrouping() {
                 this.reportWeb()
             },
@@ -284,7 +322,9 @@
                 this.reportLoading = true;
                 let url = `api/report/${this.reportType}/${ids}`;
                 if (this.reportType == 'best' || this.reportType == 'last')
-                    url += `?group-by=${this.ReportGroups[this.ReportGrouping]}`
+                    url += `?group-by=${this.reportGroups[this.reportGrouping]}`
+                if (this.reportType == 'compare')
+                    url += `?show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`
 
                 server
                     .get(url)

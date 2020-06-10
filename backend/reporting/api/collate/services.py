@@ -27,6 +27,8 @@ from api.serializers import create_serializer
 
 log = logging.getLogger(__name__)
 queryset_cache = dict()
+new_objects_ids = dict()
+
 NAME_MAPPING = {
     'buildversion': 'driverName',
     'item name': 'itemName',
@@ -175,6 +177,7 @@ def _verify_file(file, descriptor):
 
     # Purge all cached entities
     queryset_cache.clear()
+    new_objects_ids.clear()
 
     # Create Validation entity
     if not _build_validation(descriptor, (sheet, column_mapping), outcome):
@@ -246,6 +249,15 @@ def _find_group(item_name):
     return None
 
 
+def _update_new_objects(cls, id):
+    new_objects_ids.setdefault(cls.__name__, set())
+    new_objects_ids[cls.__name__].add(id)
+
+
+def _is_known_new_object(cls, id):
+    return id in new_objects_ids.get(cls.__name__, set())
+
+
 def _get_cached_query(cls):
     queryset_key = cls.__name__
     cached_query = queryset_cache.get(queryset_key, None)
@@ -257,12 +269,9 @@ def _get_cached_query(cls):
     return cached_query
 
 
-def _clear_cache(classes=None):
-    if classes is None:
-        pass
-    else:
-        for cls in classes:
-            queryset_cache.pop(cls.__name__, None)
+def _clear_cache(*classes):
+    for cls in classes:
+        queryset_cache.pop(cls.__name__, None)
 
 
 def _get_best_sheet(workbook):
@@ -527,7 +536,7 @@ class RecordBuilder:
 
         # Create Run entities automatically if they was not found in database during import. If found - send warning.
         record.run = self._find_object(Run, ignore_warnings=True, name=columns['testRun'], session=columns['testSession'])
-        if not force_run and record.run is not None:
+        if not force_run and record.run is not None and not _is_known_new_object(Run, record.run.id):
             self.__outcome.add_existing_run_error(record.run)
         elif record.run is None:
             record.run = Run(name=columns['testRun'], session=columns['testSession'])
@@ -563,6 +572,8 @@ class RecordBuilder:
         # Create Run entities automatically if they was not found in database during import.
         if self.__record.run.id is None:
             self.__record.run.save()
+            _update_new_objects(Run, self.__record.run.id)
+            _clear_cache(Run)
 
         entity = Result()
         for key, value in fields.items():
@@ -677,4 +688,4 @@ class ImportDescriptor:
         self.notes = notes
         self.date = date
         self.source_file = source_file
-        self.force_run = force_run in [True, 'True', 'on']
+        self.force_run = force_run in [True, 'True', 'on', 'true']

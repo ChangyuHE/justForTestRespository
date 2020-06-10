@@ -1,0 +1,73 @@
+{"success": false, "errors": [
+	{"code": "ERR_MISSING_ENTITY", "message": "Missing field ('Driver', {'name': 'gfx-driver-ci-master-3172'})",
+	 "entity": {"model": "Driver", "fields": {"name": "gfx-driver-ci-master-3172"}}},
+	{"code": "ERR_MISSING_ENTITY", "message": "Missing field ('Component', {'name': 'Media-Encode'})",
+	 "entity": {"model": "Component", "fields": {"name": "Media-Encode"}}},
+	{
+		"code": "ERR_DATE_FORMAT",
+		"message": "Unable to auto-convert string \"invalid-date-value\" to excel date."
+	},
+	{
+		"code": "ERR_AMBIGUOUS_COLUMN",
+		"message": "Two or more distinct values in column",
+		"column": "operating system family",
+		"values": [
+			"Linux",
+			"Windows"
+		]
+	},
+	{
+		"code": "ERR_WORKBOOK_EXCEPTION",
+		"message": "Worksheet 'Sheet' is empty."
+	},
+	{
+		"code": "ERR_INVALID_VALIDATION_ID",
+		"message": "Validation with id 73 does not exist."
+	},
+	{
+		"code": "ERR_EXISTING_VALIDATION",
+		"message": "Validation with such parameters already exists",
+		"entity": {
+			"model": "Validation",
+			"fields": {
+				"name": "New validation",
+				"env": "Silicon",
+				"platform": "DG1",
+				"os": "Windows"
+			}
+		}
+	},
+	{
+		"code": "ERR_MISSING_COLUMNS",
+		"message": "Not all columns found, please check import file for correctness.",
+		"values": [
+			"environment", "platform"
+		]
+	},
+	{
+		"code": "ERR_MISSING_ENTITY",
+		"message": "Missing field ('Item', {'name': 'test-item-name 1', 'args': 'test-args 2'})",
+		"entity": {
+			"model": "Item",
+			"fields": {
+				"name": "test-item-name bla-bla-bla-1",
+				"args": "test-args bla-bla-bla-2"
+			}
+		}
+	},
+	{
+		"code": "ERR_MISSING_ENTITY",
+		"message": "Missing field ('Item', {'name': 'test-item-name 3', 'args': 'test-args 4'})",
+		"entity": {
+			"model": "Item",
+			"fields": {
+				"name": "test-item-name bla-bla-bla-3",
+				"args": "test-args bla-bla-bla-4"
+			}
+		}
+	},
+	{
+		"code": "ERR_EXISTING_RUN",
+		"message": "Run with name '2473025' and session '2546393' already exist."
+	}
+]}

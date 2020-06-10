@@ -42,18 +42,17 @@
             </v-container>
         </v-content>
         <v-footer app class="justify-end">
-            <span >&copy; 2020</span>
+            <span>powered by <a href="https://vuejs.org/">Vue.js</a></span>
         </v-footer>
     </v-app>
 </template>
 
 <script>
     import server from './server.js'
-    import alert from './components/Alert'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
-	export default {
+    export default {
         data() {
             return {
                 drawer: false,
@@ -63,7 +62,7 @@
                 ]
             }
         }
-	}
+    }
 </script>
 
 <style>
@@ -71,4 +70,17 @@
         color: white !important;
         text-decoration: none !important;
     } */
+    /* vue-toasted alert container */
+    .toasted {
+        font-size: 16px !important;
+        padding: 14px !important;
+        font-family: 'Roboto', sans-serif !important;
+    }
+    .toasted .action {
+        color: white !important;
+        font-size: 14px !important;
+    }
+    .toasted-container.top-right {
+        right: 1% !important;
+    }
 </style>

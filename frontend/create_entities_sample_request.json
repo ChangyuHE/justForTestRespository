@@ -1,0 +1,22 @@
+{
+	"entities": [{
+		"model": "Os",
+		"fields": {
+			"name": "Doors"
+		}
+	},{
+		"model": "Os",
+		"fields": {
+			"name": "Walls",
+			"group": 23
+		}
+	},{
+		"model": "Platform",
+		"fields": {
+			"name": "Concrete",
+			"aliases": "Composite of sand and cement;",
+			"short_name": "CNT",
+			"weight": 500
+		}
+	}]
+}

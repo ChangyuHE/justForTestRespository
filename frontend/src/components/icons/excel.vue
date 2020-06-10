@@ -1,6 +1,6 @@
 <template>
     <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve">
+     viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve">
         <path style="fill:#ECEFF1;" d="M496,432.011H272c-8.832,0-16-7.168-16-16s0-311.168,0-320s7.168-16,16-16h224
             c8.832,0,16,7.168,16,16v320C512,424.843,504.832,432.011,496,432.011z"/>
         <g>

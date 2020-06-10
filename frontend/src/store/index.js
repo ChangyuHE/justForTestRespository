@@ -8,24 +8,46 @@ let store = new Vuex.Store({
         validations: [],
         branches: [],
         treeLoading: true,
-        alert: {message: '', type: 'error'}
+
+        importErrors: {},
     },
     getters: {
-        
+        importErrors: (state) => state.importErrors,
     },
     mutations: {
-        setSelected(state, { validations, branches }) {
+        SET_SELECTED(state, { validations, branches }) {
             state.branches = branches;
             state.validations = validations;
         },
-        setTreeLoading: (state, status) =>  state.treeLoading = status,
-
-        setAlert: (state, { message, type }) => {
-            message = `Наташа, мы там всё уронили! Вообще всё, Наташ, честно!<br>${message}`;
-            state.alert = Object.assign(state.alert, {message, type});
-        },
+        SET_TREE_LOADING: (state, status) =>  state.treeLoading = status,
+        SET_IMPORT_ERRORS: (state, payload) => state.importErrors = payload,
+        DELETE_IMPORT_ERROR: (state, {id, priority, errorCode}) => {
+            state.importErrors[priority][errorCode] = state.importErrors[priority][errorCode].filter(e => { return e.ID != id })
+            for (const code in state.importErrors[priority]) {
+                if (state.importErrors[priority][code].length == 0)
+                    Vue.delete(state.importErrors[priority], code)
+            }
+            for (const priority in state.importErrors) {
+                if (Object.keys(state.importErrors[priority]).length == 0)
+                    Vue.delete(state.importErrors, priority)
+            }
+        }
     },
     actions: {
+        // validations tree
+        setTreeLoading: ({ commit }, payload) => {
+            commit('SET_TREE_LOADING', payload);
+        },
+        setSelected: ({ commit }, payload) => {
+            commit('SET_SELECTED', payload);
+        },
+        // import errors
+        setImportErrors: ({ commit }, payload) => {
+            commit('SET_IMPORT_ERRORS', payload);
+        },
+        deleteImportError: ({ commit }, payload) => {
+            commit('DELETE_IMPORT_ERROR', payload);
+        },
     },
     modules: {
     },

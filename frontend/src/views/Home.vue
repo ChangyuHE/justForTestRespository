@@ -31,9 +31,6 @@
                 <!-- Right part -->
                 <pane>
                     <div class="ml-4 mr-1 mt-2">
-                        <div class="d-flex justify-end">
-                            <alert />
-                        </div>
                         <!-- Buttons toolbar -->
                         <v-toolbar tile class="elevation-3">
                             <v-btn-toggle
@@ -63,7 +60,7 @@
                                     :disabled="!validations.length || (validations.length < 2)"
                                     :loading="reportTypeLoading('compare')"
                                     value="compare"
-                                > 
+                                >
                                     Compare selected
                                 </v-btn>
                             </v-btn-toggle>
@@ -81,7 +78,7 @@
                                 <span v-else-if="reportType == 'compare'">
                                     Validations comparison:
                                 </span>
-                                
+
                                 <v-spacer></v-spacer>
                                 <!-- Search field -->
                                 <v-text-field
@@ -209,17 +206,15 @@
 <script>
     import server from '@/server.js'
     import validationsTree from '@/components/tree/ValidationsTree.vue'
-    import alert from '@/components/Alert'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
-    import { mapState, mapGetters, mapMutations, mapActions } from 'vuex'
+    import { mapState } from 'vuex'
 
-	export default {
+    export default {
         components: {
             validationsTree,
             Splitpanes, Pane,
-            alert
         },
         data() {
             return {
@@ -244,8 +239,8 @@
                 showPassedPolicies: ['show_passed', 'hide_passed']
             }
         },
-		computed: {
-            ...mapState(['validations', 'branches', 'alert']),
+        computed: {
+            ...mapState(['validations', 'branches']),
         },
         watch: {
             validations() {
@@ -295,8 +290,7 @@
                         link.remove();
                     })
                     .catch(error => {
-                        console.log(error);
-                        this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
+                        this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     })
                     .finally(() => this.tableLoading = false);
             },
@@ -335,7 +329,7 @@
                     })
                     .catch(error => {
                         console.log(error);
-                        this.$store.commit("setAlert", { message: `${error}<br> URL: ${server.defaults.baseURL}/${url}`, type: "error" });
+                        this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     })
                     .finally(() => {
                         this.reportLoading = false;
@@ -374,7 +368,7 @@
                 else if (s == 'Canceled') return 'brown darken-3'
             },
         }
-	}
+    }
 </script>
 
 <style>

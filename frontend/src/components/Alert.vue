@@ -1,12 +1,13 @@
 <template>
     <v-alert
-        :value="!!alert['message']"
-        :type="alert['type']"
         dismissible min-width="600"
-        class="elevation-12" style="position: fixed; z-index: 100" color="red darken-2"
-        @input="closeAlert"
+        class="elevation-12"
+        style="position: fixed; z-index: 100"
+        transition="fade-transition"
+        :type="alertObject.type"
+        v-model="alert"
     >
-        <span v-html="alert['message']"></span>
+        <span v-html="alertObject.message"></span>
     </v-alert>
 </template>
 <script>
@@ -16,14 +17,29 @@ export default {
     data() {
         return {}
     },
+    props: {
+    },
     computed: {
-        ...mapState(['alert']),
+        ...mapState(['alertObject', 'isAlert', 'isAlertFading', 'isAlertReady']),
+        alert: {
+            get() {
+                return !!this.isAlert;
+            },
+            set(v) {
+                if (!v) { this.$store.commit("flushIsAlert") }
+            }
+        }
     },
     methods: {
-        ...mapMutations(["setAlert"]),
-        closeAlert(val) {
-            this.setAlert({});
-        },
+    },
+    watch: {
+        isAlertReady() {
+            if (this.alert && this.alertObject.fading) {
+                setTimeout(() => {
+                    this.alert = false;
+                }, 1750)
+            }
+        }
     }
 }
 </script>

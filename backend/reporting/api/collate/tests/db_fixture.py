@@ -8,6 +8,7 @@ from api.models import Env
 from api.models import Item
 from api.models import Os
 from api.models import Platform
+from api.models import Run
 from api.models import Status
 from api.models import Validation
 
@@ -27,6 +28,7 @@ class DbFixture(TestCase):
         platform = Platform.objects.create(name='DG1')
         os = Os.objects.create(name='Windows')
         Os.objects.create(name='Linux')
+        Run.objects.create(name='Test run', session='Test session')
 
         Validation.objects.create(pk=42, name='Test model', env=env, platform=platform, os=os)
 

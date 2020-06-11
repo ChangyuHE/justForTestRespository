@@ -296,7 +296,7 @@ def _create_column_mapping(sheet):
         if cell.value is None:
             continue
 
-        mapped_name = NAME_MAPPING.get(cell.value.lower(), None)
+        mapped_name = NAME_MAPPING.get(str(cell.value).lower(), None)
         if mapped_name is not None:
             column_mapping[mapped_name] = cell.column
 

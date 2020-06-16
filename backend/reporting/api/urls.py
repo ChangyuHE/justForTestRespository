@@ -18,6 +18,7 @@ urlpatterns = [
     url(r'^api/validations/$', views.ValidationsView.as_view()),
     url(r'^api/validations/flat$', views.ValidationsFlatView.as_view()),
     url(r'^api/validations/structure$', views.ValidationsStructureView.as_view()),
+    url(r'^api/validations/hard_delete/(?P<pk>.+)$', views.ValidationsDeleteByIdView.as_view()),
 
     # reports
     url(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # with optional param "report=excel"

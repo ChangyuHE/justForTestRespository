@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 from django.shortcuts import render, get_object_or_404
 from django.forms.models import model_to_dict
 from django.views.decorators.cache import never_cache
+from django.db import transaction
 
 from rest_framework import generics, viewsets, status
 from rest_framework.views import APIView
@@ -159,6 +160,23 @@ class ValidationsView(APIView):
         # cut off first level, frontend requirement
         d = json.loads(d).get('children', [])
         return Response(d)
+
+
+class ValidationsDeleteByIdView(generics.DestroyAPIView):
+    queryset = Validation.objects.all()
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        # get list of runs for this validation
+        run_ids = list(Result.objects.filter(validation=instance).values_list('run', flat=True).distinct())
+
+        # delete Validation object and linked Result objects due to cascade on_delete
+        instance.delete()
+
+        # detect unattended runs and delete them
+        for run_id in run_ids:
+            if Result.objects.filter(run_id=run_id).count() == 0:
+                Run.objects.get(pk=run_id).delete()
 
 
 class ValidationsFlatView(APIView):

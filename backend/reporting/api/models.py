@@ -39,7 +39,7 @@ class Driver(models.Model):
 class Item(models.Model):
     name = models.CharField(max_length=255)
     args = models.CharField(max_length=255)
-    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.DO_NOTHING)
+    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.SET_NULL)
 
 
 class Os(models.Model):
@@ -111,6 +111,13 @@ class Validation(models.Model):
     platform = models.ForeignKey(Platform, null=True, blank=True, on_delete=models.CASCADE)
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
 
+    notes = models.TextField(null=True, blank=True)
+    source_file = models.TextField(null=True, blank=True)
+    date = models.DateTimeField(null=True, blank=True)
+
+    ignore = models.BooleanField(default=False)
+    hash_last = models.CharField(max_length=40, null=True, blank=True)
+
     class SubSystems(models.IntegerChoices):
         VALib = 1, 'valib'
 
@@ -123,13 +130,6 @@ class Validation(models.Model):
         choices=SubSystems.choices,
         null=True
     )
-
-    notes = models.TextField(null=True, blank=True)
-    source_file = models.TextField(null=True, blank=True)
-    date = models.DateTimeField(null=True, blank=True)
-
-    ignore = models.BooleanField(default=False)
-    hash_last = models.CharField(max_length=40, null=True, blank=True)
 
     class Meta:
         constraints = [

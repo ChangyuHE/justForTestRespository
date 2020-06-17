@@ -159,6 +159,16 @@
         return branch;
     }
 
+    function getAvailableNodes(tree) {
+        let nodes = [];
+        tree.handleRecursionNodeChilds(tree,
+            node => {
+                if (typeof node.model !='undefined' && node.$children.length == 0)
+                    nodes.push(node)
+            }
+        )
+        return nodes;
+    }
     // update tree data with selected validations data
     function setSelectedInData(searchObj, validations) {
         for (let prop in searchObj) {
@@ -306,6 +316,21 @@
                 let branches = [];
                 let validations = [];
 
+                // if filter is active then select available nodes ..
+                if (this.badgeFilterCount > 0 || this.enableDates) {
+                    if (node.model.selected == false) {
+                        let branches = [];
+                        let validations = [];
+
+                        getAvailableNodes(this.$refs.tree).forEach(node => {
+                            branches.push(getBranchForLeaf(node));
+                            validations.push(node.model.id);
+                        })
+                        // .. and delete them from selection
+                        this.$store.dispatch('tree/removeFiltered', { validations, branches: selectedValidationsText(branches) });
+                    }
+                }
+                // select all checked nodes
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                     node => {
                         if (typeof node.model !='undefined' && node.model.selected && node.$children.length == 0) {
@@ -314,7 +339,14 @@
                         }
                     }
                 )
-                this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) });
+
+                // if filter is active add selected
+                if (this.badgeFilterCount > 0 || this.enableDates) {
+                    this.$store.dispatch('tree/addSelected', { validations, branches: selectedValidationsText(branches) });
+                // if not just set selected
+                } else {
+                    this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) });
+                }
             },
             clearValidations() {
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,

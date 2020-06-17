@@ -59,122 +59,18 @@
                                 <v-btn small class="outlined"
                                     :disabled="!validations.length || (validations.length < 2)"
                                     :loading="reportTypeLoading('compare')"
-                                    value="compare"
+                                    value="comparison"
                                 >
                                     Compare selected
                                 </v-btn>
                             </v-btn-toggle>
                         </v-toolbar>
 
-                        <!-- Results card -->
-                        <v-card class="my-4 elevation-3" v-if="showResultsTable">
-                            <v-card-title class="mb-n6 ml-4">
-                                <span v-if="reportType == 'best'">
-                                    Best result for validations:
-                                </span>
-                                <span v-if="reportType == 'last'">
-                                    Last result for validations:
-                                </span>
-                                <span v-else-if="reportType == 'compare'">
-                                    Validations comparison:
-                                </span>
-
-                                <v-spacer></v-spacer>
-                                <!-- Search field -->
-                                <v-text-field
-                                    v-model="search"
-                                    append-icon="mdi-magnify"
-                                    label="Search"
-                                    hide-details
-                                    class="pt-0 mt-0"
-                                ></v-text-field>
-
-                                <v-btn light small fab class="ml-4 elevation-5" @click="reportExcel">
-                                    <v-icon>$excel</v-icon>
-                                </v-btn>
-                            </v-card-title>
-
-                            <!-- Validations list -->
-                            <v-col class="d-flex">
-                                <v-list dense flat class="ml-4">
-                                    <v-list-item v-for="(item, i) in branches" :key="i">
-                                        <v-list-item-content class="py-0 my-1">
-                                            <v-list-item-title v-text="item"></v-list-item-title>
-                                        </v-list-item-content>
-                                    </v-list-item>
-                                </v-list>
-
-                                <v-spacer></v-spacer>
-
-                                <!-- Filtering type buttons -->
-                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'compare'">
-                                    Show:
-                                    <v-btn-toggle
-                                        v-model="compareFiltering"
-                                        class="ml-2" color="teal" mandatory
-                                        @change="changeGrouping"
-                                    >
-                                        <v-btn small v-for="name in compareFilters" :key="name">
-                                            {{ name }}
-                                        </v-btn>
-                                    </v-btn-toggle>
-                                </label>
-
-                                <!-- Hide passed button -->
-                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'compare'">
-                                    <v-btn-toggle
-                                        class="ml-2" color="teal"
-                                    >
-                                        <v-btn
-                                            small
-                                            @click="showHidePassed"
-                                        >
-                                            hide passed
-                                        </v-btn>
-                                    </v-btn-toggle>
-                                </label>
-
-                                <!-- Grouping type buttons -->
-                                <label class="d-flex align-start mt-4 mr-1 subtitle-1" v-if="reportType == 'best' || reportType == 'last'">
-                                    Group by:
-                                    <v-btn-toggle
-                                        v-model="reportGrouping"
-                                        class="d-flex justify-end ml-2" color="teal" mandatory
-                                        @change="changeGrouping"
-                                    >
-                                        <v-btn small v-for="name in reportGroups" :key="name">
-                                            {{ name }}
-                                        </v-btn>
-                                    </v-btn-toggle>
-                                </label>
-                            </v-col>
-
-                            <v-divider style="border-color: rgba(0, 0, 0, 0.3); height: 2px;"></v-divider>
-
-                            <!-- DataTable -->
-                            <v-data-table class="results-table"
-                                :headers="headers"
-                                :items="items"
-                                :search="search"
-                                :loading="reportLoading || tableLoading"
-                                disable-pagination hide-default-footer multi-sort
-                            >
-                                <template v-if="reportType == 'best' || reportType == 'last'" v-slot:item.passrate="{ item }">
-                                    <v-chip :color="getPassrateColor(item.passrate)" label>{{ item.passrate }}</v-chip>
-                                </template>
-                                <template v-else-if="reportType == 'compare'" v-slot:item="{ item }">
-                                    <tr>
-                                        <td v-for="i in item">
-                                            <v-chip v-if="STATUSES.includes(i)" :color="getStatusColor(i)" text-color="white" label>{{ i }}</v-chip>
-                                            <span v-else>{{ i }}</span>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </v-data-table>
-                        </v-card>
+                        <!-- Report card -->
+                        <component v-if="reportType" :is="reportName" :type="reportType" />
 
                         <!-- Selected validations -->
-                        <template v-if="!showResultsTable && validations.length">
+                        <template v-if="!showReport && validations.length">
                             <v-subheader class="mt-4" style="height: 32px;">
                                 Selected Validations
                             </v-subheader>
@@ -206,6 +102,8 @@
 <script>
     import server from '@/server.js'
     import validationsTree from '@/components/tree/ValidationsTree.vue'
+    import comparisonReport from '@/components/reports/Comparison.vue'
+    import bestOrLastReport from '@/components/reports/BestOrLast.vue'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
@@ -215,21 +113,16 @@
         components: {
             validationsTree,
             Splitpanes, Pane,
+            'comparison-report': comparisonReport,
+            'best-report': bestOrLastReport,
+            'last-report': bestOrLastReport
         },
         data() {
             return {
                 showScroll: false,      // "^" button
                 showExpand: false,      // ">" button
 
-                // reports
-                STATUSES: ['Passed', 'Failed', 'Skipped', 'Error', 'Blocked', 'Canceled'],
                 reportType: null,
-                reportLoading: false,
-                tableLoading: false,
-                showResultsTable: false,
-                headers: [],
-                items: [],
-                search: '',
 
                 reportGrouping: 0,
                 reportGroups: ['feature', 'component'],
@@ -240,11 +133,16 @@
             }
         },
         computed: {
-            ...mapState(['validations', 'branches']),
+            ...mapState('tree', ['validations', 'branches']),
+            ...mapState('reports', ['showReport', 'reportLoading']),
+            reportName() {
+                return `${this.reportType}-report`
+            }
+
         },
         watch: {
             validations() {
-                this.showResultsTable = false;
+                this.$store.commit('reports/SET_STATE', {'showReport': false})
                 this.reportType = undefined;
             }
         },
@@ -260,81 +158,10 @@
                 // direct call method from referenced component
                 this.$refs['validations-tree'].clearValidations();
             },
-            /**
-             * Download Excel report generated on backend based on selected validations ids
-             */
-            reportExcel() {
-                let ids = this.validations.join(',');
-                this.tableLoading = true;
-                let url = `api/report/${this.reportType}/${ids}?report=excel`;
-                if (this.reportType == 'best' || this.reportType == 'last')
-                    url += `&group-by=${this.reportGroups[this.reportGrouping]}`
-
-                server
-                    .get(url, {responseType: 'blob'})
-                    .then(response => {
-                        let fileName = 'unknown';
-                        const contentDisposition = response.headers['content-disposition'];
-                        console.log(contentDisposition)
-                        if (contentDisposition) {
-                            const m = contentDisposition.match(/filename="(.+)"/);
-                            if (m.length == 2)
-                                fileName = m[1];
-                        }
-                        const url = window.URL.createObjectURL(new Blob([response.data]));
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.setAttribute('download', fileName);
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-                    })
-                    .catch(error => {
-                        this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                    })
-                    .finally(() => this.tableLoading = false);
-            },
             reportClick() {
                 if (this.reportType == undefined) {
-                    this. showResultsTable = false;
-                } else {
-                    this.reportWeb();
+                    this.$store.commit('reports/SET_STATE', {'showReport': false})
                 }
-            },
-            showHidePassed(){
-                this.showPassedPolicy = 1 - this.showPassedPolicy
-                this.reportWeb()
-            },
-            changeGrouping() {
-                this.reportWeb()
-            },
-            /**
-             * Get report data from backend based on selected validations ids
-             */
-            reportWeb() {
-                let ids = this.validations.join(',');
-                this.reportLoading = true;
-                let url = `api/report/${this.reportType}/${ids}`;
-                if (this.reportType == 'best' || this.reportType == 'last')
-                    url += `?group-by=${this.reportGroups[this.reportGrouping]}`
-                if (this.reportType == 'compare')
-                    url += `?show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`
-
-                server
-                    .get(url)
-                    .then(response => {
-                        // console.log(response.data);
-                        this.headers = response.data.headers;
-                        this.items = response.data.items;
-                    })
-                    .catch(error => {
-                        console.log(error);
-                        this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                    })
-                    .finally(() => {
-                        this.reportLoading = false;
-                        this.showResultsTable = true;
-                    });
             },
             onScroll(e) {
                 if (typeof window === 'undefined') return;
@@ -343,29 +170,6 @@
             },
             toTop() {
                 this.$vuetify.goTo(0);
-            },
-            /**
-             * Coloring passaretes in report
-             */
-            getPassrateColor(p) {
-                p = Number(p.slice(0, -1));
-                if (Number.isNaN(p))
-                    p = 0;
-                if (p >= 0 && p < 50) return 'red lighten-3'
-                else if (p >= 50 && p < 80) return 'yellow lighten-4'
-                else if (p >= 80 && p < 100) return 'green lighten-4'
-                else return 'green lighten-1'
-            },
-            /**
-             * Coloring status column in comparison report
-             */
-            getStatusColor(s) {
-                if (s == 'Passed') return 'green darken-1'
-                else if (s == 'Failed') return 'red darken-4'
-                else if (s == 'Error') return 'deep-orange darken-2'
-                else if (s == 'Blocked') return 'grey darken-1'
-                else if (s == 'Skipped') return 'cyan darken-3'
-                else if (s == 'Canceled') return 'brown darken-3'
             },
         }
     }

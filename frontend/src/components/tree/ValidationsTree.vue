@@ -99,7 +99,7 @@
                     <v-spacer></v-spacer>
                     <span class="mt-2 d-flex align-center" :class="{ disabled_text: !enableDates }">Last </span>
                     <!-- Pre-defined range buttons group -->
-                    <v-btn-toggle 
+                    <v-btn-toggle
                         class="ml-2 mt-2" color="teal darken-1"
                         v-model="sliderButtonValue"
                         @change="sliderButtonClick"
@@ -214,7 +214,7 @@
             }
         },
         computed: {
-            ...mapState(['treeLoading', 'validations']),
+            ...mapState('tree', ['treeLoading', 'validations']),
             dateStart() {
                 return monthData[this.sliderValue[0]] + '-1'
             },
@@ -314,7 +314,7 @@
                         }
                     }
                 )
-                this.$store.dispatch('setSelected', { validations, branches: selectedValidationsText(branches) });
+                this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) });
             },
             clearValidations() {
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
@@ -323,13 +323,13 @@
                             node.model.selected = false;
                     }
                 )
-                this.$store.dispatch('setSelected', { validations: [], branches: [] });
+                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] });
             },
         },
         beforeCreate() {
             // Initial tree data
             let url = 'api/validations/';
-            this.$store.dispatch('setTreeLoading', true);
+            this.$store.dispatch('tree/setTreeLoading', true);
             server
                 .get(url)
                 .then(response => {
@@ -352,7 +352,7 @@
                     console.log(error);
                     this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     })
-                .finally(() => this.$store.dispatch('setTreeLoading', false))
+                .finally(() => this.$store.dispatch('tree/setTreeLoading', false))
         }
     }
 </script>

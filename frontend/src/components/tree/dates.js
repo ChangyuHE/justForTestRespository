@@ -22,7 +22,7 @@ for (let i = (maxMonthsShown - 1); i >= 0; i--) {
     } else {
         lastDaysData[i] = daysInMonths[thisMonth];
     }
-    
+
     if (thisMonth == 0) {
         thisMonth = 11;
         thisYear--;

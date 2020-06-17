@@ -42,7 +42,7 @@
                 if (model == 'Item')
                     model = 'Test ' + model;
                 return model;
-            }            
+            }
         },
         methods: {
             closeDialog() {
@@ -66,7 +66,6 @@
                         this.$store.dispatch('deleteImportError', {id: this.ID, priority: this.priority, errorCode: this.errorCode})
                             .then(() => { this.$emit('closeCreate') }
                         )
-                        
                     })
                     .catch(error => {
                         if (error.response) {

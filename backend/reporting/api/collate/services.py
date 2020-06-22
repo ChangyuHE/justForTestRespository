@@ -227,16 +227,16 @@ def _verify_file(file, descriptor):
 
 
 def _find_existing_entity(reference):
-    query = _get_cached_query(Result)
-
-    for obj in query:
-        if obj.validation_id == reference.validation.id \
-                and obj.item_id == reference.item.id \
-                and obj.platform_id == reference.platform.id \
-                and obj.env_id == reference.env.id \
-                and obj.os_id == reference.os.id:
-            return obj
-    return None
+    try:
+        return Result.objects.get(
+            validation_id=reference.validation.id,
+            platform_id=reference.platform.id,
+            item_id=reference.item.id,
+            env_id=reference.env.id,
+            os_id=reference.os.id
+        )
+    except (Result.DoesNotExist, Result.MultipleObjectsReturned):
+        return None
 
 
 def _find_group(item_name):

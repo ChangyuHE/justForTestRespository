@@ -28,6 +28,7 @@ if [ -f ~/.smbcredentials ]; then
 fi
 
 echo "username=lab_msdk" | tee --append ~/.smbcredentials
+echo "domain=ccr" | tee --append ~/.smbcredentials
 echo "password=..."
 echo "password=pelnq72@" | tee --append ~/.smbcredentials > /dev/null
 

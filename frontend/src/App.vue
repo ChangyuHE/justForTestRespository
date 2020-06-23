@@ -1,7 +1,7 @@
 <template>
     <v-app>
         <!-- Left side drawer -->
-        <v-navigation-drawer v-model="drawer" app color="blue-grey lighten-5">
+        <!-- <v-navigation-drawer v-model="drawer" app color="blue-grey lighten-5">
             <v-list dense>
                 <v-list-item link>
                     <v-list-item-action>
@@ -20,11 +20,11 @@
                     </v-list-item-content>
                 </v-list-item>
             </v-list>
-        </v-navigation-drawer>
+        </v-navigation-drawer> -->
 
         <!-- Application bar on top -->
         <v-app-bar app color="teal darken-2 elevation-4" dark short>
-            <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+            <!-- <v-app-bar-nav-icon @click.stop="drawer = !drawer" /> -->
             <v-toolbar-title class="mr-2">Reporter</v-toolbar-title>
             <v-btn v-for="rItem in routeMap" :key="rItem.name" :to="{name: rItem.name}" text exact>
                 {{ rItem.show }}

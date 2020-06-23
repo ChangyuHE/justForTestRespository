@@ -110,12 +110,12 @@
                         <v-card-text>
                             <template v-if="errorsTabs.length">
                                 <div class="d-flex">
-                                    <v-tabs slider-color="teal darken-4" v-model="tab">
+                                    <v-tabs slider-color="teal darken-4" v-model="tab" style="width: auto">
                                         <v-tab v-for="name in errorsTabs" :key="name" :class="'tab-' + name">
                                             {{ name }}
                                         </v-tab>
                                     </v-tabs>
-                                    <span class="d-flex justify-end align-center text-no-wrap body-1 font-weight-medium">
+                                    <span class="d-inline-block text-truncate mt-3 body-1 font-weight-medium">
                                         {{ priorityWarning }}
                                     </span>
                                 </div>

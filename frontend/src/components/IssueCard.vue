@@ -1,13 +1,13 @@
 <template>
     <v-card flat class="d-flex">
-        <v-col cols="auto" class="d-flex flex-column">
+        <v-col cols="8" class="d-flex flex-column">
             <span class="body-1 font-weight-medium">
                 <span v-if="error.entity" class="font-weight-black">
                     {{ objectName }}
                 </span>
                 {{ description }}
             </span>
-            <span v-html="message" class="subtitle-2 font-weight-regular">
+            <span v-html="message" class="subtitle-2 font-weight-regular d-inline-block text-truncate">
             </span>
         </v-col>
 
@@ -108,8 +108,7 @@
                 }
             },
             description() {
-                let desc = ERR_CODE_MAPPING[this.errorCode] //+ ` (${this.errorCode})`;
-                return desc;
+                return ERR_CODE_MAPPING[this.errorCode]
             },
             message() {
                 let message = this.error.message;
@@ -120,10 +119,15 @@
                     if (this.error.values)
                         message += `<br>Missing columns: <b>${this.error.values}</b>`
                 } else if (this.errorCode == 'ERR_EXISTING_VALIDATION') {
-                    message += "<br>"
-                    Object.entries(this.error.entity.fields).forEach(([key, value]) => {
-                        message += `\t<b>${key}: '${value}'</b><br>`;
-                    });
+                    message += ":<br>"
+                    if (this.error.entity)
+                        for (let name in this.error.entity.fields)
+                            message += `\t<b>${name}: ${this.error.entity.fields[name]}</b><br>`;
+                } else if (this.errorCode == 'ERR_MISSING_ENTITY') {
+                    message = '';
+                    if (this.error.entity)
+                        for (let name in this.error.entity.fields)
+                            message += `${name}: ${this.error.entity.fields[name]}<br>`
                 }
                 return message;
             }

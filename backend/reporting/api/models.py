@@ -62,6 +62,14 @@ class Run(models.Model):
     session = models.CharField(max_length=255)
     validation_cycle = models.CharField(max_length=255, null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'session'],
+                name='unique_%(class)s_composite_constraint'
+            ),
+        ]
+
 
 class Result(models.Model):
     validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE)

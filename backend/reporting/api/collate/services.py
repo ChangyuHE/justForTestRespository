@@ -504,7 +504,7 @@ class OutcomeBuilder:
 class RecordBuilder:
     def __init__(self, validation, row, column_mapping, outcome):
         self.__row = row
-        self.__columns = dict((key, row[index - 1].value) for key,index in column_mapping.items())
+        self.__columns = dict((key, row[index - 1].value) for key, index in column_mapping.items())
         self.validation = validation
         self.__outcome = outcome
         self.__record = SimpleNamespace(
@@ -535,10 +535,11 @@ class RecordBuilder:
             record.os = self._find_with_alias(Os, columns['osName'])
 
         # Create Run entities automatically if they was not found in database during import. If found - send warning.
-        record.run = self._find_object(Run, ignore_warnings=True, name=columns['testRun'], session=columns['testSession'])
-        if not force_run and record.run is not None and not _is_known_new_object(Run, record.run.id):
-            self.__outcome.add_existing_run_error(record.run)
-        elif record.run is None:
+        try:
+            record.run = Run.objects.get(name=columns['testRun'], session=columns['testSession'])
+            if not force_run and not _is_known_new_object(Run, record.run.id):
+                self.__outcome.add_existing_run_error(record.run)
+        except (Run.DoesNotExist, Run.MultipleObjectsReturned):
             record.run = Run(name=columns['testRun'], session=columns['testSession'])
 
         # Check if date can be parsed
@@ -573,7 +574,6 @@ class RecordBuilder:
         if self.__record.run.id is None:
             self.__record.run.save()
             _update_new_objects(Run, self.__record.run.id)
-            _clear_cache(Run)
 
         entity = Result()
         for key, value in fields.items():

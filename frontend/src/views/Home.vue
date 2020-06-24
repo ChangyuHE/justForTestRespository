@@ -83,15 +83,6 @@
                             </v-list>
                         </template>
 
-                        <!-- Scrolling to top -->
-                        <v-btn
-                            v-scroll="onScroll" v-show="showScroll"
-                            fab fixed bottom right
-                            color="blue-grey lighten-4"
-                            @click="toTop"
-                        >
-                            <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
-                        </v-btn>
                     </div>
                 </pane>
             </splitpanes>
@@ -119,7 +110,6 @@
         },
         data() {
             return {
-                showScroll: false,      // "^" button
                 showExpand: false,      // ">" button
 
                 reportType: null,
@@ -162,14 +152,6 @@
                 if (this.reportType == undefined) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                 }
-            },
-            onScroll(e) {
-                if (typeof window === 'undefined') return;
-                const top = window.pageYOffset || e.target.scrollTop || 0;
-                this.showScroll = top > 20;
-            },
-            toTop() {
-                this.$vuetify.goTo(0);
             },
         }
     }

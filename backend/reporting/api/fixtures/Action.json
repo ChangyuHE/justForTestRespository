@@ -1,0 +1,23 @@
+[
+  {
+    "model": "api.action",
+    "pk": 1,
+    "fields": {
+      "name": "best"
+    }
+  },
+  {
+    "model": "api.action",
+    "pk": 2,
+    "fields": {
+      "name": "last"
+    }
+  },
+  {
+    "model": "api.action",
+    "pk": 3,
+    "fields": {
+      "name": "compare"
+    }
+  }
+]

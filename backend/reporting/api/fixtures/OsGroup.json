@@ -1,0 +1,18 @@
+[
+  {
+    "model": "api.osgroup",
+    "pk": 1,
+    "fields": {
+      "name": "Linux",
+      "aliases": "lin,linux,ubuntu"
+    }
+  },
+  {
+    "model": "api.osgroup",
+    "pk": 2,
+    "fields": {
+      "name": "Windows",
+      "aliases": "win,windows"
+    }
+  }
+]

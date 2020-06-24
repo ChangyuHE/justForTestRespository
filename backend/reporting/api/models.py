@@ -47,9 +47,36 @@ class Os(models.Model):
     group = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     aliases = models.CharField(max_length=255, null=True, blank=True)
     planning = models.BooleanField(default=False)
+    weight = models.IntegerField(null=True, blank=True)
+    shortcut = models.CharField(max_length=32, null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name'],
+                name='unique_os_name'
+            ),
+            UniqueConstraint(
+                fields=['shortcut'],
+                name='unique_os_shortcut'
+            )
+        ]
 
     def __str__(self):
         return self.name
+
+
+class OsGroup(models.Model):
+    name = models.CharField(max_length=32)
+    aliases = models.CharField(max_length=255)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name'],
+                name='unique_os_group_name'
+            )
+        ]
 
 
 class Status(models.Model):
@@ -149,4 +176,16 @@ class Validation(models.Model):
                 fields=['name', 'env', 'platform', 'os'],
                 name='unique_%(class)s_composite_constraint'
             ),
+        ]
+
+
+class Action(models.Model):  # working functional, example: best, last, compare reports
+    name = models.CharField(max_length=255, default='compare')
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name'],
+                name='unique_action_name'
+            )
         ]

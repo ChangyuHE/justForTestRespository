@@ -68,6 +68,17 @@
                 <router-view></router-view>
             </v-container>
         </v-content>
+
+        <!-- Scrolling to top -->
+        <v-btn
+            v-scroll="onScroll" v-show="showScroll"
+            fab fixed bottom right
+            color="blue-grey lighten-4"
+            @click="toTop"
+        >
+            <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
+        </v-btn>
+
         <v-footer app class="justify-end">
             <span>powered by <a href="https://vuejs.org/">Vue.js</a></span>
         </v-footer>
@@ -85,9 +96,11 @@
         data() {
             return {
                 userDialog: false,
+                showScroll: false,
                 routeMap: [
                     { name: 'home', show: 'Validations' },
-                    { name: 'import', show: 'Import' }
+                    { name: 'import', show: 'Import' },
+                    { name: 'search', show: 'Search' }
                 ]
             }
         },
@@ -102,6 +115,16 @@
                 }
                 return data;
             }
+        },
+        methods: {
+            onScroll(e) {
+                if (typeof window === 'undefined') return;
+                const top = window.pageYOffset || e.target.scrollTop || 0;
+                this.showScroll = top > 20;
+            },
+            toTop() {
+                this.$vuetify.goTo(0);
+            },
         },
         mounted() {
             // get user data

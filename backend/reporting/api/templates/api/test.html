@@ -1,0 +1,13 @@
+{% extends "api/base.html" %}
+
+{% block content %}
+<p>User: {{ user }}
+<p>Username: {{ user.username }}
+<p>Is auth: {{ user.is_authenticated }}
+
+<p>
+{{ user.last_login }}
+{{ user.first_name }}
+{{ user.last_name }}
+{{ user.email }}
+{% endblock %}

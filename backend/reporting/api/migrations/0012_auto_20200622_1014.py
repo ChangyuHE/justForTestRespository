@@ -12,6 +12,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddConstraint(
             model_name='run',
-            constraint=models.UniqueConstraint(fields=('name', 'sessions'), name='unique_run_composite_constraint'),
+            constraint=models.UniqueConstraint(fields=('name', 'session'), name='unique_run_composite_constraint'),
         ),
     ]

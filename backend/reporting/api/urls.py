@@ -13,8 +13,14 @@ schema_view = get_swagger_view(title='Reporting API')
 
 urlpatterns = [
     url('^$', views.index, name='index'),
-
     url(r'^api/$', schema_view),
+    url(r'^test$', views.test, name='test'),
+
+    # Users
+    url(r'^api/users/current/$', views.CurrentUser.as_view(), name='user-current'),
+    url(r'^api/users/(?P<username>.+)/$', views.UserDetail.as_view(), name='user-detail'),
+    url(r'^api/users/$', views.UserList.as_view(), name='user-list'),
+
     url(r'^api/validations/$', views.ValidationsView.as_view()),
     url(r'^api/validations/flat$', views.ValidationsFlatView.as_view()),
     url(r'^api/validations/structure$', views.ValidationsStructureView.as_view()),

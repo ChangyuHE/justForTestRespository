@@ -3,19 +3,17 @@ import logging
 from rest_framework import serializers
 from rest_framework import fields
 
-# from django.contrib.auth import get_user_model
-# from rest_framework.utils import model_meta
+from django.contrib.auth import get_user_model
 
 import api.models as models
 
 log = logging.getLogger(__name__)
 
-#
-#
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = get_user_model()
-#         fields = ['id', 'last_login', 'username', 'first_name', 'last_name', 'email', 'is_staff']
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ['id', 'last_login', 'username', 'first_name', 'last_name', 'email', 'is_staff']
 
 
 class EnvSerializer(serializers.ModelSerializer):

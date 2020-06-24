@@ -11,6 +11,9 @@ from django.shortcuts import render, get_object_or_404
 from django.forms.models import model_to_dict
 from django.views.decorators.cache import never_cache
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
+
+from .serializers import *
 
 from rest_framework import generics, viewsets, status
 from rest_framework.views import APIView
@@ -37,10 +40,41 @@ def index(request):
     return render(request, 'api/index.html', {})
 
 
+@never_cache
+def test(request):
+    return render(request, 'api/test.html', {})
+
+
 # all requests that should managed by vue just pass to index
 class PassToVue(TemplateView):
     def get(self, request, **kwargs):
         return render(request, 'api/index.html', {})
+
+
+class UserList(generics.ListAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserSerializer
+
+
+class UserDetail(generics.RetrieveAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'
+
+
+class CurrentUser(APIView):
+    def get(self, request):
+        try:
+            username = request.user.username
+            if not production:
+                username = 'debug'
+
+            user_object = get_user_model().objects.get(username=username)
+        except ObjectDoesNotExist:
+            user_object = request.user
+
+        user_data = UserSerializer(user_object).data
+        return Response(user_data)
 
 
 ICONS = [

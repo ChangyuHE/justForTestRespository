@@ -318,6 +318,11 @@ class ReportBestView(APIView):
 
         # Create DataFrame crosstab from SQL request
         df = pd.read_sql(q.statement, q.session.bind)
+        if df.empty:
+            if do_excel:
+                return Response()
+            return Response({'headers': [], 'items': []})
+
         ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
                          values=df.item_name, columns=df.best_status_id, aggfunc='count',
                          colnames=[''],
@@ -396,6 +401,11 @@ class ReportLastView(APIView):
 
         # Create DataFrame crosstab from SQL request
         df = pd.read_sql(final_query.statement, final_query.session.bind)
+        if df.empty:
+            if do_excel:
+                return Response()
+            return Response({'headers': [], 'items': []})
+
         ct = pd.crosstab(index=df.group_name if grouping == 'feature' else df.alt_name,
                          values=df.item_name, columns=df.last_status_id, aggfunc='count',
                          colnames=[''],
@@ -472,7 +482,9 @@ class ReportCompareView(APIView):
         # replace status_id with test_status values
         status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
         for v_id in validation_ids:
-            ct[int(v_id)] = ct[int(v_id)].map(status_mapping)
+            # check if validaton_id column is in DataFrame, i.e. we have items to show for this id
+            if v_id in ct:
+                ct[v_id] = ct[v_id].map(status_mapping)
 
         # move item_id and group_id columns to front
         cols = ct.columns.tolist()

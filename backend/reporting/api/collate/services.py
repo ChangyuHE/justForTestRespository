@@ -9,18 +9,7 @@ from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 from types import SimpleNamespace
 
-from api.models import Env
-from api.models import Driver
-from api.models import Component
-from api.models import Item
-from api.models import Os
-from api.models import Run
-from api.models import Status
-from api.models import Platform
-from api.models import Validation
-from api.models import Result
-from api.models import ResultGroupMask
-
+from api.models import *
 from api.serializers import create_serializer
 
 """ Business logic """
@@ -246,7 +235,10 @@ def _find_group(item_name):
         if re.match(group_mask.mask, item_name):
             return group_mask.group
 
-    return None
+    try:
+        return ResultGroupNew.objects.get(name='Unknown')
+    except (ResultGroupNew.DoesNotExist, ResultGroupNew.MultipleObjectsReturned):
+        return None
 
 
 def _update_new_objects(cls, id):

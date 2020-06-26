@@ -107,6 +107,10 @@ class ResultGroupNew(models.Model):
     alt_name = models.CharField(max_length=255, null=True, blank=True)
     category = models.CharField(max_length=255, null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Result Group'
+        verbose_name_plural = 'Result Groups'
+
 
 class ResultGroupMask(models.Model):
     group = models.ForeignKey(ResultGroupNew, on_delete=models.CASCADE, related_query_name='group_mask')

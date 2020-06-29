@@ -30,9 +30,36 @@
                 {{ rItem.show }}
             </v-btn>
             <v-spacer></v-spacer>
-            <v-btn icon>
-                <v-icon title="Account placeholder">mdi-account</v-icon>
-            </v-btn>
+
+            <v-dialog
+                v-model="userDialog"
+                max-width="50%"
+            >
+                <template v-slot:activator="{ on }">
+                    <v-btn text class="mr-n2 px-2" style="text-transform: none">
+                    <!-- <v-btn v-on="on" text class="mr-n2 px-2" style="text-transform: none"> -->
+                        <v-icon title="Account data">mdi-account</v-icon>
+                        <span class="ml-1">{{ userName }}</span>
+                    </v-btn>
+                </template>
+
+                <v-card>
+                    <v-card-title>
+                        User data placeholder
+                    </v-card-title>
+                    <v-card-text class="d-flex flex-column">
+                        <span v-for="(value, key) in userData" :key="key"
+                            class="subtitle-1"
+                        >
+                            <b>{{ key }}</b>: {{ value }}
+                        </span>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="red" text @click="userDialog = false">Close</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
         </v-app-bar>
 
         <v-content>
@@ -52,15 +79,44 @@
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
+    import { mapState, mapGetters } from 'vuex'
+
     export default {
         data() {
             return {
-                drawer: false,
+                userDialog: false,
                 routeMap: [
                     { name: 'home', show: 'Validations' },
                     { name: 'import', show: 'Import' }
                 ]
             }
+        },
+        computed: {
+            ...mapState({rawUserData: 'userData'}),
+            ...mapGetters(['userName']),
+            userData() {
+                let data = {};
+                for (let key in this.rawUserData) {
+                    if (key != 'id')
+                        data[key] = this.rawUserData[key]
+                }
+                return data;
+            }
+        },
+        mounted() {
+            // get user data
+            let url = 'api/users/current/';
+            server
+                .get(url)
+                .then(response => {
+                    let data = response.data;
+                    this.$store.commit('SET_USER_DATA', data);
+                })
+                .catch(error => {
+                    console.log(error)
+                    this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                    })
+                .finally()
         }
     }
 </script>

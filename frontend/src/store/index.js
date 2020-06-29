@@ -12,10 +12,12 @@ export default new Vuex.Store({
         reports
     },
     state: {
+        userData: {username: ''},
         importErrors: {},
     },
     getters: {
         importErrors: (state) => state.importErrors,
+        userName: (state) => state.userData.username
     },
     mutations: {
         SET_IMPORT_ERRORS: (state, payload) => state.importErrors = payload,
@@ -29,7 +31,8 @@ export default new Vuex.Store({
                 if (Object.keys(state.importErrors[priority]).length == 0)
                     Vue.delete(state.importErrors, priority)
             }
-        }
+        },
+        SET_USER_DATA: (state, payload) => state.userData = payload,
     },
     actions: {
         setImportErrors: ({ commit }, payload) => {

@@ -9,6 +9,8 @@ import dateutil.parser
 
 from datetime import datetime
 
+import django_filters.rest_framework
+
 from django.http import HttpResponse
 from django.views.generic import TemplateView
 from django.shortcuts import render, get_object_or_404
@@ -38,6 +40,15 @@ from .models import *
 
 from reporting.settings import production
 
+from rest_framework_tracking.base_mixins import BaseLoggingMixin
+from rest_framework_tracking.models import APIRequestLog
+
+
+class LoggingMixin(BaseLoggingMixin):
+    def handle_log(self):
+        del self.log['response']
+        APIRequestLog(**self.log).save()
+
 
 @never_cache
 def index(request):
@@ -55,18 +66,20 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
-class UserList(generics.ListAPIView):
+class UserList(LoggingMixin, generics.ListAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
+    filterset_fields = ['is_staff', 'username']
 
 
-class UserDetail(generics.RetrieveAPIView):
+class UserDetail(LoggingMixin, generics.RetrieveAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
 
 
-class CurrentUser(APIView):
+class CurrentUser(LoggingMixin, APIView):
     def get(self, request):
         try:
             username = request.user.username
@@ -109,7 +122,7 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
     return {'headers': headers, 'items': items}
 
 
-class ValidationsView(APIView):
+class ValidationsView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         filters_data = request.GET.get('data', {})
         if filters_data:
@@ -197,7 +210,7 @@ class ValidationsView(APIView):
         return Response(d)
 
 
-class ValidationsDeleteByIdView(generics.DestroyAPIView):
+class ValidationsDeleteByIdView(LoggingMixin, generics.DestroyAPIView):
     queryset = Validation.objects.all()
 
     @transaction.atomic
@@ -214,7 +227,7 @@ class ValidationsDeleteByIdView(generics.DestroyAPIView):
                 Run.objects.get(pk=run_id).delete()
 
 
-class ValidationsFlatView(APIView):
+class ValidationsFlatView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         d = []
         validations_qs = Validation.objects.all().order_by('-id')
@@ -226,7 +239,7 @@ class ValidationsFlatView(APIView):
         return Response(d)
 
 
-class ValidationsStructureView(APIView):
+class ValidationsStructureView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         d = [
             {'name': 'gen', 'label': 'Generation', 'items': [], 'level': 0},
@@ -247,7 +260,7 @@ class ValidationsStructureView(APIView):
         return Response(d)
 
 
-class ReportBestView(APIView):
+class ReportBestView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
@@ -342,7 +355,7 @@ class ReportBestView(APIView):
         return response
 
 
-class ReportLastView(APIView):
+class ReportLastView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
@@ -443,7 +456,7 @@ def prepare_crosstab(ct: pd.DataFrame):
     return ct
 
 
-class ReportCompareView(APIView):
+class ReportCompareView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':

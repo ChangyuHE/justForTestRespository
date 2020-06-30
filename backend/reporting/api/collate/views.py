@@ -14,6 +14,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
+from api.views import LoggingMixin
+
 log = logging.getLogger(__name__)
 
 
@@ -22,7 +24,7 @@ def index(request):
     return render(request, 'collate/index.html', {'form': form})
 
 
-class ImportFileView(APIView):
+class ImportFileView(LoggingMixin, APIView):
     parser_class = (FileUploadParser,)
 
     def post(self, request):
@@ -52,7 +54,7 @@ class ImportFileView(APIView):
         return Response(data=data, status=code)
 
 
-class CreateEntitiesView(APIView):
+class CreateEntitiesView(LoggingMixin, APIView):
     def post(self, request):
         log.debug(f'request data: {request.data}')
         if 'entities' not in request.data:

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_tracking',
 
     'api.apps.ApiConfig',
     'api.collate.apps.ImportConfig',
@@ -56,8 +57,8 @@ INSTALLED_APPS = [
     'rest_framework_swagger',
     'webpack_loader',
     'corsheaders',
-    'aldjemy'
-    # 'django_filters'
+    'aldjemy',
+    'django_filters'
 ]
 CORS_ORIGIN_ALLOW_ALL = True
 
@@ -135,6 +136,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 if production:
     AUTHENTICATION_BACKENDS.append('sso.backends.RemoteUserBackend')
+
+INTEL_LDAP_USERNAME = os.getenv('INTEL_LDAP_USERNAME')
+INTEL_LDAP_PASSWORD = os.getenv('INTEL_LDAP_PASSWORD')
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/

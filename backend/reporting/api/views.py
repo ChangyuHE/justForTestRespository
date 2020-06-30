@@ -44,12 +44,6 @@ from rest_framework_tracking.base_mixins import BaseLoggingMixin
 from rest_framework_tracking.models import APIRequestLog
 
 
-class LoggingMixin(BaseLoggingMixin):
-    def handle_log(self):
-        del self.log['response']
-        APIRequestLog(**self.log).save()
-
-
 @never_cache
 def index(request):
     return render(request, 'api/index.html', {})
@@ -66,6 +60,14 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
+class LoggingMixin(BaseLoggingMixin):
+    def handle_log(self):
+        self.log['user'] = get_user_object(self.request)
+        self.log['username_persistent'] = get_user_object(self.request).username
+        del self.log['response']
+        APIRequestLog(**self.log).save()
+
+
 class UserList(LoggingMixin, generics.ListAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
@@ -79,17 +81,21 @@ class UserDetail(LoggingMixin, generics.RetrieveAPIView):
     lookup_field = 'username'
 
 
+def get_user_object(request):
+    try:
+        username = request.user.username
+        if not production:
+            username = 'debug'
+        return get_user_model().objects.get(username=username)
+    except ObjectDoesNotExist:
+        return request.user
+    except:
+        return None
+
+
 class CurrentUser(LoggingMixin, APIView):
     def get(self, request):
-        try:
-            username = request.user.username
-            if not production:
-                username = 'debug'
-
-            user_object = get_user_model().objects.get(username=username)
-        except ObjectDoesNotExist:
-            user_object = request.user
-
+        user_object = get_user_object(request)
         user_data = UserSerializer(user_object).data
         return Response(user_data)
 
@@ -541,7 +547,7 @@ class Part:
     validation_ids: list = None
 
 
-class ReportFromSearchView(APIView):
+class ReportFromSearchView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         # list of tuples (env_shortcut, full_env) - (sim, Simulation)
         env_names_shortnames = [(shortcut.lower(), name)

@@ -13,7 +13,7 @@
                 class="search-text-field"
             >
                 <template v-slot:append-outer>
-                    <v-tooltip bottom v-model="showTooltip" class="" style="">
+                    <v-tooltip bottom v-model="showTooltip">
                         <template v-slot:activator="{ on }">
                             <v-icon size="20" style="" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
                         </template>
@@ -118,29 +118,16 @@
     }
 </script>
 
-<style>
-    /* DataTable colored zebra */
-    .results-table tbody tr:nth-of-type(odd) {
-        background-color: rgba(0, 142, 100, .03);
-    }
-    /* DataTable header font */
-    .v-data-table thead th {
-        font-size: 14px !important;
-    }
-    .v-list-item--dense, .v-list--dense .v-list-item {
-        min-height: 20px !important;
-    }
-    .results-table table {
-        table-layout: fixed !important;
-    }
+<style scoped>
     .search-tooltip > p {
         margin-bottom: 0.5em !important;
     }
-</style>
-<style scoped>
     .search-text-field >>> .v-messages__message {
         font-size: 17px;
         height: 18px;
         margin-top: 4px;
+    }
+    .v-tooltip__content > .search-tooltip {
+        pointer-events: auto;
     }
 </style>

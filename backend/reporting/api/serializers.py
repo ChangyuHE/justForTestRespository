@@ -2,6 +2,7 @@ import logging
 
 from rest_framework import serializers
 from rest_framework import fields
+from rest_framework.validators import UniqueTogetherValidator
 
 from django.contrib.auth import get_user_model
 
@@ -31,7 +32,7 @@ class DriverSerializer(serializers.ModelSerializer):
 class ComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Component
-        fields = ['name']
+        fields = ['id', 'name']
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -55,13 +56,20 @@ class StatusSerializer(serializers.ModelSerializer):
 class PlatformSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Platform
-        fields = ['name', 'generation', 'aliases', 'short_name', 'weight', 'planning']
+        fields = ['id', 'name', 'generation', 'aliases', 'short_name', 'weight', 'planning']
 
 
 class OsSerializer(serializers.ModelSerializer):
+    parent_os = serializers.SerializerMethodField()
+
+    def get_parent_os(self, obj):
+        if obj.group is not None:
+            return OsSerializer(obj.group).data
+        return None
+
     class Meta:
         model = models.Os
-        fields = ['name', 'group', 'aliases', 'planning']
+        fields = ['id', 'name', 'group', 'weight', 'aliases', 'parent_os']
 
 
 def create_serializer(class_name, instance=None, data=fields.empty, **kwargs):
@@ -84,3 +92,67 @@ def create_serializer(class_name, instance=None, data=fields.empty, **kwargs):
     else:
         log.warning(f"Serializer for class '{class_name}' is not defined.'")
         return None
+
+
+# FeatureMapping block
+class MilestoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Milestone
+        fields = ['id', 'name']
+
+
+class FeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Feature
+        fields = ['id', 'name']
+
+
+class TestScenarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.TestScenario
+        fields = ['id', 'name']
+
+
+class FeatureMappingSerializer(serializers.ModelSerializer):
+    component = ComponentSerializer()
+    platform = PlatformSerializer()
+    os = OsSerializer()
+    owner = UserSerializer()
+
+    class Meta:
+        model = models.FeatureMapping
+        fields = ['id', 'name', 'owner', 'component', 'platform', 'os', 'public', 'official']
+
+
+class FeatureMappingSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FeatureMapping
+        fields = ['name', 'owner', 'component', 'platform', 'os', 'public', 'official']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=models.FeatureMapping.objects.all(),
+                fields=['name', 'owner']
+            )
+        ]
+
+
+class FeatureMappingRuleSerializer(serializers.ModelSerializer):
+    milestone = MilestoneSerializer()
+    feature = FeatureSerializer()
+    scenario = TestScenarioSerializer()
+
+    class Meta:
+        model = models.FeatureMappingRule
+        fields = ['id', 'milestone', 'feature', 'scenario', 'mapping']
+
+
+class FeatureMappingSimpleRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.FeatureMappingRule
+        fields = ['milestone', 'feature', 'scenario', 'mapping']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=models.FeatureMappingRule.objects.all(),
+                fields=['milestone', 'feature', 'scenario', 'mapping']
+            )
+        ]

@@ -7,6 +7,9 @@ class Generation(models.Model):
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     weight = models.IntegerField()
 
+    def __str__(self):
+        return self.name
+
 
 class Platform(models.Model):
     name = models.CharField(max_length=32)

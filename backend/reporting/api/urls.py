@@ -33,6 +33,8 @@ urlpatterns = [
     url(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # with mandatory param "query"
 
     # import
+    # with mandatory parameters model, fields, emails (staff emails), requester
+    url(r'^api/objects/create/$', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
 
     path('admin/', admin.site.urls),

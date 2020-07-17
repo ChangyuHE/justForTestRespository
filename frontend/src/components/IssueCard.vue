@@ -41,12 +41,31 @@
 
                 <v-card>
                     <v-card-title>
-                        Placeholder
+                        New {{ error.entity.model }} item creation request
                     </v-card-title>
-                    <v-card-text></v-card-text>
+                    <v-card-text class="text-body-1">
+                        <div> You are going to send request to administrators for {{ error.entity.model }} item creation </div>
+                        <div> New values: </div>
+                        <div v-for="(value, key) in error.entity.fields" :key="key">
+                            - {{ key }} : {{ value }}
+                        </div>
+                    </v-card-text>
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="red" text @click="requestItemDialog = false">Close</v-btn>
+                        <v-btn
+                            color="green" text
+                            @click="sendRequest"
+                            :loading="sending"
+                        >
+                            Send
+                        </v-btn>
+                        <v-btn
+                            color="red" text
+                            @click="requestItemDialog = false"
+                            :disabled="sending"
+                        >
+                            Close
+                        </v-btn>
                     </v-card-actions>
                 </v-card>
 
@@ -81,6 +100,7 @@
             return {
                 createItemDialog: null,
                 requestItemDialog: null,
+                sending: false,
             }
         },
         props: {
@@ -130,6 +150,36 @@
                             message += `${name}: ${this.error.entity.fields[name]}<br>`
                 }
                 return message;
+            },
+        },
+        methods: {
+            sendRequest() {
+                this.sending = true;
+                let currentUserUrl = 'api/users/current/';
+                let url = 'api/objects/create/';
+                let currentUser = {};
+                server
+                    .get(currentUserUrl)
+                    .then(userInfo => {
+                        currentUser = userInfo.data;
+                        let data = {model: this.error.entity.model, fields: this.error.entity.fields, requester: currentUser}
+                        return server.post(url, data);
+                    })
+                    .then(response => {
+                        this.requestItemDialog = false;
+                        this.$toasted.success('Request has been sent');
+                    })
+                    .catch(error => {
+                            if (error.response) {
+                                this.$toasted.global.alert_error_detailed({
+                                    'header': 'Error during requesting creation of a new object',
+                                    'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${error.response.data}`
+                                })
+                            } else {
+                                console.log(error);
+                            }
+                    })
+                    .finally(() => (this.sending = false))
             }
         }
     }

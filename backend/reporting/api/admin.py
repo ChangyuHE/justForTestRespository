@@ -25,3 +25,10 @@ class ResultGroupNewAdmin(admin.ModelAdmin):
 
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
+
+admin.site.register(Component)
+admin.site.register(Env)
+admin.site.register(Generation)
+admin.site.register(Platform)
+admin.site.register(Os)
+admin.site.register(Status)

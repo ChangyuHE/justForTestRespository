@@ -10,28 +10,29 @@ import dateutil.parser
 from datetime import datetime
 
 import django_filters.rest_framework
+from django.core.mail import EmailMessage
 
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django.views.generic import TemplateView
-from django.shortcuts import render, get_object_or_404
-from django.forms.models import model_to_dict
+from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.reverse import reverse
 
 from .serializers import *
 
-from rest_framework import generics, viewsets, status
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from anytree import Node, RenderTree, AnyNode
+from anytree import Node, AnyNode
 from anytree.search import find_by_attr
 from anytree.exporter import JsonExporter
 
 from sqlalchemy.sql import func
-from sqlalchemy.orm import aliased
-from sqlalchemy import and_, or_, Table, Column, select, distinct, MetaData, Text, Integer, text, desc, asc
+from sqlalchemy import and_
 
 from openpyxl.writer.excel import save_virtual_workbook
 
@@ -737,3 +738,34 @@ class ReportFromSearchView(APIView):
                     if group_oses:
                         os = group_oses[0]  # the latest os
         return os, found_oses
+
+
+class RequestModelCreation(APIView):
+    def post(self, request):
+        model = request.data['model']
+        fields = request.data['fields']
+        requester = request.data['requester']
+
+        staff_emails = get_user_model().objects \
+            .filter(is_staff=True) \
+            .exclude(email__isnull=True) \
+            .exclude(email__exact='') \
+            .values_list('email', flat=True)
+        url = request.build_absolute_uri(reverse(f'admin:api_{model.lower()}_add'))  # url to add new object
+        msg = render_to_string('request_creation.html', {'first_name': requester['first_name'],
+                                                         'last_name': requester['last_name'],
+                                                         'username': requester['username'],
+                                                         'email': requester['email'],
+                                                         'model': model.lower(),
+                                                         'fields': fields,
+                                                         'add_model_object_url': url})
+        subject = f'[REPORTER] New {model.lower()} creation request'
+        sender = 'lab_msdk@intel.com'
+
+        msg = EmailMessage(subject, msg, sender, staff_emails, cc=[requester['email']])
+        msg.content_subtype = "html"
+        try:
+            msg.send()
+            return Response()
+        except Exception:
+            return Response(data='Failed to send email', status=status.HTTP_500_INTERNAL_SERVER_ERROR)

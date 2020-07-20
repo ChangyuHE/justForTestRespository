@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import re
 
@@ -13,6 +14,7 @@ from api.models import *
 from api.serializers import create_serializer
 from api.collate.caches import QueryCache
 from api.collate.caches import ObjectsCache
+from api.collate.gta_field_parser import GTAFieldParser
 
 """ Business logic """
 
@@ -37,6 +39,8 @@ NAME_MAPPING = {
     'test session': 'testSession',
     'url': 'resultURL',
     'reason': 'reason',
+    'vertical': 'vertical',
+    'mapped component': 'mappedComponent',
 }
 
 REVERSE_NAME_MAPPING = {value: key for key, value in NAME_MAPPING.items()}
@@ -98,6 +102,11 @@ def create_entities(entities):
         serializer.save()
 
 
+def _get_column_values(column_name, rows, column_mapping):
+    next(rows)
+    return [row[column_mapping[column_name]].value for row in non_empty_row(rows)]
+
+
 @transaction.atomic
 def _store_results(mapping, descriptor):
     # Assuming that all related objects already exist.
@@ -111,9 +120,12 @@ def _store_results(mapping, descriptor):
     if descriptor.validation.pk is None:
         descriptor.validation.save()
 
+    # get list of result urls
+    url_list = _get_column_values('resultURL', sheet.rows, column_mapping)
+
     # process file content row by row.
     for row in non_empty_row(rows):
-        builder = RecordBuilder(descriptor.validation, row, column_mapping, outcome)
+        builder = RecordBuilder(descriptor.validation, row, column_mapping, outcome, url_list=url_list)
         entity = builder.build(descriptor.force_run)
         _update_changes_counters(changes, entity)
 
@@ -189,11 +201,15 @@ def _verify_file(file, descriptor):
     next(rows)
     effective_max_row = 0
 
+    # get list of result urls
+    url_list = _get_column_values('resultURL', sheet.rows, column_mapping)
+
+    # process file content row by row.
     for row in non_empty_row(rows):
         effective_max_row += 1
 
         # verify row content
-        builder = RecordBuilder(validation, row, column_mapping, outcome)
+        builder = RecordBuilder(validation, row, column_mapping, outcome, url_list=url_list)
         builder.verify(descriptor.force_run)
 
     log.debug('processed all rows.')
@@ -201,14 +217,7 @@ def _verify_file(file, descriptor):
     # Verify that os, env and platform columns contain only one distinct value.
     for column_key in ['osName', 'osVersion', 'envName', 'platformName']:
 
-        column = column_mapping[column_key]
-        distinct_values = set(value for (value, *_) in sheet.iter_rows(
-            min_row=2,
-            max_row=effective_max_row,
-            min_col=column,
-            max_col=column,
-            values_only=True
-        ))
+        distinct_values = set(_get_column_values(column_key, sheet.rows, column_mapping))
 
         if len(distinct_values) > 1:
             column_name = REVERSE_NAME_MAPPING[column_key]
@@ -273,7 +282,7 @@ def _create_column_mapping(sheet):
 
         mapped_name = NAME_MAPPING.get(str(cell.value).lower(), None)
         if mapped_name is not None:
-            column_mapping[mapped_name] = cell.column
+            column_mapping[mapped_name] = cell.column - 1
 
     return column_mapping
 
@@ -436,21 +445,21 @@ class OutcomeBuilder:
 
 
 class RecordBuilder:
-    def __init__(self, validation, row, column_mapping, outcome):
+    def __init__(self, validation, row, column_mapping, outcome, url_list=None):
         self.__row = row
-        self.__columns = dict((key, row[index - 1].value) for key, index in column_mapping.items())
+        self.__columns = dict((key, row[index].value) for key, index in column_mapping.items())
         self.validation = validation
         self.__outcome = outcome
         self.__record = SimpleNamespace(
             validation=None,
             env=None,
-            driver=None,
             component=None,
             item=None,
             run=None,
             status=None,
             platform=None,
         )
+        self.__url_list = url_list
 
     def verify(self, force_run=False):
         columns = self.__columns
@@ -458,7 +467,6 @@ class RecordBuilder:
 
         record.validation = self.validation
         record.env = self._find_object(Env, name=columns['envName'])
-        record.driver = self._find_object(Driver, name=columns['driverName'])
         record.component = self._find_object(Component, name=columns['componentName'])
         record.item = self._find_object(Item, name=columns['itemName'], args=columns['itemArgs'])
         record.status = self._find_object(Status, test_status=columns['status'])
@@ -491,10 +499,18 @@ class RecordBuilder:
 
         return self.__outcome.is_success()
 
+    def _get_or_create(self, cls, obj):
+        kwargs = dataclasses.asdict(obj)
+        try:
+            return cls.objects.get(**kwargs)
+        except cls.DoesNotExist:
+            return cls(**kwargs)
+
     def build(self, force_run=False):
         if not self.verify(force_run):
             return None
 
+        record = self.__record
         fields = _namespace_to_dict(self.__record)
 
         # Ensure that all fields are present.
@@ -502,10 +518,42 @@ class RecordBuilder:
             self.__notify_missing_fields(fields)
             return None
 
-        # Create Run entities automatically if they was not found in database during import.
-        if self.__record.run.id is None:
-            self.__record.run.save()
-            new_objects_ids.update(Run, self.__record.run.id)
+        record = self.__record
+        fields = self.__record.__dict__
+        # Retrieve additional fields from GTA API
+        if self.__columns['resultURL'] not in GTAFieldParser.result.keys():
+            log.debug(f'Missing job key {self.__columns["resultURL"]}, started retrieving...')
+            GTAFieldParser(
+                self.__columns['testRun'], self.__columns['testSession'],
+                self.__columns['mappedComponent'], self.__columns['vertical'],
+                self.__columns['platformName'], self.__url_list).process()
+        if self.__columns['resultURL'] in GTAFieldParser.result.keys():
+            res = GTAFieldParser.result[self.__columns['resultURL']]
+            log.debug(f"{self.__columns['resultURL']}")
+            record.driver = self._get_or_create(Driver, res['driver'])
+            record.scenario_asset = self._get_or_create(ScenarioAsset, res['scenario'])
+            record.msdk_asset = self._get_or_create(MsdkAsset, res['msdk'])
+            record.os_asset = self._get_or_create(OsAsset, res['os_image'])
+            record.lucas_asset = self._get_or_create(LucasAsset, res['lucas'])
+            record.fulsim_asset = self._get_or_create(FulsimAsset, res['fulsim'])
+            record.simics = self._get_or_create(Simics, res['simics'])
+        else:
+            log.error(f'Missing key {self.__columns["resultURL"]}')
+
+        # Create entities automatically if they was not found in database during import.
+        for obj, cls in (
+            (record.run, Run),
+            (record.driver, Driver),
+            (record.scenario_asset, ScenarioAsset),
+            (record.msdk_asset, MsdkAsset),
+            (record.os_asset, OsAsset),
+            (record.lucas_asset, LucasAsset),
+            (record.fulsim_asset, FulsimAsset),
+            (record.simics, Simics),
+        ):
+            if obj.id is None:
+                obj.save()
+                new_objects_ids.update(cls, obj.id)
 
         entity = Result()
         for key, value in fields.items():
@@ -542,12 +590,13 @@ class RecordBuilder:
                 entity = existing_entity
 
         # Assign item group if necessary
-        item = entity.item
-        if item.group is None:
-            group = _find_group(item.name)
-            if group is not None:
-                item.group = group
-                item.save()
+        if entity is not None:
+            item = entity.item
+            if item.group is None:
+                group = _find_group(item.name)
+                if group is not None:
+                    item.group = group
+                    item.save()
 
         return entity
 

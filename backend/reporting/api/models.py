@@ -1,5 +1,48 @@
 from django.db import models
 from django.db.models import UniqueConstraint
+from django.contrib.postgres.fields import JSONField
+
+
+class Asset(models.Model):
+    root = models.CharField(max_length=255, null=True, blank=True)
+    path = models.CharField(max_length=255, null=True, blank=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    version = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        unique_together = ('root', 'path', 'name', 'version')
+
+    def __str__(self):
+        if self.root is None or self.path is None or self.name is None or self.version is None:
+            return ''
+        path = self.path if self.path.endswith('/') else f'{self.path}/'
+        root = self.root if self.root.endswith('/') else f'{self.root}/'
+        return f'{root}{path}{self.name}/{self.version}'
+
+
+class ScenarioAsset(Asset):
+    pass
+
+
+class MsdkAsset(Asset):
+    pass
+
+
+class OsAsset(Asset):
+    pass
+
+
+class LucasAsset(Asset):
+    pass
+
+
+class FulsimAsset(Asset):
+    pass
+
+
+class Simics(models.Model):
+    data = JSONField()
 
 
 class Generation(models.Model):
@@ -37,6 +80,7 @@ class Component(models.Model):
 
 class Driver(models.Model):
     name = models.CharField(max_length=255)
+    build_id = models.CharField(max_length=16, null=True, blank=True)
 
 
 class Item(models.Model):
@@ -111,6 +155,12 @@ class Result(models.Model):
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.CASCADE)
     run = models.ForeignKey(Run, null=True, blank=True, on_delete=models.CASCADE)
+    scenario_asset = models.ForeignKey(ScenarioAsset, null=True, blank=True, on_delete=models.CASCADE)
+    msdk_asset = models.ForeignKey(MsdkAsset, null=True, blank=True, on_delete=models.CASCADE)
+    os_asset = models.ForeignKey(OsAsset, null=True, blank=True, on_delete=models.CASCADE)
+    lucas_asset = models.ForeignKey(LucasAsset, null=True, blank=True, on_delete=models.CASCADE)
+    fulsim_asset = models.ForeignKey(FulsimAsset, null=True, blank=True, on_delete=models.CASCADE)
+    simics = models.ForeignKey(Simics, null=True, blank=True, on_delete=models.CASCADE)
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)

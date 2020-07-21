@@ -6,13 +6,14 @@ from django.test import TestCase
 from django.urls import reverse
 
 from api.models import Os
-
+from api.collate.services import queryset_cache
 
 log = logging.getLogger(__name__)
 
 
 class CreateEntitiesIntegrationTest(TestCase):
     def setUp(self):
+        queryset_cache.clear()
         Os.objects.create(pk=23, name='Mock Os')
         print()
 

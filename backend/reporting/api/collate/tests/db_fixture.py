@@ -12,12 +12,16 @@ from api.models import Run
 from api.models import Status
 from api.models import Validation
 
+from api.collate.services import queryset_cache
+
 from api.collate.tests.genetated_files import create_file
 from api.collate.tests.genetated_files import create_empty_workbook
 
 
 class DbFixture(TestCase):
     def setUp(self):
+        queryset_cache.clear()
+
         self.request = dict(
             validation_id=42,
             validation_name='Test model',

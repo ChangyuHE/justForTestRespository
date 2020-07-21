@@ -13,5 +13,15 @@ export default new Vuetify({
                 component: excelIcon,
             },
         },
-      },
+    },
+    theme: {
+        themes: {
+            light: {
+                primary: '#009688',
+                secondary: '#b0bec5',
+                accent: '#A7FFEB',
+                error: '#b71c1c',
+            },
+        },
+    },
 });

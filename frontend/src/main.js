@@ -7,8 +7,12 @@ import vuetify from './plugins/vuetify'
 import vueDebounce from 'vue-debounce'
 import VueToasted from 'vue-toasted'
 
+import VueLodash from 'vue-lodash'
+import lodash from 'lodash'
+
 import 'material-icons/iconfont/material-icons.scss'
 
+Vue.use(VueLodash, { lodash: lodash })
 Vue.use(VueToasted, {
     iconPack : 'material',
     duration: 2500,
@@ -21,6 +25,10 @@ Vue.use(VueToasted, {
 // register custom toasts
 Vue.toasted.register('alert_success',
     payload => payload, { type : 'success', icon : 'check', duration: null }
+)
+
+Vue.toasted.register('alert_info',
+    payload => payload, { type : 'info', icon : 'info', duration: null }
 )
 
 Vue.toasted.register('alert_error',

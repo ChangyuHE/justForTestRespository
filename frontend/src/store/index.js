@@ -5,6 +5,7 @@ Vue.use(Vuex)
 
 import tree from './tree'
 import reports from './reports'
+import server from '@/server'
 
 export default new Vuex.Store({
     modules: {
@@ -36,11 +37,22 @@ export default new Vuex.Store({
     },
     actions: {
         setImportErrors: ({ commit }, payload) => {
-            commit('SET_IMPORT_ERRORS', payload);
+            commit('SET_IMPORT_ERRORS', payload)
         },
         deleteImportError: ({ commit }, payload) => {
-            commit('DELETE_IMPORT_ERROR', payload);
+            commit('DELETE_IMPORT_ERROR', payload)
         },
+        getUserData: ({ commit }) => {
+            const url = 'api/users/current/'
+            return server
+                .get(url)
+                .then(response => {
+                    commit('SET_USER_DATA', response.data)
+                })
+                .catch(error => {
+                    error.handleGlobally('Could not get current user data', url)
+                })
+        }
     },
     strict: process.env.NODE_ENV !== 'production'
 });

@@ -100,7 +100,8 @@
                 routeMap: [
                     { name: 'home', show: 'Validations' },
                     { name: 'import', show: 'Import' },
-                    { name: 'search', show: 'Search' }
+                    { name: 'search', show: 'Search' },
+                    { name: 'feature-mapping', show: 'Features' }
                 ]
             }
         },
@@ -125,19 +126,6 @@
             toTop() {
                 this.$vuetify.goTo(0);
             },
-        },
-        mounted() {
-            // get user data
-            let url = 'api/users/current/';
-            server
-                .get(url)
-                .then(response => {
-                    let data = response.data;
-                    this.$store.commit('SET_USER_DATA', data);
-                })
-                .catch(error => {
-                    error.handleGlobally('Could not get current user data', url)
-                })
         }
     }
 </script>

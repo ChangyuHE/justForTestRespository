@@ -1,9 +1,11 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
-import Import from '../views/Import.vue'
-import Search from '../views/Search.vue'
-import TestVerifier from '../views/TestVerifier.vue'
+import store from '@/store'
+
+import Home from '../views/Home'
+import Import from '../views/Import'
+import Search from '../views/Search'
+import TestVerifier from '../views/TestVerifier'
 
 Vue.use(VueRouter)
 
@@ -29,6 +31,12 @@ const routes = [
         name: 'testVerifier',
         component: TestVerifier
     },
+    {
+        path: '/feature-mapping',
+        name: 'feature-mapping',
+        component: () => import(/* webpackChunkName: "FMT" */ '../views/FeatureMapping/Show.vue')
+        // component: FeatureMapping
+    },
     // {
     //     path: '/about',
     //     name: 'About',
@@ -47,5 +55,15 @@ const router = new VueRouter({
     // linkActiveClass: "router-active",
     routes
 })
+
+// Navigation guard to get user data first
+const storeInit = store.dispatch('getUserData')
+router.beforeEach((to, from, next) => {
+    storeInit
+        .then(next)
+        .catch(error => {
+            error.handleGlobally && error.handleGlobally('Error during initial data loading', url)
+        })
+  })
 
 export default router

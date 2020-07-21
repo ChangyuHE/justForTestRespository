@@ -88,6 +88,7 @@
                         item-value="id"
                         placeholder="Start typing to search available validations or leave empty for new one"
                         prepend-icon="mdi-database-search"
+                        color="blue-grey"
                         :items="items"
                         :loading="isLoading"
                         :search-input.sync="search"

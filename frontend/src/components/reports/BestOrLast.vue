@@ -89,23 +89,22 @@
         },
         methods: {
             reportExcel() {
-                let urlParams = '?report=excel';
-                urlParams += `&group-by=${this.reportGroups[this.reportGrouping]}`
+                const url = `${this.url}?report=excel&group-by=${this.reportGroups[this.reportGrouping]}`
                 this.$store
-                    .dispatch('reports/reportExcel', {'url': this.url + urlParams})
+                    .dispatch('reports/reportExcel', { url })
                     .catch(error => {
-                        this.$toasted.global.alert_error(error)
+                        error.handleGlobally(`Failed in "${this.type}" excel report`, url)
                     });
             },
             changeGrouping() {
                 this.reportWeb();
             },
             reportWeb() {
-                let urlParams = `?group-by=${this.reportGroups[this.reportGrouping]}`;
+                const url = `${this.url}?group-by=${this.reportGroups[this.reportGrouping]}`
                 this.$store
-                    .dispatch('reports/reportWeb', {'url': this.url + urlParams})
+                    .dispatch('reports/reportWeb', { url })
                     .catch(error => {
-                        this.$toasted.global.alert_error(error)
+                        error.handleGlobally(`Failed in "${this.type}" web report`, url)
                     });
             },
             /**

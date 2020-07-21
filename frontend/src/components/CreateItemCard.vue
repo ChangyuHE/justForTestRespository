@@ -68,24 +68,8 @@
                         )
                     })
                     .catch(error => {
-                        if (error.response) {
-                            if ('data' in error.response) {
-                                console.log(error.response);
-                                let returned = error.response.data;
-                                this.$toasted.global.alert_error_detailed({
-                                    'header': `Failed to create ${this.objectName} object<br>\n`,
-                                    'message': `${returned.detail}<br>\nURL: ${server.defaults.baseURL}/${url}<br>\n${JSON.stringify(data)}`
-                                })
-                            }
-                        } else if (error.request) {     // The request was made but no response was received
-                            console.log('No response, request:', error.request);
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                        } else {
-                            console.log('Something happened in setting up the request that triggered an Error:', error.message);
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                        }
+                        error.handleGlobally(`Failed to create ${this.objectName} object`, url)
                     })
-                    .finally(() => {})
             }
         }
     }

@@ -263,15 +263,7 @@
                         this.entries = res.data
                     })
                     .catch(error => {
-                        if (error.response) {
-                            console.log(error.response.data);
-                        } else if (error.request) {
-                            console.log('No response, request:', error.request);
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                        } else {
-                            console.log('Something happened in setting up the request that triggered an Error:', error.message);
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                        }
+                        error.handleGlobally('Failed to validations list (import page)', url)
                     })
                     .finally(() => (this.isLoading = false))
             },
@@ -321,8 +313,8 @@
                         if(error.response.status != 422) {
                             console.log(error.response);
                             let data = JSON.stringify(error.response.data);
-                            if (data.length > 100)
-                                data = data.slice(0, 100)
+                            if (data.length > 200)
+                                data = data.slice(0, 200)
 
                             this.$toasted.global.alert_error_detailed({
                                 'header': `Error during import<br>\n
@@ -363,7 +355,7 @@
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     }
                 })
-                .finally(() => { this.uploading = false });
+                .finally(() => { this.uploading = false })
             }
         }
     }

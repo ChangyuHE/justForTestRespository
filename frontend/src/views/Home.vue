@@ -91,7 +91,6 @@
 </template>
 
 <script>
-    import server from '@/server.js'
     import validationsTree from '@/components/tree/ValidationsTree.vue'
     import comparisonReport from '@/components/reports/Comparison.vue'
     import bestOrLastReport from '@/components/reports/BestOrLast.vue'

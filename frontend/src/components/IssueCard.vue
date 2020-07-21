@@ -170,14 +170,7 @@
                         this.$toasted.success('Request has been sent');
                     })
                     .catch(error => {
-                            if (error.response) {
-                                this.$toasted.global.alert_error_detailed({
-                                    'header': 'Error during requesting creation of a new object',
-                                    'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${error.response.data}`
-                                })
-                            } else {
-                                console.log(error);
-                            }
+                        error.handleGlobally('Error during requesting creation of a new object', url)
                     })
                     .finally(() => (this.sending = false))
             }

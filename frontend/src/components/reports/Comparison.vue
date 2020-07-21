@@ -102,11 +102,11 @@
         },
         methods: {
             reportExcel() {
-                let urlParams = '?report=excel';
+                const url = `${this.url}?report=excel`
                 this.$store
-                    .dispatch('reports/reportExcel', {'url': this.url + urlParams})
+                    .dispatch('reports/reportExcel', { url })
                     .catch(error => {
-                        this.$toasted.global.alert_error(error)
+                        error.handleGlobally(`Failed in "${this.type}" excel report`, url)
                     });
             },
             changeGrouping() {
@@ -117,11 +117,11 @@
                 this.reportWeb();
             },
             reportWeb() {
-                let urlParams = `?show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`;
+                const url = `${this.url}?show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`
                 this.$store
-                    .dispatch('reports/reportWeb', {'url': this.url + urlParams})
+                    .dispatch('reports/reportWeb', { url })
                     .catch(error => {
-                        this.$toasted.global.alert_error(error)
+                        error.handleGlobally(`Failed in "${this.type}" web report`, url)
                     });
             },
             /**

@@ -62,12 +62,12 @@
             </v-dialog>
         </v-app-bar>
 
-        <v-content>
+        <v-main>
             <v-container fluid class="pt-0">
                 <!-- Router views will appers here -->
                 <router-view></router-view>
             </v-container>
-        </v-content>
+        </v-main>
 
         <!-- Scrolling to top -->
         <v-btn
@@ -136,10 +136,8 @@
                     this.$store.commit('SET_USER_DATA', data);
                 })
                 .catch(error => {
-                    console.log(error)
-                    this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
-                    })
-                .finally()
+                    error.handleGlobally('Could not get current user data', url)
+                })
         }
     }
 </script>

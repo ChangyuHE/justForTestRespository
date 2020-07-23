@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 
     'api.apps.ApiConfig',
     'api.collate.apps.ImportConfig',
+    'test_verifier.apps.TestVerifierConfig',
     'debug_toolbar',
     'rest_framework_swagger',
     'webpack_loader',

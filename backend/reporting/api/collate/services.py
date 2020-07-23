@@ -46,6 +46,7 @@ def import_results(file, descriptor):
     outcome, mapping = _verify_file(file, descriptor)
 
     if not outcome.is_success():
+        log.debug('Interrupting import due to verification errors.')
         return outcome
 
     # store file content
@@ -152,7 +153,8 @@ def _verify_file(file, descriptor):
     excel_base_date = workbook.excel_base_date
 
     # decide which sheet will be used as data source
-    sheet, column_mapping = _get_best_sheet(workbook)
+    mapping = _get_best_sheet_mapping(workbook)
+    sheet, column_mapping = mapping
     if sheet is None:
         existing_columns = set(column_mapping.keys())
         missing_columns = ', '.join(
@@ -160,6 +162,7 @@ def _verify_file(file, descriptor):
         )
         outcome.add_missing_columns_error(missing_columns)
 
+        log.debug('Verification failed due to sheet mapping errors.')
         return outcome, None
 
     log.debug(f"Using sheet '{sheet.title}'")
@@ -169,8 +172,9 @@ def _verify_file(file, descriptor):
     new_objects_ids.clear()
 
     # Create Validation entity
-    if not _build_validation(descriptor, (sheet, column_mapping), outcome):
-        return outcome, None
+    if not _build_validation(descriptor, mapping, outcome):
+        # Resume file content validation to collect all other possible warnings
+        log.error("Unable to read or create Validation using file content.")
 
     validation = descriptor.validation
 
@@ -209,10 +213,7 @@ def _verify_file(file, descriptor):
 
             log.error(message)
 
-    if validation is None:
-        outcome.add_invalid_validation_error("Unable to read or create Validation using file content.")
-
-    return outcome, (sheet, column_mapping)
+    return outcome, mapping
 
 
 def _find_existing_entity(reference):
@@ -266,7 +267,7 @@ def _clear_cache(*classes):
         queryset_cache.pop(cls.__name__, None)
 
 
-def _get_best_sheet(workbook):
+def _get_best_sheet_mapping(workbook):
     column_mapping = {}
 
     for title in [workbook.worksheets[0].title, 'best', 'all']:
@@ -330,6 +331,7 @@ def _build_validation(descriptor, mapping, outcome):
     # read fields for Validation creation from data source
     builder = RecordBuilder(None, row, column_mapping, outcome)
     if not builder.verify(force_run=True):
+        log.debug('Unable to build Validation object based on 2nd row of the file.')
         return False
 
     fields = builder.get_fields()

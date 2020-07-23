@@ -117,6 +117,18 @@ class ImportFileIntegrationTest(DbFixture):
         response = client.post(reverse('collate:import'), self.request)
         self.assertContains(response, 'ERR_AMBIGUOUS_COLUMN', status_code=422)
 
+    def test_create_validation(self):
+        self.set_file('import_err_create_validation.json')
+        self.request.pop('validation_id')
+        self.request['validation_name'] = 'New validation'
+
+        client = Client()
+        response = client.post(reverse('collate:import'), self.request)
+
+        self.assertContains(response, 'ERR_MISSING_ENTITY', status_code=422)
+        self.assertContains(response, 'ERR_AMBIGUOUS_COLUMN', status_code=422)
+        self.assertContains(response, 'ERR_EXISTING_RUN', status_code=422)
+
 
 class ImportDatetimeParserTest(DbFixture):
     def test_invalid_date(self):

@@ -11,12 +11,14 @@ from types import SimpleNamespace
 
 from api.models import *
 from api.serializers import create_serializer
+from api.collate.caches import QueryCache
+from api.collate.caches import ObjectsCache
 
 """ Business logic """
 
 log = logging.getLogger(__name__)
-queryset_cache = dict()
-new_objects_ids = dict()
+queryset_cache = QueryCache()
+new_objects_ids = ObjectsCache()
 
 NAME_MAPPING = {
     'buildversion': 'driverName',
@@ -113,17 +115,9 @@ def _store_results(mapping, descriptor):
     for row in non_empty_row(rows):
         builder = RecordBuilder(descriptor.validation, row, column_mapping, outcome)
         entity = builder.build(descriptor.force_run)
+        _update_changes_counters(changes, entity)
 
-        if entity is None:
-            changes.skipped += 1
-        elif entity.id is None:
-            entity.save()
-            changes.added += 1
-        else:
-            entity.save()
-            changes.updated += 1
-
-    outcome.changes = changes.__dict__
+    outcome.changes = _namespace_to_dict(changes)
 
     log.debug(f'File store outcome: {outcome.build()}')
     if not outcome.is_success():
@@ -131,6 +125,18 @@ def _store_results(mapping, descriptor):
 
     return outcome
 
+def _update_changes_counters(changes, entity):
+    if entity is None:
+        changes.skipped += 1
+    elif entity.id is None:
+        entity.save()
+        changes.added += 1
+    else:
+        entity.save()
+        changes.updated += 1
+
+def _namespace_to_dict(namespace):
+    return dict(namespace.__dict__)
 
 def _verify_file(file, descriptor):
     global excel_base_date
@@ -230,7 +236,7 @@ def _find_existing_entity(reference):
 
 
 def _find_group(item_name):
-    group_mask_queryset = _get_cached_query(ResultGroupMask)
+    group_mask_queryset = queryset_cache.get(ResultGroupMask)
 
     for group_mask in group_mask_queryset:
         if re.match(group_mask.mask, item_name):
@@ -241,30 +247,6 @@ def _find_group(item_name):
     except (ResultGroupNew.DoesNotExist, ResultGroupNew.MultipleObjectsReturned):
         return None
 
-
-def _update_new_objects(cls, id):
-    new_objects_ids.setdefault(cls.__name__, set())
-    new_objects_ids[cls.__name__].add(id)
-
-
-def _is_known_new_object(cls, id):
-    return id in new_objects_ids.get(cls.__name__, set())
-
-
-def _get_cached_query(cls):
-    queryset_key = cls.__name__
-    cached_query = queryset_cache.get(queryset_key, None)
-
-    if cached_query is None:
-        cached_query = cls.objects.all()
-        queryset_cache[queryset_key] = cached_query
-
-    return cached_query
-
-
-def _clear_cache(*classes):
-    for cls in classes:
-        queryset_cache.pop(cls.__name__, None)
 
 
 def _get_best_sheet_mapping(workbook):
@@ -407,92 +389,50 @@ class OutcomeBuilder:
     def add_warning(self, warning):
         self.warnings[warning] = self.warnings.get(warning, 0) + 1
 
-    def add_invalid_validation_error(self, message):
-        err = dict(
-            code='ERR_INVALID_VALIDATION_ID',
-            message=message,
-        )
-
+    def __add_error(self, code, message, **kwargs):
+        err = dict(code=code, message=message, **kwargs)
         if err not in self.errors:
             self.errors.append(err)
+
+    def add_invalid_validation_error(self, message):
+        self.__add_error('ERR_INVALID_VALIDATION_ID', message)
 
     def add_existing_validation_error(self, message, fields_data):
         fields = {str(key): str(value) for (key, value) in fields_data}
-        err = dict(
-            code='ERR_EXISTING_VALIDATION',
-            message=message,
-            entity=dict(model='Validation', fields=fields),
-        )
+        entity = dict(model='Validation', fields=fields)
 
-        if err not in self.errors:
-            self.errors.append(err)
+        self.__add_error('ERR_EXISTING_VALIDATION', message, entity=entity)
 
     def add_missing_field_error(self, missing_field, is_alias=False):
         model_name, fields = missing_field
-
-        err = dict(
-            code='ERR_MISSING_ENTITY',
-            message=f'Missing field {missing_field}',
-            entity=dict(model=model_name, fields=fields),
-        )
+        entity=dict(model=model_name, fields=fields)
 
         if is_alias:
             self.add_warning(f"{model_name} with name or alias '{fields['name']}' does not exist.")
         else:
             self.add_warning(f'{model_name} with properties {fields} does not exist.')
 
-        if err not in self.errors:
-            self.errors.append(err)
+        self.__add_error('ERR_MISSING_ENTITY', f'Missing field {missing_field}', entity=entity)
 
     def add_missing_columns_error(self, columns):
-        err = dict(
-            code='ERR_MISSING_COLUMNS',
-            message='Not all columns found, please check import file for correctness.',
-            values=columns,
-        )
-
-        if err not in self.errors:
-            self.errors.append(err)
+        message = 'Not all columns found, please check import file for correctness.'
+        self.__add_error('ERR_MISSING_COLUMNS', message, values=columns)
 
     def add_workbook_error(self, message):
-        err = dict(
-            code='ERR_WORKBOOK_EXCEPTION',
-            message=message,
-        )
-
-        if err not in self.errors:
-            self.errors.append(err)
+        self.__add_error('ERR_WORKBOOK_EXCEPTION', message)
 
     def add_ambiguous_column_error(self, column, values):
-        err = dict(
-            code='ERR_AMBIGUOUS_COLUMN',
-            message='Two or more distinct values in column',
-            column=column,
-            values=values,
-        )
-
-        if err not in self.errors:
-            self.errors.append(err)
+        message = 'Two or more distinct values in column'
+        self.__add_error('ERR_AMBIGUOUS_COLUMN', message, column=column, values=values)
 
     def add_existing_run_error(self, run):
         message = f"Run with name '{run.name}' and session '{run.session}' already exist."
-        err = dict(
-            code='ERR_EXISTING_RUN',
-            message=message,
-        )
-
         self.add_warning(message)
-        if err not in self.errors:
-            self.errors.append(err)
+        self.__add_error('ERR_EXISTING_RUN', message)
 
     def add_date_format_error(self, date, field_type='string'):
-        err = dict(
-            code='ERR_DATE_FORMAT',
-            message=f'Unable to auto-convert {field_type} "{date}" to excel date.',
-        )
-
-        if err not in self.errors:
-            self.errors.append(err)
+        message=f'Unable to auto-convert {field_type} "{date}" to excel date.'
+        self.__add_error('ERR_DATE_FORMAT', message)
 
 
 class RecordBuilder:
@@ -531,7 +471,7 @@ class RecordBuilder:
         # Create Run entities automatically if they was not found in database during import. If found - send warning.
         try:
             record.run = Run.objects.get(name=columns['testRun'], session=columns['testSession'])
-            if not force_run and not _is_known_new_object(Run, record.run.id):
+            if not force_run and not new_objects_ids.is_known(Run, record.run.id):
                 self.__outcome.add_existing_run_error(record.run)
         except (Run.DoesNotExist, Run.MultipleObjectsReturned):
             record.run = Run(name=columns['testRun'], session=columns['testSession'])
@@ -555,19 +495,17 @@ class RecordBuilder:
         if not self.verify(force_run):
             return None
 
+        fields = _namespace_to_dict(self.__record)
+
         # Ensure that all fields are present.
-        fields = self.__record.__dict__
-        if None in fields.values():
-            missing_fields = [x[0] for x in fields.items() if x[1] is None]
-            message = f'Corrupted validation of column "{self.__row[0].row}": missing fields {missing_fields}'
-            log.debug(message)
-            self.__outcome.add_workbook_error(message)
+        if not self.__check_fields_existance(fields):
+            self.__notify_missing_fields(fields)
             return None
 
         # Create Run entities automatically if they was not found in database during import.
         if self.__record.run.id is None:
             self.__record.run.save()
-            _update_new_objects(Run, self.__record.run.id)
+            new_objects_ids.update(Run, self.__record.run.id)
 
         entity = Result()
         for key, value in fields.items():
@@ -617,48 +555,76 @@ class RecordBuilder:
         return SimpleNamespace(**self.__record.__dict__)
 
     def _find_object(self, cls, ignore_warnings=False, **params):
-        cached_query = _get_cached_query(cls)
-
-        for obj in cached_query:
-            found = True
-
-            for key, value in params.items():
-                # case insensitive strings compare
-                if type(value) != str:
-                    found &= getattr(obj, key) == value
-                else:
-                    attr = getattr(obj, key, None)
-
-                    if attr is not None:
-                        found &= attr.lower() == value.lower()
-                    else:
-                        found = False
-                        break
-
-            if found:
+        for obj in queryset_cache.get(cls):
+            if self.__match_by_params(obj, params):
                 return obj
 
+        self._notify_object_not_found(cls, params, ignore_warnings)
+        return None
+
+    def _find_with_alias(self, cls, alias, ignore_warnings=False):
+        if alias is None:
+            return None
+
+        for obj in queryset_cache.get(cls):
+            if self.__match_by_alias(obj, alias):
+                return obj
+
+        self._notify_alias_not_found(cls, alias, ignore_warnings)
+        return None
+
+    def __match_by_params(self, obj, params):
+        found = True
+
+        for key, value in params.items():
+            # case insensitive strings compare
+            if type(value) != str:
+                found &= getattr(obj, key) == value
+            else:
+                attr = getattr(obj, key, None)
+
+                if attr is not None:
+                    found &= attr.lower() == value.lower()
+                else:
+                    found = False
+                    break
+
+        return found
+
+    def __match_by_alias(self, obj, name):
+        ignore_case_name = name.lower()
+
+        if obj.name.lower() == ignore_case_name:
+            return True
+
+        if obj.aliases is None:
+            return False
+
+        if ignore_case_name in self.__iterate_aliases(obj.aliases):
+            return True
+
+        return False
+
+    def __check_fields_existance(self, fields):
+        return None not in fields.values()
+
+    def __notify_missing_fields(self, fields):
+        missing_fields = [x[0] for x in fields.items() if x[1] is None]
+        message = f'Corrupted validation of column "{self.__row[0].row}": missing fields {missing_fields}'
+
+        log.debug(message)
+        self.__outcome.add_workbook_error(message)
+
+    def _notify_object_not_found(self, cls, params, ignore_warnings):
         if not ignore_warnings:
             self.__outcome.add_missing_field_error((cls.__name__, params))
 
-        return None
-
-    def _find_with_alias(self, cls, name, ignore_warnings=False):
-        if name is None:
-            return None
-
-        cached_query = _get_cached_query(cls)
-        iname = name.lower()
-
-        for obj in cached_query:
-            if obj.name.lower() == iname \
-                    or obj.aliases is not None and obj.aliases.lower().find(iname) >= 0:
-                return obj
-
+    def _notify_alias_not_found(self, cls, name, ignore_warnings):
         if not ignore_warnings:
             self.__outcome.add_missing_field_error((cls.__name__, dict(name=name)), is_alias=True)
 
-        return None
+    def __iterate_aliases(self, aliases):
+        return (x for x in map(str.strip, aliases.lower().split(';')) if x)
 
 
 class EntityException(Exception):

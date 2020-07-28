@@ -24,7 +24,7 @@ NEW_WEIGHT_VALUES = {
 def add_weight(apps, schema_editor):
     Os = apps.get_model('api', 'os')
     for name, weight in NEW_WEIGHT_VALUES.items():
-        os = Os.objects.get(name=name)
+        os, *_ = Os.objects.get_or_create(name=name)
         os.weight = weight
         os.save()
 
@@ -48,7 +48,7 @@ NEW_SHORTCUT_VALUES = {
 def add_shortcut(apps, schema_editor):
     Os = apps.get_model('api', 'os')
     for name, shortcut in NEW_SHORTCUT_VALUES.items():
-        os = Os.objects.get(name=name)
+        os, *_ = Os.objects.get_or_create(name=name)
         os.shortcut = shortcut
         os.save()
 

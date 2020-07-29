@@ -1,0 +1,184 @@
+[
+    {
+        "model": "test_verifier.feature",
+        "pk": 1,
+        "fields": {
+            "name": "Weighted prediction"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 2,
+        "fields": {
+            "name": "Profile/level"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 3,
+        "fields": {
+            "name": "LCU size"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 4,
+        "fields": {
+            "name": "Slice/Tile structure"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 5,
+        "fields": {
+            "name": "Fade in/out detection"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 6,
+        "fields": {
+            "name": "MB QP map"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 7,
+        "fields": {
+            "name": "Rounding"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 8,
+        "fields": {
+            "name": "Frame type"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 9,
+        "fields": {
+            "name": "SCC"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 10,
+        "fields": {
+            "name": "Target usages"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 11,
+        "fields": {
+            "name": "Filters"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 12,
+        "fields": {
+            "name": "Reference"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 13,
+        "fields": {
+            "name": "IPU streaming buffer"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 14,
+        "fields": {
+            "name": "Rolling I"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 15,
+        "fields": {
+            "name": "QP adjustment"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 16,
+        "fields": {
+            "name": "Temporal MVP"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 17,
+        "fields": {
+            "name": "Tile based encoding"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 18,
+        "fields": {
+            "name": "Multi source format"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 19,
+        "fields": {
+            "name": "GOP structure/control"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 20,
+        "fields": {
+            "name": "Range extention"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 21,
+        "fields": {
+            "name": "Transform skip"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 22,
+        "fields": {
+            "name": "ROI"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 23,
+        "fields": {
+            "name": "Bitrate control mode"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 24,
+        "fields": {
+            "name": "Bit depth"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 25,
+        "fields": {
+            "name": "Resolution"
+        }
+    },
+    {
+        "model": "test_verifier.feature",
+        "pk": 26,
+        "fields": {
+            "name": "Bitrate control"
+        }
+    }
+]

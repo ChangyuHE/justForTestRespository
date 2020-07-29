@@ -1,0 +1,23 @@
+[
+  {
+    "model": "test_verifier.featurecategory",
+    "pk": 1,
+    "fields": {
+      "name": "Spec Conformance"
+    }
+  },
+    {
+    "model": "test_verifier.featurecategory",
+    "pk": 2,
+    "fields": {
+      "name": "Intel Quality improvement"
+    }
+  },
+    {
+    "model": "test_verifier.featurecategory",
+    "pk": 3,
+    "fields": {
+      "name": "Intel Performance improvement"
+    }
+  }
+]

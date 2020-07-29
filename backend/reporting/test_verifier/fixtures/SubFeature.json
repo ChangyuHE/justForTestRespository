@@ -1,0 +1,1886 @@
+[
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 1,
+        "fields": {
+            "name": "444Main / 444Main10 - 6.1",
+            "codec": 1,
+            "category": 1,
+            "feature": 2,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 2,
+        "fields": {
+            "name": "SCCMain / SCCMain10 / SCC444Main / SCC 444Main10 - 6.1",
+            "codec": 1,
+            "category": 1,
+            "feature": 2,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 3,
+        "fields": {
+            "name": "I frame",
+            "codec": 1,
+            "category": 1,
+            "feature": 8,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 4,
+        "fields": {
+            "name": "P frame",
+            "codec": 1,
+            "category": 1,
+            "feature": 8,
+            "lin_platforms": [],
+            "win_platforms": [],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 5,
+        "fields": {
+            "name": "RA B frame",
+            "codec": 1,
+            "category": 1,
+            "feature": 8,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 6,
+        "fields": {
+            "name": "8 bit",
+            "codec": 1,
+            "category": 1,
+            "feature": 24,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 7,
+        "fields": {
+            "name": "10 bit",
+            "codec": 1,
+            "category": 1,
+            "feature": 24,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 8,
+        "fields": {
+            "name": "12 bit",
+            "codec": 1,
+            "category": 1,
+            "feature": 24,
+            "lin_platforms": [],
+            "win_platforms": [],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 9,
+        "fields": {
+            "name": "422",
+            "codec": 1,
+            "category": 1,
+            "feature": 20,
+            "lin_platforms": [],
+            "win_platforms": [],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 10,
+        "fields": {
+            "name": "444",
+            "codec": 1,
+            "category": 1,
+            "feature": 20,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 11,
+        "fields": {
+            "name": "64x64",
+            "codec": 1,
+            "category": 1,
+            "feature": 3,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 12,
+        "fields": {
+            "name": "32x32",
+            "codec": 1,
+            "category": 1,
+            "feature": 3,
+            "lin_platforms": [],
+            "win_platforms": [],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 13,
+        "fields": {
+            "name": "3 fwd",
+            "codec": 1,
+            "category": 1,
+            "feature": 12,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 14,
+        "fields": {
+            "name": "2 fwd + 1 bwd",
+            "codec": 1,
+            "category": 1,
+            "feature": 12,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 15,
+        "fields": {
+            "name": "Long term reference",
+            "codec": 1,
+            "category": 1,
+            "feature": 12,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 16,
+        "fields": {
+            "name": "SAO",
+            "codec": 1,
+            "category": 1,
+            "feature": 11,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 17,
+        "fields": {
+            "name": "Deblocking",
+            "codec": 1,
+            "category": 1,
+            "feature": 11,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 18,
+        "fields": {
+            "name": "4K",
+            "codec": 1,
+            "category": 1,
+            "feature": 25,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 19,
+        "fields": {
+            "name": "8K",
+            "codec": 1,
+            "category": 1,
+            "feature": 25,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 20,
+        "fields": {
+            "name": "16K",
+            "codec": 1,
+            "category": 1,
+            "feature": 25,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 21,
+        "fields": {
+            "name": "Row slice",
+            "codec": 1,
+            "category": 1,
+            "feature": 4,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 22,
+        "fields": {
+            "name": "Arbitraty slice by dynamic slice size control",
+            "codec": 1,
+            "category": 1,
+            "feature": 4,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 23,
+        "fields": {
+            "name": "Multi tile",
+            "codec": 1,
+            "category": 1,
+            "feature": 4,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 24,
+        "fields": {
+            "name": "Transform skip",
+            "codec": 1,
+            "category": 1,
+            "feature": 21,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 25,
+        "fields": {
+            "name": "Temporal MVP",
+            "codec": 1,
+            "category": 1,
+            "feature": 16,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 26,
+        "fields": {
+            "name": "Explicit",
+            "codec": 1,
+            "category": 1,
+            "feature": 1,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 27,
+        "fields": {
+            "name": "Palette",
+            "codec": 1,
+            "category": 1,
+            "feature": 9,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 28,
+        "fields": {
+            "name": "IBC",
+            "codec": 1,
+            "category": 1,
+            "feature": 9,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 29,
+        "fields": {
+            "name": "LDB frame",
+            "codec": 1,
+            "category": 2,
+            "feature": 8,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 30,
+        "fields": {
+            "name": "TU1",
+            "codec": 1,
+            "category": 2,
+            "feature": 10,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 31,
+        "fields": {
+            "name": "TU4",
+            "codec": 1,
+            "category": 2,
+            "feature": 10,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 32,
+        "fields": {
+            "name": "TU7",
+            "codec": 1,
+            "category": 2,
+            "feature": 10,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 33,
+        "fields": {
+            "name": "Row intra refresh",
+            "codec": 1,
+            "category": 2,
+            "feature": 14,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 34,
+        "fields": {
+            "name": "Column intra refresh",
+            "codec": 1,
+            "category": 2,
+            "feature": 14,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 35,
+        "fields": {
+            "name": "16 regions",
+            "codec": 1,
+            "category": 2,
+            "feature": 22,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 36,
+        "fields": {
+            "name": "MB QP map",
+            "codec": 1,
+            "category": 2,
+            "feature": 6,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 37,
+        "fields": {
+            "name": "QP adjustment",
+            "codec": 1,
+            "category": 2,
+            "feature": 15,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 38,
+        "fields": {
+            "name": "CBR",
+            "codec": 1,
+            "category": 2,
+            "feature": 23,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 39,
+        "fields": {
+            "name": "VBR",
+            "codec": 1,
+            "category": 2,
+            "feature": 23,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 40,
+        "fields": {
+            "name": "QVBR",
+            "codec": 1,
+            "category": 2,
+            "feature": 23,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 41,
+        "fields": {
+            "name": "TCBRC",
+            "codec": 1,
+            "category": 2,
+            "feature": 23,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 42,
+        "fields": {
+            "name": "Sliding window",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 43,
+        "fields": {
+            "name": "Min/Max QP",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 44,
+        "fields": {
+            "name": "Max frame size",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 45,
+        "fields": {
+            "name": "Single pass",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 46,
+        "fields": {
+            "name": "MBBRC",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 47,
+        "fields": {
+            "name": "Low power look ahead (0, 60]",
+            "codec": 1,
+            "category": 2,
+            "feature": 26,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 48,
+        "fields": {
+            "name": "Flat P/B",
+            "codec": 1,
+            "category": 2,
+            "feature": 19,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 49,
+        "fields": {
+            "name": "B pyramid - Gop ref dist [4, 8]",
+            "codec": 1,
+            "category": 2,
+            "feature": 19,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 50,
+        "fields": {
+            "name": "P pyramid - Gop ref dist [1]",
+            "codec": 1,
+            "category": 2,
+            "feature": 19,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 51,
+        "fields": {
+            "name": "Fade in/out detection",
+            "codec": 1,
+            "category": 2,
+            "feature": 5,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 52,
+        "fields": {
+            "name": "Rounding",
+            "codec": 1,
+            "category": 2,
+            "feature": 7,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 53,
+        "fields": {
+            "name": "Tile row based",
+            "codec": 1,
+            "category": 3,
+            "feature": 17,
+            "lin_platforms": [],
+            "win_platforms": [
+                10
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 54,
+        "fields": {
+            "name": "IPU streaming buffer",
+            "codec": 1,
+            "category": 3,
+            "feature": 13,
+            "lin_platforms": [
+                2,
+                3,
+                9,
+                17,
+                22
+            ],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 55,
+        "fields": {
+            "name": "ARGB",
+            "codec": 1,
+            "category": 3,
+            "feature": 18,
+            "lin_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "win_platforms": [
+                2,
+                3,
+                4,
+                6,
+                9,
+                10,
+                13,
+                17,
+                20,
+                21,
+                22,
+                23
+            ],
+            "notes": null
+        }
+    },
+    {
+        "model": "test_verifier.subfeature",
+        "pk": 56,
+        "fields": {
+            "name": "Linear",
+            "codec": 1,
+            "category": 3,
+            "feature": 18,
+            "lin_platforms": [],
+            "win_platforms": [
+                2,
+                3,
+                9,
+                10,
+                17,
+                22
+            ],
+            "notes": null
+        }
+    }
+]

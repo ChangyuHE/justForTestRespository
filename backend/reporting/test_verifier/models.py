@@ -7,20 +7,29 @@ from api.models import Platform
 class Codec(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
+    def __str__(self):
+        return self.name
+
 
 class FeatureCategory(models.Model):
     name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Feature(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
+    def __str__(self):
+        return self.name
+
 
 class SubFeature(models.Model):
     name = models.CharField(max_length=255)
-    category = models.ForeignKey(FeatureCategory, null=True, blank=True, on_delete=models.CASCADE)
-    feature = models.ForeignKey(Feature, null=True, blank=True, on_delete=models.CASCADE)
-    codec = models.ForeignKey(Codec, null=True, blank=True, on_delete=models.CASCADE)
+    category = models.ForeignKey(FeatureCategory, on_delete=models.CASCADE)
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    codec = models.ForeignKey(Codec, on_delete=models.CASCADE)
     lin_platforms = models.ManyToManyField(Platform, related_name='lin_subfeatures')
     win_platforms = models.ManyToManyField(Platform, related_name='win_subfeatures')
     notes = models.CharField(max_length=255, blank=True, null=True)
@@ -32,3 +41,6 @@ class SubFeature(models.Model):
                 name='unique_subfeature'
             )
         ]
+
+    def __str__(self):
+        return self.name

@@ -37,6 +37,9 @@ urlpatterns = [
     url(r'^api/objects/create/$', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
 
+
+    path('api/test_verifier/', include('test_verifier.urls')),
+
     path('admin/', admin.site.urls),
 ]\
     + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \

@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import Home from '../views/Home.vue'
 import Import from '../views/Import.vue'
 import Search from '../views/Search.vue'
+import TestVerifier from '../views/TestVerifier.vue'
 
 Vue.use(VueRouter)
 
@@ -22,6 +23,11 @@ const routes = [
         path: '/search',
         name: 'search',
         component: Search
+    },
+    {
+        path: '/test_verifier',
+        name: 'testVerifier',
+        component: TestVerifier
     },
     // {
     //     path: '/about',

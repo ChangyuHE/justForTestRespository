@@ -90,7 +90,7 @@
     }
 
     const CAN_BE_CREATED = ['Driver', 'Item']
-    const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Status']
+    const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Status', 'Generation']
 
     export default {
         components: {

@@ -1,7 +1,13 @@
+from pathlib import Path
+
+from django.conf import settings
+
 from django.db import models
 from django.db.models import UniqueConstraint
 from django.contrib.postgres.fields import JSONField
 from django.contrib.auth import get_user_model
+
+from reporting.settings import AUTH_USER_MODEL
 
 
 class Asset(models.Model):
@@ -298,3 +304,25 @@ class FeatureMapping(models.Model):
                 name='unique_%(class)s_composite_constraint'
             )
         ]
+
+
+class ImportJob(models.Model):
+    def xlsx() -> str:
+        root = Path(settings.MEDIA_ROOT)
+        return str(root / 'xlsx')
+
+    class Status(models.TextChoices):
+        PENDING = 'pending'
+        FAILED = 'failed'
+        DONE = 'done'
+    status = models.CharField(
+        max_length=7,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+    path = models.FilePathField(path=xlsx)

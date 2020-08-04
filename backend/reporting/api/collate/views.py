@@ -45,7 +45,7 @@ class ImportFileView(LoggingMixin, APIView):
 
         log.debug(f'request data: {request.data}')
 
-        outcome = import_results(file, descriptor)
+        outcome = import_results(file, descriptor, request)
 
         log.debug('About to return Response.')
         data = outcome.build()

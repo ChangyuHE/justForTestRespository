@@ -92,9 +92,6 @@ class ImportFileIntegrationTest(DbFixture):
         self.assertEquals(response.data.get('success', None), True,
                           f'Expected import success, actual {response.status_code} {response.data}')
 
-        result = Result.objects.first()
-        self.assertIsNotNone(result.result_reason, "Expected non-empty 'result_reason' entity field.")
-
     def test_missing_columns(self):
         self.set_file('import_err_missing_columns.json')
         client = Client()

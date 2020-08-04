@@ -41,3 +41,8 @@ SQLAlchemy==1.3.16
 sqlparse==0.3.1
 uritemplate==3.0.1
 urllib3==1.25.8
+django-dramatiq==0.9.1
+hiredis==1.1.0
+redis==3.5.3
+sqlalchemy-utils==0.36.8
+pika==1.1.0

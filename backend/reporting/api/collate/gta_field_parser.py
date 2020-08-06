@@ -31,6 +31,17 @@ def custom_column_os(asset: str) -> Tuple[str, str]:
     return asset, f"execution.testRun.repro.value.tasks[?(@.name == 'setup')].items[?(@.['{asset}.asset.os_image.asset_version'])]"
 
 
+ADDITIONAL_PARAMS_MAPPING = dict([
+    ("error_features", "result.custom.error_features"),
+    ("avg_psnr", "result.custom.Avg_PSNR"),
+    ("avg_ssim", "result.custom.Avg_SSIM"),
+    ("extreme_psnr", "result.custom.Extreme_PSNR"),
+    ("extreme_ssim", "result.custom.Extreme_SSIM"),
+    ("file_size", "result.custom.Filesize"),
+    ("md5_value", "result.custom.MD5"),
+])
+
+
 CUSTOM_COLUMNS_MAPPING = dict([
     custom_column("lucas"),
     custom_column("scenario"),
@@ -40,7 +51,7 @@ CUSTOM_COLUMNS_MAPPING = dict([
     custom_column_os("simics"),
     ("driver_build_id", "build.external_id"),
     ("driver_name", "build.version"),
-])
+], **ADDITIONAL_PARAMS_MAPPING)
 
 
 @dataclass
@@ -262,16 +273,7 @@ class GTAFieldParser:
                 "gtaxJobId",
                 "buildName",
             ],
-            "customColumns": [
-                CUSTOM_COLUMNS_MAPPING['lucas'],
-                CUSTOM_COLUMNS_MAPPING['scenario'],
-                CUSTOM_COLUMNS_MAPPING['msdk'],
-                CUSTOM_COLUMNS_MAPPING['fulsim'],
-                CUSTOM_COLUMNS_MAPPING['image_dut'],
-                CUSTOM_COLUMNS_MAPPING['simics'],
-                CUSTOM_COLUMNS_MAPPING['driver_build_id'],
-                CUSTOM_COLUMNS_MAPPING['driver_name'],
-            ]
+            "customColumns": list(CUSTOM_COLUMNS_MAPPING.values())
         }
 
         async def get_amount():
@@ -401,6 +403,10 @@ class GTAFieldParser:
             if msdk.version == '' or msdk.version == '0000':
                 msdk = MsdkAsset(None)
             os_image = dut_os_image if dut_os_image.is_ready else simics_os_image
+            additional_params = dict()
+            for attr, val in ADDITIONAL_PARAMS_MAPPING.items():
+                jsn = json.loads(item[val][0]) if item[val][0] else None
+                additional_params[attr] = jsn[0] if jsn else None
             # Save all retrieved fields for current test item
             self.result[test_item_url] = {
                 "os": os,
@@ -411,6 +417,7 @@ class GTAFieldParser:
                 "msdk": msdk,
                 "fulsim": fulsim,
                 "simics": simics,
+                "additional_params": additional_params,
             }
             test_items_amount += 1
         log.debug(f"Finished processing {self.test_run_id}, added {test_items_amount} keys")

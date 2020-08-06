@@ -557,6 +557,7 @@ class RecordBuilder:
             record.lucas_asset = self._get_or_create(LucasAsset, res['lucas'])
             record.fulsim_asset = self._get_or_create(FulsimAsset, res['fulsim'])
             record.simics = self._get_or_create(Simics, res['simics'])
+            record.additional_parameters = res['additional_params']
         else:
             log.error(f'Missing key {self.__columns["resultURL"]}')
 

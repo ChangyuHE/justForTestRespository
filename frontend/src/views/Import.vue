@@ -83,12 +83,12 @@
                 <v-col cols="6">
                     <v-autocomplete v-if="importType == 'existing'"
                         label="Validations"
+                        color="blue-grey"
                         return-object hide-no-data hide-selected clearable
                         item-text="name"
                         item-value="id"
                         placeholder="Start typing to search available validations or leave empty for new one"
                         prepend-icon="mdi-database-search"
-                        color="blue-grey"
                         :items="items"
                         :loading="isLoading"
                         :search-input.sync="search"
@@ -121,12 +121,20 @@
                                     </span>
                                 </div>
                                 <v-tabs-items v-model="tab">
+                                    <!-- Tab item -->
                                     <v-tab-item v-for="(edata, priority) in importErrors" :key="priority">
-                                        <div v-for="(items, id) in edata" :key="id">
-                                            <issue-card v-for="e in items" :key="e.ID"
-                                                :error="e"
-                                                :priority="priority"
-                                                :error-code="id" />
+                                        <!-- iterating over error codes -->
+                                        <div v-for="(items, eCode) in edata" :key="eCode">
+                                            <div v-for="(errors, modelName) in items" :key="modelName">
+                                                <issue-card v-if="modelName == 'Item' && eCode == 'ERR_MISSING_ENTITY'"
+                                                    :error-data="errors"
+                                                    :priority="priority"
+                                                    :error-code="eCode" />
+                                                <issue-card v-for="e in errors" :key="e.ID" v-else
+                                                    :error-data="e"
+                                                    :priority="priority"
+                                                    :error-code="eCode" />
+                                            </div>
                                         </div>
                                     </v-tab-item>
                                 </v-tabs-items>
@@ -264,7 +272,11 @@
                         this.entries = res.data
                     })
                     .catch(error => {
-                        error.handleGlobally('Failed to validations list (import page)', url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Failed to validations list (import page)', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     })
                     .finally(() => (this.isLoading = false))
             },
@@ -314,8 +326,8 @@
                         if(error.response.status != 422) {
                             console.log(error.response);
                             let data = JSON.stringify(error.response.data);
-                            if (data.length > 200)
-                                data = data.slice(0, 200)
+                            if (data.length > 400)
+                                data = data.slice(0, 400)
 
                             this.$toasted.global.alert_error_detailed({
                                 'header': `Error during import<br>\n
@@ -331,11 +343,26 @@
                                 Object.keys(this.priority).forEach(p => {
                                     if (this.priority[p].includes(e.code)) {
                                         if (!(e.code in eData[p]))
-                                            eData[p][e.code] = [];
+                                            eData[p][e.code] = {}
+
                                         if (e.code in eData[p]) {
-                                            eData[p][e.code].push(
-                                                {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
-                                            );
+                                            // errors bound to models
+                                            if (e.entity) {
+                                                if (!(e.entity.model in eData[p][e.code]))
+                                                    eData[p][e.code][e.entity.model] = []
+
+                                                eData[p][e.code][e.entity.model].push(
+                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
+                                                )
+                                            } else {
+                                                // global (no-model) errors
+                                                if (!('no-model' in eData[p][e.code]))
+                                                    eData[p][e.code]['no-model'] = []
+
+                                                eData[p][e.code]['no-model'].push(
+                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
+                                                )
+                                            }
                                         }
                                     }
                                 });
@@ -366,6 +393,7 @@
     .v-dialog:not(.v-dialog--fullscreen) {
         top: 10% !important;
         position: absolute !important;
+        max-height: 80% !important;
     }
     .gradient-warning-bottom {
         border-bottom: 3px solid transparent;

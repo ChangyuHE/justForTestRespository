@@ -59,7 +59,6 @@
                 server
                     .post(url, data)
                     .then(response => {
-                        console.log(response);
                         this.$toasted.global.alert_success(`${this.modelObject.model} object was created`);
 
                         // remove error by ID from importErrors
@@ -68,7 +67,11 @@
                         )
                     })
                     .catch(error => {
-                        error.handleGlobally(`Failed to create ${this.objectName} object`, url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally(`Failed to create ${this.objectName} object`, url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     })
             }
         }

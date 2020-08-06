@@ -304,7 +304,11 @@
                             highlightSearchData(this.data, this.valToSearch);
                     })
                     .catch(error => {
-                        error.handleGlobally('Failed to get filtered validations', url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Failed to get filtered validations', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     })
                     .finally(() => this.treeFilterLoading = false)
             },
@@ -367,7 +371,11 @@
                     this.data = response.data;
                 })
                 .catch(error => {
-                    error.handleGlobally('Failed to get initial validations tree data', url)
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get initial validations tree data', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
                 })
 
             // Variants of nodes values for filters
@@ -378,7 +386,11 @@
                     this.treeStructure = response.data;
                 })
                 .catch(error => {
-                    error.handleGlobally('Failed to get validations tree available node data', url)
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get validations tree available node data', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
                 })
                 .finally(() => this.$store.dispatch('tree/setTreeLoading', false))
         }

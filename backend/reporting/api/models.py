@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import UniqueConstraint
 from django.contrib.postgres.fields import JSONField
+from django.contrib.auth import get_user_model
 
 
 class Asset(models.Model):
@@ -87,6 +88,14 @@ class Item(models.Model):
     name = models.CharField(max_length=255)
     args = models.CharField(max_length=255)
     group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'args'],
+                name='unique_%(class)s_composite_constraint'
+            ),
+        ]
 
 
 class Os(models.Model):
@@ -240,5 +249,52 @@ class Action(models.Model):  # working functional, example: best, last, compare 
             UniqueConstraint(
                 fields=['name'],
                 name='unique_action_name'
+            )
+        ]
+
+
+class Milestone(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+
+class Feature(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+
+class TestScenario(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+
+class FeatureMappingRule(models.Model):
+    milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE)
+    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
+    scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
+    mapping = models.ForeignKey('FeatureMapping', null=True, blank=True, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['milestone', 'feature', 'scenario', 'mapping'],
+                name='unique_%(class)s_composite_constraint'
+            )
+        ]
+
+
+class FeatureMapping(models.Model):
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+
+    component = models.ForeignKey(Component, on_delete=models.CASCADE)
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
+    os = models.ForeignKey(Os, on_delete=models.CASCADE)
+
+    public = models.BooleanField(default=False)
+    official = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'owner'],
+                name='unique_%(class)s_composite_constraint'
             )
         ]

@@ -41,14 +41,8 @@ from .models import *
 
 from reporting.settings import production
 
-from rest_framework_tracking.base_mixins import BaseLoggingMixin
-from rest_framework_tracking.models import APIRequestLog
-
-
-class LoggingMixin(BaseLoggingMixin):
-    def handle_log(self):
-        del self.log['response']
-        APIRequestLog(**self.log).save()
+from utils.api_logging import get_user_object
+from utils.api_logging import LoggingMixin
 
 
 @never_cache
@@ -67,32 +61,41 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
+# Users block
 class UserList(LoggingMixin, generics.ListAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
-    filter_backends = [django_filters.rest_framework.DjangoFilterBackend]
     filterset_fields = ['is_staff', 'username']
-
-
-class UserDetail(LoggingMixin, generics.RetrieveAPIView):
-    queryset = get_user_model().objects.all()
-    serializer_class = UserSerializer
-    lookup_field = 'username'
 
 
 class CurrentUser(LoggingMixin, APIView):
     def get(self, request):
-        try:
-            username = request.user.username
-            if not production:
-                username = 'debug'
-
-            user_object = get_user_model().objects.get(username=username)
-        except ObjectDoesNotExist:
-            user_object = request.user
-
+        user_object = get_user_object(request)
         user_data = UserSerializer(user_object).data
         return Response(user_data)
+
+
+# Common data block
+class PlatformView(LoggingMixin, generics.ListAPIView):
+    queryset = Platform.objects.all()
+    serializer_class = PlatformSerializer
+    filterset_fields = ['name', 'short_name', 'generation__name']
+
+
+class OsView(LoggingMixin, generics.ListAPIView):
+    queryset = Os.objects.all().prefetch_related('group')
+    serializer_class = OsSerializer
+    filterset_fields = {
+        'name': ['exact'],
+        'group__name': ['exact'],
+        'weight': ['exact', 'gte', 'lte']
+    }
+
+
+class ComponentView(LoggingMixin, generics.ListAPIView):
+    queryset = Component.objects.all()
+    serializer_class = ComponentSerializer
+    filterset_fields = ['name']
 
 
 ICONS = [
@@ -542,7 +545,7 @@ class Part:
     validation_ids: list = None
 
 
-class ReportFromSearchView(APIView):
+class ReportFromSearchView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         # list of tuples (env_shortcut, full_env) - (sim, Simulation)
         env_names_shortnames = [(shortcut.lower(), name)

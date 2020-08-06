@@ -4,7 +4,7 @@ echo "recreating DB"
 sudo -u postgres psql -f ./recreate_dbs.sql
 
 echo "copying backup to home directory"
-cp /mnt/nncv05a-cifs/msdk_ext4/backups/db/latest/reporting_db.sql.gz ~/
+cp /mnt/nncv05a-cifs_ext4/backups/db/latest/reporting_db.sql.gz ~/
 if [ $? -ne 0 ]; then
     rm ~/reporting_db.sql.gz
     exit $?

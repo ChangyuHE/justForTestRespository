@@ -5,9 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
-    replaces = [('api', '0001_initial'), ('api', '0002_auto_20200312_1242'), ('api', '0003_auto_20200312_1623'), ('api', '0004_auto_20200327_1342'), ('api', '0005_auto_20200327_1344'), ('api', '0006_result_subsystem'), ('api', '0007_auto_20200330_1522'), ('api', '0008_auto_20200413_1249'), ('api', '0009_auto_20200416_1251'), ('api', '0010_auto_20200528_1039'), ('api', '0011_auto_20200616_1016'), ('api', '0012_auto_20200622_1014'), ('api', '0013_os_weight'), ('api', '0014_auto_20200625_1311'), ('api', '0015_auto_20200625_1446'), ('api', '0016_auto_20200625_1447'), ('api', '0017_auto_20200629_1812'), ('api', '0018_auto_20200630_0042'), ('api', '0019_auto_20200630_1100')]
-
     initial = True
 
     dependencies = [

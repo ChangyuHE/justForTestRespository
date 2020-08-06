@@ -86,14 +86,7 @@ def create_entities(entities):
 
         log.debug(f'Checking if entity exists: {serializer.validated_data}')
 
-        # check if entity already exists in db
-        ignore_case_data = dict()
-        for key, value in serializer.validated_data.items():
-            if type(value) == str:
-                key += '__iexact'
-            ignore_case_data[key] = value
-
-        existing_entity = serializer.Meta.model.objects.filter(**ignore_case_data).first()
+        existing_entity = serializer.Meta.model.objects.filter(**serializer.validated_data).first()
         if existing_entity is not None:
             raise EntityException(f'Attempting to create already existing entity with id {existing_entity.id}')
 

@@ -39,6 +39,12 @@ class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Item
         fields = ['name', 'args', 'group']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=models.Item.objects.all(),
+                fields=['name', 'args']
+            )
+        ]
 
 
 class RunSerializer(serializers.ModelSerializer):

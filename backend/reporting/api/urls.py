@@ -36,7 +36,7 @@ urlpatterns = [
     path('api/import/', include('api.collate.urls')),
 
     # Test Verifier
-    path('api/test_verifier/', include('test_verifier.urls')),
+    path('', include('test_verifier.urls')),
 
     # Feature mapping
     # .. import
@@ -77,4 +77,3 @@ if settings.DEBUG:
     urlpatterns = [
         path('__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns
-

@@ -59,7 +59,15 @@ class StatusSerializer(serializers.ModelSerializer):
         fields = ['test_status', 'priority']
 
 
+class GenerationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Generation
+        fields = ['name']
+
+
 class PlatformSerializer(serializers.ModelSerializer):
+    generation = GenerationSerializer()
+
     class Meta:
         model = models.Platform
         fields = ['id', 'name', 'generation', 'aliases', 'short_name', 'weight', 'planning']

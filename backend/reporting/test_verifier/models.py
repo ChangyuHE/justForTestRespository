@@ -30,8 +30,8 @@ class SubFeature(models.Model):
     category = models.ForeignKey(FeatureCategory, on_delete=models.CASCADE)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     codec = models.ForeignKey(Codec, on_delete=models.CASCADE)
-    lin_platforms = models.ManyToManyField(Platform, related_name='lin_subfeatures')
-    win_platforms = models.ManyToManyField(Platform, related_name='win_subfeatures')
+    lin_platforms = models.ManyToManyField(Platform, related_name='lin_subfeatures', blank=True)
+    win_platforms = models.ManyToManyField(Platform, related_name='win_subfeatures', blank=True)
     notes = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:

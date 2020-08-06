@@ -24,8 +24,13 @@ export default new Vuex.Store({
         SET_IMPORT_ERRORS: (state, payload) => state.importErrors = payload,
         DELETE_IMPORT_ERROR: (state, {id, priority, errorCode}) => {
             state.importErrors[priority][errorCode] = state.importErrors[priority][errorCode].filter(e => { return e.ID != id })
+        },
+        DELETE_IMPORT_ERRORS_GROUP: (state, {priority, errorCode, model}) => {
+            Vue.delete(state.importErrors[priority][errorCode], model)
+        },
+        CLEAR_EMPTY_KEYS: (state, {priority}) => {
             for (const code in state.importErrors[priority]) {
-                if (state.importErrors[priority][code].length == 0)
+                if (Object.keys(state.importErrors[priority][code]).length == 0)
                     Vue.delete(state.importErrors[priority], code)
             }
             for (const priority in state.importErrors) {
@@ -41,6 +46,11 @@ export default new Vuex.Store({
         },
         deleteImportError: ({ commit }, payload) => {
             commit('DELETE_IMPORT_ERROR', payload)
+            commit('CLEAR_EMPTY_KEYS', payload)
+        },
+        deleteImportErrorsGroup: ({ commit }, payload) => {
+            commit('DELETE_IMPORT_ERRORS_GROUP', payload)
+            commit('CLEAR_EMPTY_KEYS', payload)
         },
         getUserData: ({ commit }) => {
             const url = 'api/users/current/'
@@ -55,4 +65,4 @@ export default new Vuex.Store({
         }
     },
     strict: process.env.NODE_ENV !== 'production'
-});
+})

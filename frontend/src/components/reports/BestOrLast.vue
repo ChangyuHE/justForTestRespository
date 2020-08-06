@@ -93,7 +93,11 @@
                 this.$store
                     .dispatch('reports/reportExcel', { url })
                     .catch(error => {
-                        error.handleGlobally(`Failed in "${this.type}" excel report`, url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally(`Failed in "${this.type}" excel report`, url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     });
             },
             changeGrouping() {
@@ -104,7 +108,11 @@
                 this.$store
                     .dispatch('reports/reportWeb', { url })
                     .catch(error => {
-                        error.handleGlobally(`Failed in "${this.type}" web report`, url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally(`Failed in "${this.type}" web report`, url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     });
             },
             /**

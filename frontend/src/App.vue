@@ -1,31 +1,33 @@
 <template>
     <v-app>
         <!-- Left side drawer -->
-        <!-- <v-navigation-drawer v-model="drawer" app color="blue-grey lighten-5">
+        <v-navigation-drawer
+            app disable-resize-watcher disable-route-watcher temporary
+            color="blue-grey lighten-5"
+            width="10%"
+            v-model="drawer"
+        >
+            <v-list-item class="my-1 font-weight-medium">
+                Settings
+            </v-list-item>
+            <v-divider></v-divider>
             <v-list dense>
-                <v-list-item link>
-                    <v-list-item-action>
-                        <v-icon>mdi-home</v-icon>
+                <v-list-item link :to="'master-data'" @click="drawer = !drawer">
+                    <v-list-item-action class="mr-2">
+                        <v-icon small>mdi-sitemap</v-icon>
                     </v-list-item-action>
                     <v-list-item-content>
-                        <v-list-item-title>Placeholder 1</v-list-item-title>
-                    </v-list-item-content>
-                </v-list-item>
-                <v-list-item link>
-                    <v-list-item-action>
-                        <v-icon>mdi-card-account-mail</v-icon>
-                    </v-list-item-action>
-                    <v-list-item-content>
-                        <v-list-item-title>Placeholder 2</v-list-item-title>
+                        <v-list-item-title>Master Data</v-list-item-title>
                     </v-list-item-content>
                 </v-list-item>
             </v-list>
-        </v-navigation-drawer> -->
+        </v-navigation-drawer>
 
         <!-- Application bar on top -->
         <v-app-bar app color="teal darken-2 elevation-4" dark short>
-            <!-- <v-app-bar-nav-icon @click.stop="drawer = !drawer" /> -->
-            <v-toolbar-title class="mr-2">Reporter</v-toolbar-title>
+            <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+            <v-toolbar-title class="mr-2 pl-1">Reporter</v-toolbar-title>
+            <!-- Navigation buttons -->
             <v-btn v-for="rItem in routeMap" :key="rItem.name" :to="{name: rItem.name}" text exact>
                 {{ rItem.show }}
             </v-btn>
@@ -38,8 +40,8 @@
                 <template v-slot:activator="{ on }">
                     <v-btn text class="mr-n2 px-2" style="text-transform: none">
                     <!-- <v-btn v-on="on" text class="mr-n2 px-2" style="text-transform: none"> -->
-                        <v-icon title="Account data">mdi-account</v-icon>
-                        <span class="ml-1">{{ userName }}</span>
+                        <v-icon title="Account data">mdi-badge-account-horizontal-outline</v-icon>
+                        <span class="ml-2">{{ userName }}</span>
                     </v-btn>
                 </template>
 
@@ -63,7 +65,7 @@
         </v-app-bar>
 
         <v-main>
-            <v-container fluid class="pt-0">
+            <v-container fluid class="pt-1">
                 <!-- Router views will appers here -->
                 <router-view></router-view>
             </v-container>
@@ -78,10 +80,6 @@
         >
             <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
         </v-btn>
-
-        <v-footer app class="justify-end">
-            <span>powered by <a href="https://vuejs.org/">Vue.js</a></span>
-        </v-footer>
     </v-app>
 </template>
 
@@ -95,6 +93,7 @@
     export default {
         data() {
             return {
+                drawer: false,
                 userDialog: false,
                 showScroll: false,
                 routeMap: [

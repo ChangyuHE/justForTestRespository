@@ -319,7 +319,7 @@
                 })
                 .then(response => {
                     console.log('Successfully imported', response);
-                    this.$toasted.global.alert_success('Successfully imported')
+                    this.$toasted.success('Successfully imported')
                 })
                 .catch(error => {
                     if (error.response) {           // Request made and server responded out of range of 2xx codes

@@ -59,7 +59,7 @@
                 server
                     .post(url, data)
                     .then(response => {
-                        this.$toasted.global.alert_success(`${this.modelObject.model} object was created`);
+                        this.$toasted.success(`${this.modelObject.model} object was created`);
 
                         // remove error by ID from importErrors
                         this.$store.dispatch('deleteImportError', {id: this.ID, priority: this.priority, errorCode: this.errorCode})

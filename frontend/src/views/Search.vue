@@ -1,5 +1,5 @@
 <template>
-    <v-container fluid class='px-0 py-0'>
+    <v-container fluid>
     <v-row>
         <v-col cols=6 offset=3>
             <v-text-field

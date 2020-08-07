@@ -67,7 +67,7 @@
                                             <span class="headline">Edit mapping</span>
                                         </v-card-title>
                                         <v-card-text>
-                                            <v-form v-model="isMapFormValid">
+                                            <v-form v-model="isMapFormValid" @submit.prevent>
                                             <v-container>
                                                 <v-row>
                                                     <!-- Fields controls -->
@@ -119,7 +119,7 @@
                         <template v-slot:item.actions="{ item }">
                             <v-hover v-slot:default="{ hover }">
                                 <v-icon
-                                    small title="Export to Excel file" class="mr-1" :class="{ 'on-hover': hover }"
+                                    small title="Export to Excel file" :class="{ 'primary--text': hover }"
                                     @click="exportMapping2Excel(item)"
                                 >
                                     mdi-file-excel
@@ -127,7 +127,7 @@
                             </v-hover>
                             <v-hover v-slot:default="{ hover }"  v-if="mappingType == 'my'">
                                 <v-icon
-                                    small title="Edit" class="mr-1" :class="{ 'on-hover': hover }"
+                                    small title="Edit" :class="{ 'primary--text': hover }"
                                     :data-row-map-id="item.id"
                                     @click="editMappingItem(item)"
                                 >
@@ -136,7 +136,7 @@
                             </v-hover>
                             <v-hover v-slot:default="{ hover }"  v-if="mappingType == 'my'">
                                 <v-icon
-                                    small title="Delete" :class="{ 'on-hover': hover }"
+                                    small title="Delete" :class="{ 'primary--text': hover }"
                                     @click="deleteMappingItem(item)"
                                 >
                                     mdi-delete
@@ -194,7 +194,7 @@
                                             <span class="headline">{{ formTitle }}</span>
                                         </v-card-title>
                                         <v-card-text>
-                                            <v-form v-model="isFormValid">
+                                            <v-form v-model="isFormValid" @submit.prevent>
                                             <v-container>
                                                 <v-row>
                                                     <!-- Params selectors -->
@@ -228,7 +228,7 @@
                                 <v-icon
                                     small title="Edit rule"
                                     class="mr-1"
-                                    :class="{ 'on-hover': hover }"
+                                    :class="{ 'primary--text': hover }"
                                     :data-row-rule-id="item.id"
                                     @click="editRuleItem(item)"
                                 >
@@ -238,7 +238,7 @@
                             <v-hover v-slot:default="{ hover }">
                                 <v-icon
                                     small title="Delete rule"
-                                    :class="{ 'on-hover': hover }"
+                                    :class="{ 'primary--text': hover }"
                                     @click="deleteRuleItem(item)"
                                 >
                                     mdi-delete
@@ -484,8 +484,8 @@
                         .catch(error => {
                             error.handleGlobally && error.handleGlobally('Could not delete mapping item', url)
                         })
-                        .finally(() => { this.isMapDeleting = false })
-                    }
+                }
+                this.isMapDeleting = false
             },
             exportMapping2Excel(item) {
                 const url = `api/feature_mapping/export/${item.id}/`
@@ -526,6 +526,7 @@
             },
             // Delete item from front and back
             deleteRuleItem(item) {
+                this.loading = true
                 const index = this.items.indexOf(item)
                 let proceed = confirm('Are you sure you want to delete this item?')
                 if (proceed) {
@@ -536,13 +537,13 @@
                         .then(response => {
                             // remove from table
                             this.items.splice(index, 1)
-                            this.$toasted.global.alert_success('Successfully deleted')
+                            this.$toasted.success('Successfully deleted')
                         })
                         .catch(error => {
                             error.handleGlobally && error.handleGlobally('Could not delete item', url)
                         })
-                        .finally(() => { this.loading = false })
-                    }
+                }
+                this.loading = false
             },
             // Create of save edited Rule
             saveRule() {
@@ -664,9 +665,6 @@
 </script>
 
 <style scoped>
-    button.v-icon.on-hover {
-        color: #00897B;
-    }
     .row-pointer >>> tbody tr :hover {
         cursor: pointer;
     }

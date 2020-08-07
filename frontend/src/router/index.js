@@ -35,7 +35,11 @@ const routes = [
         path: '/feature-mapping',
         name: 'feature-mapping',
         component: () => import(/* webpackChunkName: "FMT" */ '../views/FeatureMapping/Show.vue')
-        // component: FeatureMapping
+    },
+    {
+        path: '/master-data',
+        name: 'master-data',
+        component: () => import(/* webpackChunkName: "master-data" */ '../views/MasterData.vue')
     },
     // {
     //     path: '/about',

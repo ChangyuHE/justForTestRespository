@@ -244,6 +244,20 @@ DRAMATIQ_BROKER = {
     ]
 }
 
+# Use StubBroker for testing
+if 'test' in sys.argv:
+    DRAMATIQ_BROKER = {
+        "BROKER": "dramatiq.brokers.stub.StubBroker",
+        "OPTIONS": {},
+        "MIDDLEWARE": [
+            "dramatiq.middleware.AgeLimit",
+            "dramatiq.middleware.TimeLimit",
+            "dramatiq.middleware.Callbacks",
+            "dramatiq.middleware.Retries",
+            "django_dramatiq.middleware.DbConnectionsMiddleware",
+        ]
+    }
+
 
 def uuid_field(field):
     return sqlalchemy_utils.UUIDType()

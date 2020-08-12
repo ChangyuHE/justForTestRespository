@@ -4,7 +4,6 @@ from io import BytesIO
 from django.urls import reverse
 from django.test import Client
 
-from api.models import Result
 from api.models import Validation
 from api.models import Os
 from api.models import Platform
@@ -34,10 +33,12 @@ class ImportFileIntegrationTest(DbFixture):
         client = Client()
         response = client.post(reverse('collate:import'), self.request)
 
-        expected_count = 1
-        actual_count = Validation.objects.count()
         self.assertEqual(response.status_code, 200,
                          f'Expected HTTP 200 Ok, actual {response.status_code} {response.data}')
+        self.assertImportSuccess(response.data)
+
+        expected_count = 1
+        actual_count = Validation.objects.count()
         self.assertEqual(expected_count, actual_count,
                          f'Expected {expected_count} Validation records, but actual is {actual_count}')
 
@@ -63,11 +64,14 @@ class ImportFileIntegrationTest(DbFixture):
         response = client.post(reverse('collate:import'), self.request)
 
         expected_count = 2
-        actual_count = Validation.objects.count()
         self.assertEqual(response.status_code, 200,
                          f'Expected HTTP 200 Ok, actual {response.status_code} {response.data}')
+        self.assertImportSuccess(response.data)
+
+        actual_count = Validation.objects.count()
         self.assertEqual(expected_count, actual_count,
                          f'Expected {expected_count} Validation records, but actual is {actual_count}')
+
 
     def test_invalid_validation_id(self):
         self.set_file('import_err_invalid_validation.json')
@@ -91,6 +95,8 @@ class ImportFileIntegrationTest(DbFixture):
                          f'Expected HTTP 200, actual {response.status_code} {response.data}')
         self.assertEquals(response.data.get('success', None), True,
                           f'Expected import success, actual {response.status_code} {response.data}')
+
+        self.assertImportSuccess(response.data)
 
     def test_missing_columns(self):
         self.set_file('import_err_missing_columns.json')
@@ -135,8 +141,7 @@ class ImportFileIntegrationTest(DbFixture):
         self.assertEquals(response.data.get('success', None), True,
                           f'Expected import success, actual {response.status_code} {response.data}')
 
-        result = Result.objects.first()
-        self.assertIsNotNone(result.result_reason, "Expected non-empty 'result_reason' entity field.")
+        self.assertImportSuccess(response.data)
 
     def test_missing_os(self):
         self.set_file('import_err_invalid_os.json')
@@ -144,6 +149,24 @@ class ImportFileIntegrationTest(DbFixture):
         response = client.post(reverse('collate:import'), self.request)
         self.assertContains(response, 'ERR_MISSING_ENTITY', status_code=422)
 
+    def test_validation_owner(self):
+        self.set_file('import_existing_validation.json')
+        self.request.pop('validation_id')
+        self.request['validation_name'] = 'New validation'
+        self.request['force_run'] = True
+
+        for entity in Validation.objects.all():
+            entity.delete()
+
+        client = Client()
+        response = client.post(reverse('collate:import'), self.request)
+
+        self.assertEqual(response.status_code, 200,
+                         f'Expected HTTP 200 Ok, actual {response.status_code} {response.data}')
+        self.assertImportSuccess(response.data)
+
+        validation = Validation.objects.first()
+        self.assertEqual(validation.owner, self.auth_user)
 
 class ImportDatetimeParserTest(DbFixture):
     def test_invalid_date(self):
@@ -159,9 +182,13 @@ class ImportDatetimeParserTest(DbFixture):
         self.assertEqual(response.status_code, 200,
                          f'Expected HTTP 200, actual {response.status_code} {response.data}')
 
+        self.assertImportSuccess(response.data)
+
     def test_date_conversion(self):
         self.set_file('import_ok_date_conversion.json')
         client = Client()
         response = client.post(reverse('collate:import'), self.request)
         self.assertEqual(response.status_code, 200,
                          f'Expected HTTP 200, actual {response.status_code} {response.data}')
+
+        self.assertImportSuccess(response.data)

@@ -1,8 +1,8 @@
 from collections import defaultdict
 
-class QueryCache():
+class QueryCache:
     def __init__(self):
-        self.__cache = dict()
+        self.__cache = {}
 
     def get(self, cls):
         queryset_key = cls.__name__
@@ -22,7 +22,7 @@ class QueryCache():
                 self.__cache.pop(cls.__name__, None)
 
 
-class ObjectsCache():
+class ObjectsCache:
     def __init__(self):
         self.__cache = defaultdict(set)
 

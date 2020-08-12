@@ -225,9 +225,9 @@ class ResultGroupMask(models.Model):
 
 class Validation(models.Model):
     name = models.CharField(max_length=255)
-    env = models.ForeignKey(Env, null=True, blank=True, on_delete=models.CASCADE)
-    platform = models.ForeignKey(Platform, null=True, blank=True, on_delete=models.CASCADE)
-    os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
+    env = models.ForeignKey(Env, on_delete=models.CASCADE)
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
+    os = models.ForeignKey(Os, on_delete=models.CASCADE)
 
     notes = models.TextField(null=True, blank=True)
     source_file = models.TextField(null=True, blank=True)
@@ -235,6 +235,7 @@ class Validation(models.Model):
 
     ignore = models.BooleanField(default=False)
     hash_last = models.CharField(max_length=40, null=True, blank=True)
+    owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     class SubSystems(models.IntegerChoices):
         VALib = 1, 'valib'
@@ -325,11 +326,12 @@ class FeatureMapping(models.Model):
         ]
 
 
-class ImportJob(models.Model):
-    def xlsx() -> str:
-        root = Path(settings.MEDIA_ROOT)
-        return str(root / 'xlsx')
+def xlsx() -> str:
+    root = Path(settings.MEDIA_ROOT)
+    return str(root / 'xlsx')
 
+
+class ImportJob(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending'
         FAILED = 'failed'

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from django.test import TestCase
 
-from api.collate.services import OutcomeBuilder
+from api.collate.business_entities import OutcomeBuilder
 
 class OutcomeBuilderTest(TestCase):
     def assertOutcomeContains(self, error_subset, result):

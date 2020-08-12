@@ -2,11 +2,11 @@ import logging
 
 from django.shortcuts import render
 
+from .business_entities import RequestDTO
 from .forms import SelectFileForm
-from .services import import_results
-from .services import create_entities
-from .services import EntityException
-from .services import ImportDescriptor
+from .import_api import EntityException
+from .import_api import import_results
+from .import_api import create_entities
 
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
@@ -29,29 +29,26 @@ class ImportFileView(LoggingMixin, APIView):
 
     def post(self, request):
         log.debug('Processing POST request in ImportFileView')
+        self.__validate_request(request)
+
+        request_dto = RequestDTO.build(request)
+        outcome = import_results(request_dto)
+        log.debug('Request was processed without exceptions.')
+
+        data = outcome.build()
+        code = self.__get_status_code(outcome)
+        log.debug(f"Returning '{code}' status code.")
+
+        return Response(data=data, status=code)
+
+    def __validate_request(self, request):
+        log.debug(f'request data: {request.data}')
 
         if 'file' not in request.data:
             raise ParseError("'file' parameter is missing in form data.")
 
-        file = request.data['file']
-        descriptor = ImportDescriptor(
-            request.data.get('validation_id', None),
-            request.data.get('validation_name', None),
-            request.data.get('validation_date', None),
-            request.data.get('notes', None),
-            request.data.get('source_file', None),
-            request.data.get('force_run', False),
-        )
-
-        log.debug(f'request data: {request.data}')
-
-        outcome = import_results(file, descriptor, request)
-
-        log.debug('About to return Response.')
-        data = outcome.build()
-        code = status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
-
-        return Response(data=data, status=code)
+    def __get_status_code(self, outcome):
+        return status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class CreateEntitiesView(LoggingMixin, APIView):

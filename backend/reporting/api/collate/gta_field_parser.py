@@ -13,12 +13,15 @@ from typing import Dict, Tuple
 import aiohttp
 import aiomisc
 import requests
+import api.models as api_models
+
 from aiohttp_retry import RetryClient
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 
 from reporting.settings import production
+from api.collate.business_entities import ResultExtraData
 
 log = logging.getLogger(__name__)
 
@@ -181,18 +184,27 @@ class GTAFieldParser:
     result = dict()
     auth = aiohttp.BasicAuth(settings.GTA_API_USER, settings.GTA_API_PASSWORD)
 
-    def __init__(self, test_run_id: int, test_session_id: int,
-                 mapped_component: str, vertical: str, platform: str,
-                 url_list: list) -> None:
+    def __init__(self) -> None:
         # Do not use proxy
         os.environ.pop('HTTP_PROXY', None)
         os.environ.pop('HTTPS_PROXY', None)
+
+    def fetch_from(self,
+            test_run_id: int,
+            test_session_id: int,
+            mapped_component: str,
+            vertical: str,
+            platform: str,
+            url_list: list):
+
         self.test_run_id = test_run_id
         self.test_session_id = test_session_id
         self.mapped_component = mapped_component
         self.vertical = vertical
         self.platform = platform
         self.url_list = url_list
+
+        self.process()
 
     def _patch_lucas_version(self, gta_instance_url: str):
         # If Lucas version is already retrieved for currect test run ID we return cached value
@@ -421,3 +433,33 @@ class GTAFieldParser:
             }
             test_items_amount += 1
         log.debug(f"Finished processing {self.test_run_id}, added {test_items_amount} keys")
+
+    def is_cached(self, url:str):
+        return url in GTAFieldParser.result.keys()
+
+    def create_result_data(self, url: str) -> ResultExtraData:
+        data = ResultExtraData()
+        cached_result_dict = GTAFieldParser.result.get(url, None)
+
+        if cached_result_dict is None:
+            return data
+
+        # A list of (Model, result_field, parser_key) tuples
+        resultConverterTable = [
+            (api_models.Driver, 'driver', 'driver'),
+            (api_models.ScenarioAsset, 'scenario_asset', 'scenario'),
+            (api_models.MsdkAsset, 'msdk_asset', 'msdk'),
+            (api_models.OsAsset, 'os_asset', 'os_image'),
+            (api_models.LucasAsset, 'lucas_asset', 'lucas'),
+            (api_models.FulsimAsset, 'fulsim_asset', 'fulsim'),
+            (api_models.Simics, 'simics', 'simics'),
+        ]
+
+        for model, result_field, parser_key in resultConverterTable:
+            kwargs = dataclasses.asdict(cached_result_dict[parser_key])
+            value = model.objects.get_or_create(**kwargs)
+            setattr(data, result_field, value)
+
+        data.additional_parameters = cached_result_dict['additional_params']
+
+        return data

@@ -4,6 +4,12 @@ python manage.py test
 # Run specific test suite
 python manage.py test api.collate.tests.test_create
 
+# Run specific test class
+python manage.py test api.collate.tests.test_import_api.ImportFileIntegrationTest
+
+# Run specific test case
+python manage.py test api.collate.tests.test_import_api.ImportFileIntegrationTest.test_valid_file
+
 # Collect code coverage
 coverage run --source='.' manage.py test api.collate.tests
 

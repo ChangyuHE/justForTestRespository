@@ -1,15 +1,21 @@
 import dataclasses
 import logging
 from pathlib import Path
-
+from typing import Dict
 import dramatiq
-from django.template import Template, Context
+from django.template import Template
+from django.template import Context as django_context
 
-from ..models import ImportJob
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
-from api.collate import services
-from api.models import Validation
+from django.db import transaction
+
+from api.models import ImportJob
+from api.collate.business_entities import Context
+from api.collate.business_entities import ValidationDTO
+from api.collate.excel_utils import open_excel_file
+from api.collate.excel_utils import non_empty_row
+from api.collate.services import RecordBuilder
 from reporting.settings import production
 
 log = logging.getLogger(__name__)
@@ -33,7 +39,8 @@ class Changes:
 
 
 @dramatiq.actor
-def do_import(job_id: int, validation_id: int, force_run: bool, site_url: str):
+@transaction.atomic
+def do_import(job_id: int, validation_dict: Dict, force_run: bool, site_url: str):
     to_emails = []
     validation_info = '<unknown>'
 
@@ -43,27 +50,36 @@ def do_import(job_id: int, validation_id: int, force_run: bool, site_url: str):
         if job.requester.email:
             to_emails.append(job.requester.email)
 
-        validation = Validation.objects.get(pk=validation_id)
-        validation_info = validation.name
-        # Load workbook
-        try:
-            workbook = services.load_workbook(job.path)
-        except Exception as e:
-            message = getattr(e, 'message', repr(e))
-            log.warning('Failed to open workbook: %s', message)
-            return
-        # Get necessary data from workbook
-        mapping = services._get_best_sheet_mapping(workbook)
-        sheet, column_mapping = mapping
-        url_list = services._get_column_values('resultURL', sheet.rows, column_mapping)
+        context = Context()
+        outcome = context.outcome
+        outcome.job_id = job_id
+        dto = ValidationDTO(**validation_dict)
+        validation = dto.to_validation()
 
-        outcome = services.OutcomeBuilder()
+        if validation is None:
+            message = f'Job {job_id} failed: Validation with id {dto.id} does not exist.'
+            log.error(message)
+            outcome.add_invalid_validation_error(message)
+            return
+
+        validation_info = validation.name
+        context.validation = validation
+        context.save_transient_validation()
+
+        # Load workbook
+        workbook = open_excel_file(job.path, outcome)
+        if workbook is None:
+            return
+
+        # Get necessary data from workbook
+        context.mapping.set_from_workbook(workbook, outcome)
         changes = Changes()
-        rows = sheet.rows
+        rows = context.mapping.sheet.rows
         next(rows)
+
         # Process file content row by row and perform queries to get additional data
-        for row in services.non_empty_row(rows):
-            builder = services.RecordBuilder(validation, row, column_mapping, outcome, url_list=url_list)
+        for row in non_empty_row(rows):
+            builder = RecordBuilder(context, row)
             entity = builder.build(force_run)
             changes.update_from_entity(entity)
 
@@ -95,12 +111,12 @@ Test items:
     {% endif %}
 </ul>
 """)
-        context = Context({'validation_info': validation_info,
+        context = django_context({'validation_info': validation_info,
                            'added': changes.added,
                            'updated': changes.updated,
                            'skipped': changes.skipped,
                            'site_url': site_url,
-                           'validation_id': validation_id})
+                           'validation_id': validation_dict.get('id', None)})
         text = template.render(context)
         topic = f'Reporter: import of validation {validation_info}'
         job.status = ImportJob.Status.DONE

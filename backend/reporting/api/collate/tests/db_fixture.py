@@ -1,25 +1,32 @@
-from io import BytesIO
+import logging
 
-from django.test import TestCase
+from io import BytesIO
+from unittest.mock import patch
+
+from django_dramatiq.test import DramatiqTestCase
+from django.contrib.auth.models import User
 
 from api.models import Component
 from api.models import Driver
 from api.models import Env
+from api.models import ImportJob
 from api.models import Item
 from api.models import Os
 from api.models import Platform
 from api.models import Run
 from api.models import Status
 from api.models import Validation
-from django.contrib.auth.models import User
 
+from api.collate.gta_field_parser import GTAFieldParser
 from api.collate.services import queryset_cache
 
 from api.collate.tests.genetated_files import create_file
 from api.collate.tests.genetated_files import create_empty_workbook
 
+log = logging.getLogger(__name__)
 
-class DbFixture(TestCase):
+
+class DbFixture(DramatiqTestCase):
     def setUp(self):
         queryset_cache.clear()
 
@@ -27,7 +34,6 @@ class DbFixture(TestCase):
             validation_id=42,
             validation_name='Test model',
             notes='Notes',
-            disable_background_task=True,
         )
 
         env = Env.objects.create(name='Silicon')
@@ -35,9 +41,9 @@ class DbFixture(TestCase):
         os = Os.objects.create(name='Windows 19H1 x64', aliases='Windows')
         Os.objects.create(name='Linux')
         Run.objects.create(name='Test run', session='Test session')
-        User.objects.create_user(username='debug', password='12345')
+        self.auth_user = User.objects.create_user(username='debug', password='12345')
 
-        Validation.objects.create(pk=42, name='Test model', env=env, platform=platform, os=os)
+        Validation.objects.create(pk=42, name='Test model', env=env, platform=platform, os=os, owner=self.auth_user)
 
         Driver.objects.create(name='gfx-driver-ci-master-3172')
         Component.objects.create(name='Media-Encode')
@@ -56,7 +62,25 @@ class DbFixture(TestCase):
         Status.objects.create(test_status='Failed', priority=100)
         Status.objects.create(test_status='Passed', priority=100)
 
-        print()
+        gta_patcher = patch.object(GTAFieldParser, 'fetch_from')
+        gta_patcher.start()
+        self.addCleanup(gta_patcher.stop)
+
+    def tearDown(self):
+        self.join_dramatiq_worker()
+
+    def join_dramatiq_worker(self):
+        self.broker.join('default')
+        self.worker.join()
+
+    def assertImportSuccess(self, response_data):
+        self.join_dramatiq_worker()
+
+        job_id = response_data.get('job_id', None)
+        self.assertIsNotNone(job_id)
+
+        job = ImportJob.objects.get(pk=job_id)
+        self.assertEqual(job.status, ImportJob.Status.DONE)
 
     def set_file(self, source):
         if type(source) != str:

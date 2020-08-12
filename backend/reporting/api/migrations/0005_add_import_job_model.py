@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('status', models.CharField(choices=[('pending', 'Pending'), ('failed', 'Failed'), ('done', 'Done')], default='pending', max_length=7)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('path', models.FilePathField(default=os.path.join(tempfile.gettempdir(), 'xlsx'), path=api.models.ImportJob.xlsx)),
+                ('path', models.FilePathField(default=os.path.join(tempfile.gettempdir(), 'xlsx'), path=api.models.xlsx)),
                 ('requester', models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),

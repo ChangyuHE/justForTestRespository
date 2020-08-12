@@ -2,8 +2,8 @@ from django.test import TestCase
 
 from api.models import Platform
 from api.collate.services import queryset_cache
+from api.collate.business_entities import Context
 from api.collate.services import RecordBuilder
-from api.collate.services import OutcomeBuilder
 
 platform_stub = [{
         'name': 'Arctic_Sound',
@@ -30,12 +30,12 @@ class RecordBuilderTest(TestCase):
         for params in platform_stub:
             Platform.objects.create(**params)
 
+        self.builder = RecordBuilder(Context(), None)
+
     def test_find_object(self):
         name = 'DG1'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_object(Platform, name=name)
+        result = self.builder._find_object(Platform, name=name)
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertTrue(type(result) == Platform, 'Expected Platform instance.')
@@ -44,9 +44,7 @@ class RecordBuilderTest(TestCase):
     def test_find_object_ignore_case(self):
         name = 'DG1'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_object(Platform, name=name.lower())
+        result = self.builder._find_object(Platform, name=name.lower())
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertTrue(type(result) == Platform, 'Expected Platform instance.')
@@ -56,9 +54,7 @@ class RecordBuilderTest(TestCase):
         alias = 'ApolloLake'
         name = 'Apollo_Lake'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_with_alias(Platform, alias)
+        result = self.builder._find_with_alias(Platform, alias)
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertEqual(result.name, name, f"Expected '{name}' in name field")
@@ -67,9 +63,7 @@ class RecordBuilderTest(TestCase):
         alias = 'elkhard_lake'
         name = 'Elkhard_Lake'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_with_alias(Platform, alias)
+        result = self.builder._find_with_alias(Platform, alias)
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertEqual(result.name, name, f"Expected '{name}' in name field")
@@ -77,9 +71,7 @@ class RecordBuilderTest(TestCase):
     def test_find_with_alias_by_name(self):
         name = 'Tiger_Lake.LP'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_with_alias(Platform, name)
+        result = self.builder._find_with_alias(Platform, name)
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertEqual(result.name, name, f"Expected '{name}' in name field")
@@ -87,9 +79,7 @@ class RecordBuilderTest(TestCase):
     def test_find_with_alias_by_name_ignore_case(self):
         name = 'Tiger_Lake.LP'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_with_alias(Platform, name.lower())
+        result = self.builder._find_with_alias(Platform, name.lower())
 
         self.assertIsNotNone(result, f'Expected {name} record.')
         self.assertEqual(result.name, name, f"Expected '{name}' in name field")
@@ -97,9 +87,7 @@ class RecordBuilderTest(TestCase):
     def test_find_with_alias_part(self):
         name = 'lake'
 
-        outcome = OutcomeBuilder()
-        builder = RecordBuilder(None, None, dict(), outcome)
-        result = builder._find_with_alias(Platform, name)
+        result = self.builder._find_with_alias(Platform, name)
 
         self.assertIsNone(result, f'Expected empty record instead of {result}.')
 

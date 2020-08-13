@@ -19,3 +19,5 @@ admin.site.register(Generation)
 admin.site.register(Platform)
 admin.site.register(Os)
 admin.site.register(Status)
+
+admin.site.register(Milestone)

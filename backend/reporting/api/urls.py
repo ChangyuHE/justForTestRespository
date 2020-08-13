@@ -58,14 +58,26 @@ urlpatterns = [
     path('api/feature_mapping/rules/', view.feature_mapping.FeatureMappingRuleDetailsView.as_view()),
 
     # .. rules components
+    path(r'api/milestone/table/', view.feature_mapping.FeatureMappingMilestoneTableView.as_view()),
+    path(r'api/feature/table/', view.feature_mapping.FeatureMappingFeatureTableView.as_view()),
+    path(r'api/scenario/table/', view.feature_mapping.FeatureMappingScenarioTableView.as_view()),
+    path(r'api/milestone/<int:pk>/', view.feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
     path(r'api/milestone/', view.feature_mapping.FeatureMappingMilestoneView.as_view()),
+    path(r'api/feature/<int:pk>/', view.feature_mapping.FeatureMappingFeatureDetailsView.as_view()),
     path(r'api/feature/', view.feature_mapping.FeatureMappingFeatureView.as_view()),
+    path(r'api/scenario/<int:pk>/', view.feature_mapping.FeatureMappingScenarioDetailsView.as_view()),
     path(r'api/scenario/', view.feature_mapping.FeatureMappingScenarioView.as_view()),
 
     # Common
+    path('api/component/table/', views.ComponentTableView().as_view()),
+    path('api/generation/table/', views.GenerationTableView().as_view()),
+    path('api/platform/table/', views.PlatformTableView().as_view()),
+    path('api/os/table/', views.OsTableView().as_view()),
+    path('api/component/', views.ComponentView().as_view()),
+    path('api/generation/', views.GenerationView().as_view()),
     path('api/platform/', views.PlatformView().as_view()),
     path('api/os/', views.OsView().as_view()),
-    path('api/component/', views.ComponentView().as_view()),
+
 
     path('admin/', admin.site.urls),
 ]\

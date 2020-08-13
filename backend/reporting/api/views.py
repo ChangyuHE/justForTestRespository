@@ -41,8 +41,8 @@ from .models import *
 
 from reporting.settings import production
 
-from utils.api_logging import get_user_object
-from utils.api_logging import LoggingMixin
+from utils.api_logging import get_user_object, LoggingMixin
+from utils.api_helpers import get_datatable_json
 
 
 @never_cache
@@ -76,12 +76,39 @@ class CurrentUser(LoggingMixin, APIView):
 
 
 # Common data block
+# Platform
 class PlatformView(LoggingMixin, generics.ListAPIView):
     queryset = Platform.objects.all()
     serializer_class = PlatformSerializer
     filterset_fields = ['name', 'short_name', 'generation__name']
 
 
+class PlatformTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Platform.objects.all()
+    serializer_class = PlatformSerializer
+    filterset_fields = ['name', 'short_name', 'generation__name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False, exclude=['planning', 'weight'])
+
+
+# Generation
+class GenerationView(LoggingMixin, generics.ListAPIView):
+    queryset = Generation.objects.all()
+    serializer_class = GenerationSerializer
+    filterset_fields = ['name']
+
+
+class GenerationTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Generation.objects.all()
+    serializer_class = GenerationSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False)
+
+
+# Os
 class OsView(LoggingMixin, generics.ListAPIView):
     queryset = Os.objects.all().prefetch_related('group')
     serializer_class = OsSerializer
@@ -92,10 +119,33 @@ class OsView(LoggingMixin, generics.ListAPIView):
     }
 
 
+class OsTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Os.objects.all()
+    serializer_class = OsSerializer
+    filterset_fields = {
+        'name': ['exact'],
+        'group__name': ['exact'],
+        'weight': ['exact', 'gte', 'lte']
+    }
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False, exclude=['group', 'weight'])
+
+
+# Component
 class ComponentView(LoggingMixin, generics.ListAPIView):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filterset_fields = ['name']
+
+
+class ComponentTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Component.objects.all()
+    serializer_class = ComponentSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False)
 
 
 ICONS = [

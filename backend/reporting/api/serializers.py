@@ -62,7 +62,7 @@ class StatusSerializer(serializers.ModelSerializer):
 class GenerationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Generation
-        fields = ['name']
+        fields = ['id', 'name']
 
 
 class PlatformSerializer(serializers.ModelSerializer):

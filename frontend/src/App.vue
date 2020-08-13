@@ -101,7 +101,8 @@
                     { name: 'home', show: 'Validations' },
                     { name: 'import', show: 'Import' },
                     { name: 'search', show: 'Search' },
-                    { name: 'feature-mapping', show: 'Features' }
+                    { name: 'feature-mapping', show: 'Features' },
+                    { name: 'test-verifier', show: 'Test Verifier' }
                 ]
             }
         },

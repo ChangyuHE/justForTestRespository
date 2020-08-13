@@ -27,8 +27,8 @@ const routes = [
         component: Search
     },
     {
-        path: '/test_verifier',
-        name: 'testVerifier',
+        path: '/test-verifier',
+        name: 'test-verifier',
         component: TestVerifier
     },
     {

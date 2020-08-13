@@ -22,50 +22,15 @@ from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 
-import api.models
-from api.models import *
-
+from api.models import FeatureMapping, FeatureMappingRule, Milestone, Feature, TestScenario
 from api.forms import FeatureMappingFileForm
 from api.serializers import *
 
-from utils.api_logging import LoggingMixin, get_user_object
+from utils.api_logging import LoggingMixin
+from utils.api_helpers import get_datatable_json
 
-from reporting.settings import production
 
 log = logging.getLogger(__name__)
-
-
-def serialiazed_to_datatable_json(serialized, public=False):
-    headers, items = [], []
-    if not serialized:
-        return {'headers': [], 'items': []}
-
-    for field_name, field_values in serialized[0].items():
-        if not public and field_name == 'owner':
-            continue
-        headers.append({'text': field_name.title(), 'sortable': True, 'value': field_name})
-
-    headers.append({'text': 'Actions', 'value': 'actions', 'sortable': False})
-
-    for data in serialized:
-        item_data = dict()
-        for field_name, field_values in data.items():
-            if not public and field_name == 'owner':
-                continue
-
-            if field_values is not None:
-                if isinstance(field_values, int) or isinstance(field_values, str):   # ids (bool as well) and strings
-                    item_data[field_name] = field_values
-                else:
-                    for k, v in field_values.items():
-                        if field_name != 'platform' and k == 'name' or field_name == 'platform' and k == 'short_name' \
-                                or field_name == 'owner' and k == 'username':
-                            item_data[field_name] = v
-            else:
-                item_data[field_name] = None
-
-        items.append(item_data)
-    return {'headers': headers, 'items': items}
 
 
 class FeatureMappingPostView(LoggingMixin, APIView):
@@ -99,15 +64,11 @@ class FeatureMappingDetailsTableView(LoggingMixin, generics.ListAPIView):
     filterset_fields = ['owner', 'platform', 'os', 'component', 'public', 'official']
 
     def get(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset()).order_by('id')
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-
         public = request.GET.get('public')
-        return Response(serialiazed_to_datatable_json(serializer.data, public=public))
+        exclude = []
+        if not public:
+            exclude = ['owner']
+        return get_datatable_json(self, exclude=exclude)
 
 
 class FeatureMappingUpdateView(LoggingMixin, generics.UpdateAPIView):
@@ -214,32 +175,71 @@ class FeatureMappingRuleDetailsTableView(LoggingMixin, generics.ListAPIView):
     ordering = ['milestone']
 
     def get(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-
-        return Response(serialiazed_to_datatable_json(serializer.data))
+        return get_datatable_json(self)
 
 
+# Milestone views
 class FeatureMappingMilestoneView(LoggingMixin, generics.ListCreateAPIView):
     queryset = Milestone.objects.all()
     serializer_class = MilestoneSerializer
     filterset_fields = ['name']
 
 
+class FeatureMappingMilestoneDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset = Milestone.objects.all()
+    serializer_class = MilestoneSerializer
+
+
+class FeatureMappingMilestoneTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Milestone.objects.all()
+    serializer_class = MilestoneSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False)
+
+
+# Feature views
 class FeatureMappingFeatureView(LoggingMixin, generics.ListCreateAPIView):
     queryset = Feature.objects.all()
     serializer_class = FeatureSerializer
     filterset_fields = ['name']
 
 
+class FeatureMappingFeatureDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset = Feature.objects.all()
+    serializer_class = FeatureSerializer
+
+
+class FeatureMappingFeatureTableView(LoggingMixin, generics.ListCreateAPIView):
+    queryset = Feature.objects.all()
+    serializer_class = FeatureSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self)
+
+
+# Scenario views
 class FeatureMappingScenarioView(LoggingMixin, generics.ListCreateAPIView):
     queryset = TestScenario.objects.all()
     serializer_class = TestScenarioSerializer
     filterset_fields = ['name']
+
+
+class FeatureMappingScenarioDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset = TestScenario.objects.all()
+    serializer_class = TestScenarioSerializer
+    filterset_fields = ['name']
+
+
+class FeatureMappingScenarioTableView(LoggingMixin, generics.ListCreateAPIView):
+    queryset = TestScenario.objects.all()
+    serializer_class = TestScenarioSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self)
 
 
 # for development needs

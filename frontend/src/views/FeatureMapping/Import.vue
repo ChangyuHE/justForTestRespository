@@ -3,35 +3,37 @@
         <v-row class="d-flex justify-center">
             <v-col cols="6" class="pt-0">
                 <!-- File input controller -->
-                <v-file-input
-                    label="Select feature mapping table Excel file"
-                    full-width show-size counter truncate-length="100"
-                    class="pt-0 mt-0 mb-n1" color="blue-grey"
-                    :disabled="uploading"
-                    v-model="file"
-                >
-                    <template v-slot:append-outer>
-                        <v-tooltip bottom v-model="showTooltip" max-width="700">
-                            <template v-slot:activator="{ on }">
-                                <v-icon size="20" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
-                            </template>
-                            <div class="tooltip">
-                                <v-list dense dark color="transparent">
-                                    File format:
-                                    <v-list-item>
-                                        Data must be placed on first workbook sheet. Sheet name doesn't matter.
-                                    </v-list-item>
-                                    <v-list-item>
-                                        <v-list-item-content>
-                                            <p>First row is used for headers. Select names for you convenience according this mapping:</p>
-                                            <p><b>First column - "milestone", second - "feautre" and third one - "test scenario".</b></p>
-                                        </v-list-item-content>
-                                    </v-list-item>
-                                </v-list>
-                            </div>
-                        </v-tooltip>
-                    </template>
-                </v-file-input>
+                <dnd-frame @file-drop="file = $event">
+                    <v-file-input
+                        label="Select feature mapping table Excel file"
+                        full-width show-size counter truncate-length="100"
+                        class="pt-0 mt-0 mb-n1" color="blue-grey"
+                        :disabled="uploading"
+                        v-model="file"
+                    >
+                        <template v-slot:append-outer>
+                            <v-tooltip bottom v-model="showTooltip" max-width="700">
+                                <template v-slot:activator="{ on }">
+                                    <v-icon size="20" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
+                                </template>
+                                <div class="tooltip">
+                                    <v-list dense dark color="transparent">
+                                        File format:
+                                        <v-list-item>
+                                            Data must be placed on first workbook sheet. Sheet name doesn't matter.
+                                        </v-list-item>
+                                        <v-list-item>
+                                            <v-list-item-content>
+                                                <p>First row is used for headers. Select names for you convenience according this mapping:</p>
+                                                <p><b>First column - "milestone", second - "feautre" and third one - "test scenario".</b></p>
+                                            </v-list-item-content>
+                                        </v-list-item>
+                                    </v-list>
+                                </div>
+                            </v-tooltip>
+                        </template>
+                    </v-file-input>
+                </dnd-frame>
             </v-col>
         </v-row>
 
@@ -39,7 +41,7 @@
         <v-row class="d-flex justify-center">
             <v-col cols="6" class="px-4 pt-0 d-flex">
                 <v-text-field
-                    color="blue-grey" class="py-0 my-0"
+                    color="blue-grey" class="py-1 my-0"
                     clearable
                     label="Mapping name"
                     v-model="mapName"
@@ -105,10 +107,12 @@
     import server from '@/server'
     import { mapState } from 'vuex'
     import ApiAutoComplete from '@/components/APIAutoComplete'
+    import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
 
     export default {
         components: {
-            ApiAutoComplete
+            ApiAutoComplete,
+            'dnd-frame': dndFrame
         },
         data() {
             return {

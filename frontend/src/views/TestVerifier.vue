@@ -12,12 +12,12 @@
             </v-btn>
         </v-btn-toggle>
 
-        <v-row>
+        <v-row justify="center">
             <v-col cols="12" key="1" v-if="pageTab == 'subfeatures'">
                 <sub-features/>
             </v-col>
-            <v-col cols="12" v-if="pageTab == 'import'">
-                <v-col>
+            <v-col cols="10" v-if="pageTab == 'import'">
+                <dnd-frame @file-drop="file = $event">
                     <v-file-input
                         label="Select File to import"
                         full-width show-size counter truncate-length="100"
@@ -25,56 +25,57 @@
                         v-model="file"
                         :disabled="uploading"
                     ></v-file-input>
-                    <v-btn
-                        color="teal" class="white--text"
-                        :loading="uploading"
-                        @click="onUpload"
-                    >
-                        Upload
-                    </v-btn>
+                </dnd-frame>
+                <v-btn
+                    color="teal" class="white--text mt-2"
+                    :loading="uploading"
+                    @click="onUpload"
+                >
+                    Upload
+                </v-btn>
 
-                    <!-- Main import dialog -->
-                    <v-dialog v-model="errorsDialog" persistent max-width="50%">
-                        <v-card>
-                            <v-card-title class="gradient-warning-bottom">
-                                <span class="headline">Something went wrong during import</span>
-                            </v-card-title>
+                <!-- Main import dialog -->
+                <v-dialog v-model="errorsDialog" persistent max-width="50%">
+                    <v-card>
+                        <v-card-title class="gradient-warning-bottom">
+                            <span class="headline">Something went wrong during import</span>
+                        </v-card-title>
 
-                            <v-card-text>
-                                <template v-if="errorsTabs.length">
-                                    <div class="d-flex">
-                                        <v-tabs slider-color="teal darken-4" v-model="tab" style="width: auto">
-                                            <v-tab v-for="name in errorsTabs" :key="name" :class="'tab-' + name">
-                                                {{ name }}
-                                            </v-tab>
-                                        </v-tabs>
-                                        <span class="d-inline-block text-truncate mt-3 body-1 font-weight-medium">
-                                            {{ priorityWarning }}
-                                        </span>
-                                    </div>
-                                    <v-tabs-items v-model="tab">
-                                        <v-tab-item v-for="(edata, priority) in importErrors" :key="priority">
-                                            <div v-for="(items, id) in edata" :key="id">
-                                                <issue-card v-for="e in items" :key="e.ID"
-                                                    :error-data="e"
-                                                    :priority="priority"
-                                                    :error-code="id" />
-                                            </div>
-                                        </v-tab-item>
-                                    </v-tabs-items>
-                                </template>
-                                <span v-else class="title"><br>No import errors, click IMPORT button</span>
-                            </v-card-text>
+                        <v-card-text>
+                            <template v-if="errorsTabs.length">
+                                <div class="d-flex">
+                                    <v-tabs slider-color="teal darken-4" v-model="tab" style="width: auto">
+                                        <v-tab v-for="name in errorsTabs" :key="name" :class="'tab-' + name">
+                                            {{ name }}
+                                        </v-tab>
+                                    </v-tabs>
+                                    <span class="d-inline-block text-truncate mt-3 body-1 font-weight-medium">
+                                        {{ priorityWarning }}
+                                    </span>
+                                </div>
+                                <v-tabs-items v-model="tab">
+                                    <v-tab-item v-for="(edata, priority) in importErrors" :key="priority">
+                                        <div v-for="(items, id) in edata" :key="id">
+                                            <issue-card v-for="e in items" :key="e.ID"
+                                                :error-data="e"
+                                                :priority="priority"
+                                                :error-code="id" />
+                                        </div>
+                                    </v-tab-item>
+                                </v-tabs-items>
+                            </template>
+                            <span v-else class="title"><br>No import errors, click IMPORT button</span>
+                        </v-card-text>
 
-                            <v-card-actions>
-                                <v-spacer></v-spacer>
-                                <v-btn color="red" text @click="errorsDialog = false">Close</v-btn>
-                                <v-btn color="cyan darken-2" text @click="onUpload" :disabled="uploadFromDialogDisabled">Import</v-btn>
-                            </v-card-actions>
-                        </v-card>
-                    </v-dialog>
-                </v-col>
+                        <v-card-actions>
+                            <v-spacer></v-spacer>
+                            <v-btn color="red" text @click="errorsDialog = false">Close</v-btn>
+                            <v-btn color="cyan darken-2" text @click="onUpload" :disabled="uploadFromDialogDisabled">Import</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-dialog>
             </v-col>
+
         </v-row>
     </v-container>
 </template>
@@ -83,6 +84,7 @@
     import server from '@/server'
     import issueCard from '@/components/IssueCard'
     import subFeatures from '@/views/TestVerifier/SubFeatures'
+    import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
     import { mapGetters } from 'vuex'
 
     function getUniqueID(){
@@ -92,7 +94,8 @@
     export default {
         components: {
             issueCard,
-            subFeatures
+            subFeatures,
+            'dnd-frame': dndFrame
         },
         data() {
             return {

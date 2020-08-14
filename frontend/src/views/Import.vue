@@ -16,13 +16,16 @@
                 </v-btn-toggle>
 
                 <!-- File input controller -->
-                <v-file-input
-                    label="Select File to import"
-                    full-width show-size counter truncate-length="100"
-                    class="pt-0" color="blue-grey"
-                    v-model="file"
-                    :disabled="uploading"
-                ></v-file-input>
+                <dnd-frame @file-drop="file = $event">
+                    <v-file-input
+                        label="Select File to import"
+                        full-width show-size counter truncate-length="100"
+                        class="pt-0" color="blue-grey"
+                        v-model="file"
+                        :disabled="uploading"
+                    ></v-file-input>
+                </dnd-frame>
+                </div>
             </v-col>
         </v-row>
 
@@ -165,6 +168,7 @@
 <script>
     import server from '@/server'
     import issueCard from '@/components/IssueCard'
+    import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
 
     import { mapState, mapGetters } from 'vuex'
 
@@ -174,7 +178,8 @@
 
     export default {
         components: {
-            issueCard
+            issueCard,
+            'dnd-frame': dndFrame
         },
         data() {
             return {

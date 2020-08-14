@@ -137,7 +137,7 @@
                             <v-hover v-slot:default="{ hover }"  v-if="mappingType == 'my'">
                                 <v-icon
                                     small title="Delete" :class="{ 'primary--text': hover }"
-                                    @click="deleteMappingItem(item)"
+                                    @click="deleteMappingItemDebounced(item)"
                                 >
                                     mdi-delete
                                 </v-icon>
@@ -150,7 +150,7 @@
 
         <!-- Rules data-table -->
         <template>
-            <v-row justify="center"  v-if="showRulesTable">
+            <v-row justify="center" v-if="showRulesTable">
                 <v-col  md="12" lg="10">
                     <v-data-table
                         dense multi-sort
@@ -468,6 +468,10 @@
                         this.closeMapDialog()
                     })
             },
+            deleteMappingItemDebounced(item) {
+                // debounce needed to ensure that data loads first, while id exists in database
+                this._.debounce(this.deleteMappingItem, 100)(item)
+            },
             deleteMappingItem(item) {
                 this.isMapDeleting = true
                 const index = this.mappingItems.indexOf(item)
@@ -484,6 +488,7 @@
                         .catch(error => {
                             error.handleGlobally && error.handleGlobally('Could not delete mapping item', url)
                         })
+                        .finally(() => this.showRulesTable = false)
                 }
                 this.isMapDeleting = false
             },
@@ -581,6 +586,7 @@
                                 this.items.push(this.editedItem)
                             }
                             this.closeRuleDialog()
+                            this.loadRulesTable(this.activeMapping)
                         })
                         .catch(error => {
                             if (error.response) {           // Request made and server responded out of range of 2xx codes

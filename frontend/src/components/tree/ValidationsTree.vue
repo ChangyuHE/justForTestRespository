@@ -11,15 +11,15 @@
 
         <!-- Show filters button -->
         <v-btn-toggle
-            v-model="showFilters"
-            class="mt-2" background-color="blue-grey" color="blue-grey darken-4">
+            class="mt-2" v-model="showFilters"
+        >
             <!-- Badge with filters amount -->
             <v-badge class="filter-badge" color="teal darken-2"
                 :content="badgeFilterCount"
                 :value="badgeFilterCount"
                 overlap
             >
-                <v-btn x-small style="color: black;" class="elevation-2">
+                <v-btn x-small color="blue-grey lighten-4" class="black--text">
                     Tree filters
                 </v-btn>
             </v-badge>
@@ -34,7 +34,7 @@
                 :value="enableDates"
                 overlap
             >
-                <v-btn x-small style="color: black;" class="elevation-2">
+                <v-btn x-small color="blue-grey lighten-4" class="black--text">
                     Date filter
                 </v-btn>
             </v-badge>
@@ -48,29 +48,34 @@
                     <v-text-field
                         v-debounce:500ms="doFilter"
                         v-model="valToSearch"
-                        color="teal" class="mx-3 my-3 px-4 pt-1 filter-validation"
-                        label="Validation name template"
+                        color="teal darken-2" class="mx-3 my-3 px-4 pt-1 filter-validation"
                         clearable dense hide-details
                     >
                         <template v-slot:append-outer>
-                            <v-tooltip bottom v-model="showTooltip" class="" style="">
+                            <v-tooltip bottom v-model="showTooltip">
                                 <template v-slot:activator="{ on }">
-                                    <v-icon size="20" style="" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
+                                    <v-icon size="20" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
                                 </template>
                                 Search by substring occurance in <strong class="font-weight-bold body-1">Validation name</strong>. Case insensitive.
                             </v-tooltip>
+                        </template>
+                        <template v-slot:label>
+                            <span class="teal--text text--darken-4">Validation name template</span>
                         </template>
                     </v-text-field>
                 </v-col>
                 <!-- Selectors -->
                 <v-col cols="6" class="py-0 mx-0 px-0" v-for="i in treeStructure" :key="i.name">
-                    <v-select class="mx-3 my-3 px-4 pt-1 filter-select"
+                    <v-select class="mx-3 my-2 px-4 pt-1 filter-select"
                         :items="i.items"
-                        :label="i.label"
                         @change="doSelection($event, i.level)"
-                        clear-icon="mdi-close" color="teal" item-color="teal darken-2"
-                        multiple clearable dense small-chips return-object deletable-chips hide-details
-                    ></v-select>
+                        clear-icon="mdi-close" color="teal darken-2" item-color="teal darken-2"
+                        multiple clearable small-chips return-object deletable-chips hide-details
+                    >
+                        <template v-slot:label>
+                            <span class="teal--text text--darken-4" v-text="i.label"></span>
+                        </template>
+                    </v-select>
                 </v-col>
             </v-row>
         </v-card>

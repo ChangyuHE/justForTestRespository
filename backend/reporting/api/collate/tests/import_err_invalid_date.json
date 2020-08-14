@@ -7,6 +7,7 @@
         "execution end time": "1",
         "execution start time": "invalid-date-value",
         "item name": "Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_135",
+        "mapped component": "Media Encode",
         "operating system": "Windows 19H1 x64",
         "operating system family": "Windows",
         "platform": "DG1",
@@ -14,6 +15,7 @@
         "status": "Failed",
         "test run": "2473025",
         "test session": "2546393",
+        "vertical": "Media",
         "url": "http://gtax-ril-fm.intel.com/#/jobs/57128#task_tests_10",
         "reason": "Not found."
     }

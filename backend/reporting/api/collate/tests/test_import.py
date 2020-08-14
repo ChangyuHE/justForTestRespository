@@ -126,6 +126,24 @@ class ImportFileIntegrationTest(DbFixture):
         self.assertContains(response, 'ERR_AMBIGUOUS_COLUMN', status_code=422)
         self.assertContains(response, 'ERR_EXISTING_RUN', status_code=422)
 
+    def test_find_os_by_alias(self):
+        self.set_file('import_ok_find_os_by_alias.json')
+        client = Client()
+        response = client.post(reverse('collate:import'), self.request)
+        self.assertEqual(response.status_code, 200,
+                         f'Expected HTTP 200, actual {response.status_code} {response.data}')
+        self.assertEquals(response.data.get('success', None), True,
+                          f'Expected import success, actual {response.status_code} {response.data}')
+
+        result = Result.objects.first()
+        self.assertIsNotNone(result.result_reason, "Expected non-empty 'result_reason' entity field.")
+
+    def test_missing_os(self):
+        self.set_file('import_err_invalid_os.json')
+        client = Client()
+        response = client.post(reverse('collate:import'), self.request)
+        self.assertContains(response, 'ERR_MISSING_ENTITY', status_code=422)
+
 
 class ImportDatetimeParserTest(DbFixture):
     def test_invalid_date(self):

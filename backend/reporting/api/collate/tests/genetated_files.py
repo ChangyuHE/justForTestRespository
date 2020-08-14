@@ -16,6 +16,7 @@ COLUMNS = [
     'execution start time',
     'execution end time',
     'environment',
+    'mapped component',
     'operating system',
     'operating system family',
     'platform',
@@ -23,6 +24,7 @@ COLUMNS = [
     'status',
     'test run',
     'test session',
+    'vertical',
     'url',
     'reason',
 ]

@@ -32,7 +32,7 @@ class DbFixture(TestCase):
 
         env = Env.objects.create(name='Silicon')
         platform = Platform.objects.create(name='DG1')
-        os = Os.objects.create(name='Windows')
+        os = Os.objects.create(name='Windows 19H1 x64', aliases='Windows')
         Os.objects.create(name='Linux')
         Run.objects.create(name='Test run', session='Test session')
         User.objects.create_user(username='debug', password='12345')

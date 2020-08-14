@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 import os
+import tempfile
 import sys
 from pathlib import Path
 from .site_settings import production
+
+import sqlalchemy_utils
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +56,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'django_dramatiq',
+
     'rest_framework',
     'rest_framework_tracking',
 
@@ -203,6 +209,11 @@ LOGGING = {
             'propagate': False,
             'level': ('DEBUG' if DEBUG else 'INFO'),
         },
+        'django_dramatiq': {
+            'handlers': ['console'],
+            'propagate': False,
+            'level': ('DEBUG' if DEBUG else 'INFO'),
+        },
         'django': {
             'handlers': ['console'],
             'propagate': False,
@@ -216,3 +227,31 @@ LOGGING = {
 }
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
+# Tasks
+DRAMATIQ_REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+DRAMATIQ_BROKER = {
+    "BROKER": "dramatiq.brokers.redis.RedisBroker",
+    "OPTIONS": {
+        "url": DRAMATIQ_REDIS_URL,
+    },
+
+    "MIDDLEWARE": [
+        "dramatiq.middleware.AgeLimit",
+        "dramatiq.middleware.TimeLimit",
+        "dramatiq.middleware.Callbacks",
+        "dramatiq.middleware.Retries",
+        "django_dramatiq.middleware.AdminMiddleware",
+        "django_dramatiq.middleware.DbConnectionsMiddleware",
+    ]
+}
+
+
+def uuid_field(field):
+    return sqlalchemy_utils.UUIDType()
+
+ALDJEMY_DATA_TYPES = {
+    "UUIDField": uuid_field
+}
+
+MEDIA_ROOT = tempfile.gettempdir()

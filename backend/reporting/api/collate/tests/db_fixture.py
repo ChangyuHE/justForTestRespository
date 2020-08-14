@@ -11,6 +11,7 @@ from api.models import Platform
 from api.models import Run
 from api.models import Status
 from api.models import Validation
+from django.contrib.auth.models import User
 
 from api.collate.services import queryset_cache
 
@@ -26,6 +27,7 @@ class DbFixture(TestCase):
             validation_id=42,
             validation_name='Test model',
             notes='Notes',
+            disable_background_task=True,
         )
 
         env = Env.objects.create(name='Silicon')
@@ -33,6 +35,7 @@ class DbFixture(TestCase):
         os = Os.objects.create(name='Windows')
         Os.objects.create(name='Linux')
         Run.objects.create(name='Test run', session='Test session')
+        User.objects.create_user(username='debug', password='12345')
 
         Validation.objects.create(pk=42, name='Test model', env=env, platform=platform, os=os)
 

@@ -1,13 +1,20 @@
 import dataclasses
 import logging
 import re
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+
 
 from datetime import datetime
+from typing import Tuple
 from django.db import transaction
 from django.utils import timezone
+from django.core.files.storage import default_storage
+from django.conf import settings
 from openpyxl import load_workbook
 from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
+from openpyxl.worksheet.worksheet import Worksheet
 from types import SimpleNamespace
 
 from api.models import *
@@ -15,6 +22,9 @@ from api.serializers import create_serializer
 from api.collate.caches import QueryCache
 from api.collate.caches import ObjectsCache
 from api.collate.gta_field_parser import GTAFieldParser
+from utils import api_logging
+
+from reporting.settings import production
 
 """ Business logic """
 
@@ -47,7 +57,37 @@ REVERSE_NAME_MAPPING = {value: key for key, value in NAME_MAPPING.items()}
 excel_base_date = CALENDAR_WINDOWS_1900
 
 
-def import_results(file, descriptor):
+class ImportDescriptor:
+    def __init__(self, pk=None, name=None, date=None, notes=None, source_file=None, force_run=False):
+        if str(pk).strip() == '':
+            pk = None
+
+        if str(date).strip() == '':
+            date = None
+
+        if date is None:
+            date = timezone.make_aware(datetime.now())
+
+        self.validation = None
+        self.pk = pk
+        self.name = name
+        self.notes = notes
+        self.date = date
+        self.source_file = source_file
+        self.force_run = force_run in [True, 'True', 'on', 'true']
+
+
+def get_temp_name() -> Path:
+    folder = Path(settings.MEDIA_ROOT) / 'xlsx'
+    if not folder.exists():
+        folder.mkdir(exist_ok=True, parents=True)
+
+    fn = NamedTemporaryFile('w+', delete=False, dir=folder, suffix='.xlsx')
+    fn.close()
+    return Path(fn.name)
+
+
+def import_results(file, descriptor, request):
     # check if file can be imported
     outcome, mapping = _verify_file(file, descriptor)
 
@@ -56,7 +96,7 @@ def import_results(file, descriptor):
         return outcome
 
     # store file content
-    outcome = _store_results(mapping, descriptor)
+    _store_results(file, request, mapping, descriptor)
     return outcome
 
 
@@ -101,44 +141,31 @@ def _get_column_values(column_name, rows, column_mapping):
 
 
 @transaction.atomic
-def _store_results(mapping, descriptor):
+def _store_results(xlsx, request, mapping: Tuple[Worksheet, dict], descriptor: ImportDescriptor):
     # Assuming that all related objects already exist.
-    sheet, column_mapping = mapping
+    sheet, _ = mapping
     rows = sheet.rows
     next(rows)
-    changes = SimpleNamespace(added=0, updated=0, skipped=0)
-    outcome = OutcomeBuilder()
 
     # Save transient validation entity
     if descriptor.validation.pk is None:
         descriptor.validation.save()
 
-    # get list of result urls
-    url_list = _get_column_values('resultURL', sheet.rows, column_mapping)
+    tmp_name = get_temp_name()
+    with default_storage.open(tmp_name, 'wb+') as destination:
+        for chunk in xlsx.chunks():
+            destination.write(chunk)
 
-    # process file content row by row.
-    for row in non_empty_row(rows):
-        builder = RecordBuilder(descriptor.validation, row, column_mapping, outcome, url_list=url_list)
-        entity = builder.build(descriptor.force_run)
-        _update_changes_counters(changes, entity)
+    requester = api_logging.get_user_object(request)
+    obj = ImportJob.objects.create(path=tmp_name, requester=requester)
+    obj.save()
+    # Start background part of import
+    if not request.data.get("disable_background_task", False):
+        # "disable_background_task" flag is used ONLY for tests.
+        # If this flag is used validation will not be saved!
+        from .tasks import do_import
+        do_import.send(obj.id, descriptor.validation.pk, descriptor.force_run)
 
-    outcome.changes = _namespace_to_dict(changes)
-
-    log.debug(f'File store outcome: {outcome.build()}')
-    if not outcome.is_success():
-        transaction.set_rollback(True)
-
-    return outcome
-
-def _update_changes_counters(changes, entity):
-    if entity is None:
-        changes.skipped += 1
-    elif entity.id is None:
-        entity.save()
-        changes.added += 1
-    else:
-        entity.save()
-        changes.updated += 1
 
 def _namespace_to_dict(namespace):
     return dict(namespace.__dict__)
@@ -671,23 +698,3 @@ class RecordBuilder:
 
 class EntityException(Exception):
     pass
-
-
-class ImportDescriptor:
-    def __init__(self, pk=None, name=None, date=None, notes=None, source_file=None, force_run=False):
-        if str(pk).strip() == '':
-            pk = None
-
-        if str(date).strip() == '':
-            date = None
-
-        if date is None:
-            date = timezone.make_aware(datetime.now())
-
-        self.validation = None
-        self.pk = pk
-        self.name = name
-        self.notes = notes
-        self.date = date
-        self.source_file = source_file
-        self.force_run = force_run in [True, 'True', 'on', 'true']

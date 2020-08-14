@@ -174,8 +174,8 @@ class GTAFieldParser:
                  mapped_component: str, vertical: str, platform: str,
                  url_list: list) -> None:
         # Do not use proxy
-        os.unsetenv('HTTP_PROXY')
-        os.unsetenv('HTTPS_PROXY')
+        os.environ.pop('HTTP_PROXY', None)
+        os.environ.pop('HTTPS_PROXY', None)
         self.test_run_id = test_run_id
         self.test_session_id = test_session_id
         self.mapped_component = mapped_component
@@ -312,7 +312,7 @@ class GTAFieldParser:
             tasks = []
             limit = 500
             offset = 0
-            sem = asyncio.Semaphore(25)
+            sem = asyncio.Semaphore(5)
             # Pagination of async requests
             while offset < amount:
                 tasks.append(asyncio.ensure_future(fetch_url(sem, limit, offset)))
@@ -334,15 +334,11 @@ class GTAFieldParser:
                     log.info('Sending e-mail to developers')
                     stacktrace = traceback.format_exc()
                     text = f'<pre>{stacktrace}</pre>'
-                    staff_emails = get_user_model().objects \
-                        .filter(is_staff=True) \
-                        .exclude(email__isnull=True) \
-                        .exclude(email='') \
-                        .values_list('email', flat=True)
+                    staff_emails = get_user_model().staff_emails()
                     msg = EmailMessage(
                         subject='Reporter: GTAFieldParser failure',
                         body=text,
-                        from_email='lab_msdk@intel.com',
+                        from_email='reporter@intel.com',
                         recipient_list=staff_emails,
                         cc=['Arseniy.Obolenskiy@intel.com'],
                     )

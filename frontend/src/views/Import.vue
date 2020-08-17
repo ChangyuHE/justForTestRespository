@@ -323,8 +323,9 @@
                     headers: {'Content-Type': 'multipart/form-data'}
                 })
                 .then(response => {
-                    console.log('Successfully imported', response);
-                    this.$toasted.success('Successfully imported')
+                    console.log('Import started in the background', response);
+                    this.$toasted.success('Import started in the background.<br>\n' +
+                                          'You will be notified by email at the end.', { duration: 4000 })
                 })
                 .catch(error => {
                     if (error.response) {           // Request made and server responded out of range of 2xx codes

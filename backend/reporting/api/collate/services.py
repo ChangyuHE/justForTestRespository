@@ -492,13 +492,7 @@ class RecordBuilder:
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
-        os_version = columns['osVersion']
-
-        # Search Os by alias if Os is missing
-        if os_version is None or str(os_version).strip() == '':
-            record.os = self._find_with_alias(Os, columns['osName'])
-        else:
-            record.os = self._find_object(Os, name=os_version)
+        record.os = self._find_with_alias(Os, columns['osVersion'])
 
         # Create Run entities automatically if they was not found in database during import. If found - send warning.
         try:

@@ -22,12 +22,6 @@ class CreateEntitiesIntegrationTest(TestCase):
         request = dict(entities=[
             dict(model='Os', fields={'name': 'Doors'}),
             dict(model='Os', fields={'name': 'Walls', 'group': 23}),
-            dict(model='Platform', fields={
-                'name': 'Concrete',
-                'aliases': 'Composite of sand and cement;',
-                'short_name': 'CNT',
-                'weight': 500
-            }),
             dict(model='Env', fields={'name': 'Mock Env', 'short_name': 'MK'}),
             dict(model='Driver', fields={'name': 'Mock Driver'}),
             dict(model='Component', fields={'name': 'Mock Component'}),

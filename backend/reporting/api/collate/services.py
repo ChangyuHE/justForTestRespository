@@ -286,7 +286,7 @@ def _get_best_sheet_mapping(workbook):
             sheet = workbook[title]
             column_mapping = _create_column_mapping(workbook[title])
 
-            if len(column_mapping) >= 15:
+            if len(column_mapping) == len(NAME_MAPPING):
                 return sheet, column_mapping
 
     return None, column_mapping
@@ -492,9 +492,13 @@ class RecordBuilder:
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
-        record.os = self._find_with_alias(Os, columns['osVersion'], ignore_warnings=True)
-        if record.os is None:
+        os_version = columns['osVersion']
+
+        # Search Os by alias if Os is missing
+        if os_version is None or str(os_version).strip() == '':
             record.os = self._find_with_alias(Os, columns['osName'])
+        else:
+            record.os = self._find_object(Os, name=os_version)
 
         # Create Run entities automatically if they was not found in database during import. If found - send warning.
         try:

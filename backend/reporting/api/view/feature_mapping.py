@@ -25,6 +25,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from api.models import FeatureMapping, FeatureMappingRule, Milestone, Feature, TestScenario
 from api.forms import FeatureMappingFileForm
 from api.serializers import *
+from test_verifier.models import Codec
 
 from utils.api_logging import LoggingMixin
 from utils.api_helpers import get_datatable_json
@@ -267,17 +268,17 @@ def import_feature_mapping(file, serializer):
 
     rows = sheet.rows
     if not rows:
-        errors.append({'workbook format error': 'There must be 3 columns with "milestone", "feature" and "scenario"'
-                                                ' data (column headers do not matter)'})
+        errors.append({'workbook format error': 'There must be 5 columns with "milestone", "codec", "feature", '
+                                                '"scenario" and "ids" data (column headers do not matter)'})
         errors.append({'workbook error': 'No rows found'})
         return errors
 
     first_row = next(rows)
     headings = [c.value for c in first_row]
-    if len(headings) != 3:
+    if len(headings) != 5:
         errors.append(
-            {'workbook format error': 'There must be 3 columns with "milestone", "feature" and "scenario" data'
-                                      ' (names do not matter)'})
+            {'workbook format error': 'There must be 5 columns with "milestone", "codec", "feature", '
+                                      '"scenario" and "ids" data (column headers do not matter)'})
         return errors
 
     fm_rules = []
@@ -288,14 +289,16 @@ def import_feature_mapping(file, serializer):
                                                     os_id=data['os'])
 
             for i, row in enumerate(rows):
-                milestone_name, feature_name, scenario_name = [cell.value for cell in row]
-                if all([milestone_name, feature_name, scenario_name]):
+                milestone_name, codec_name, feature_name, scenario_name, ids_value = [cell.value for cell in row]
+                if all([milestone_name, codec_name, feature_name, scenario_name, ids_value]):
                     milestone, _ = Milestone.objects.get_or_create(name=milestone_name)
+                    codec, _ = Codec.objects.get_or_create(name=codec_name)
                     feature, _ = Feature.objects.get_or_create(name=feature_name)
                     scenario, _ = TestScenario.objects.get_or_create(name=scenario_name)
 
                     fm_rules.append(FeatureMappingRule(
-                        mapping=mapping, milestone=milestone, feature=feature, scenario=scenario
+                        mapping=mapping, milestone=milestone, codec=codec, feature=feature, scenario=scenario,
+                        ids=ids_value
                     ))
                 else:
                     errors.append({f'workbook error (row {i + 2})': 'Empty cell'})

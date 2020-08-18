@@ -5,9 +5,12 @@ from rest_framework.views import APIView
 from rest_framework import generics
 from django.shortcuts import get_object_or_404
 
-from .models import SubFeature
-from .serializers import SubFeatureFullSerializer, SubFeatureIDSerializer
+from .models import SubFeature, Codec, Feature, FeatureCategory
+from .serializers import SubFeatureFullSerializer, SubFeatureIDSerializer, CodecSerializer, \
+    FeatureSerializer, FeatureCategorySerializer
 from api.views import LoggingMixin
+from api.models import Platform
+from api.serializers import PlatformSerializer
 from .services import import_features
 
 
@@ -27,29 +30,37 @@ class ImportView(LoggingMixin, APIView):
         return Response(data=data, status=code)
 
 
-class SubFeatureListView(LoggingMixin, generics.ListAPIView):
-    """ Getting SubFeatures full list and full info """
+class SubFeatureListView(LoggingMixin, generics.ListCreateAPIView):
+    """
+        Getting SubFeatures full list and full info
+        post: Add new SubFeature
+    """
     queryset = SubFeature.objects.all().prefetch_related('win_platforms__generation',
                                                          'lin_platforms__generation').select_related()
     serializer_class = SubFeatureFullSerializer
 
+    def post(self, request):
+        input_serializer = SubFeatureIDSerializer(data=request.data)
+        if not input_serializer.is_valid():
+            return Response(
+                    {'errors': input_serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST)
+        try:
+            output_serializer = SubFeatureFullSerializer(input_serializer.save())
+        except Exception as e:
+            raise ValidationError({"detail": e})
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
-class SubFeatureGetDeleteView(LoggingMixin, generics.RetrieveDestroyAPIView):
+
+class SubFeatureDetailView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
     """
     get: Get SubFeature info by id
     delete: Delete SubFeature by id
-    """
-    queryset = SubFeature.objects.all()
-    serializer_class = SubFeatureFullSerializer
-
-
-class SubFeatureUpdateDetailsView(LoggingMixin, generics.GenericAPIView):
-    """
     put: Update existing SubFeature's or replace it with new fields
     patch: Update only existing SubFeature fields
     """
     queryset = SubFeature.objects.all()
-    serializer_class = SubFeatureIDSerializer
+    serializer_class = SubFeatureFullSerializer
 
     def put(self, request, pk):
         subfeature = get_object_or_404(SubFeature.objects.all(), pk=pk)
@@ -78,21 +89,16 @@ class SubFeatureUpdateDetailsView(LoggingMixin, generics.GenericAPIView):
         return Response(output_serializer.data, status.HTTP_201_CREATED)
 
 
-class SubFeatureAddView(LoggingMixin, generics.GenericAPIView):
-    """
-    post: Add new SubFeature
-    """
-    queryset = SubFeature.objects.all()
-    serializer_class = SubFeatureIDSerializer
+class CodecListView(LoggingMixin, generics.ListAPIView):
+    queryset = Codec.objects.all()
+    serializer_class = CodecSerializer
 
-    def post(self, request):
-        input_serializer = SubFeatureIDSerializer(data=request.data)
-        if not input_serializer.is_valid():
-            return Response(
-                    {'errors': input_serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-        try:
-            output_serializer = SubFeatureFullSerializer(input_serializer.save())
-        except Exception as e:
-            raise ValidationError({"detail": e})
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+class CategoryListView(LoggingMixin, generics.ListAPIView):
+    queryset = FeatureCategory.objects.all()
+    serializer_class = FeatureCategorySerializer
+
+
+class FeatureListView(LoggingMixin, generics.ListAPIView):
+    queryset = Feature.objects.all()
+    serializer_class = FeatureSerializer

@@ -91,7 +91,7 @@
                                                 </v-text-field>
                                             </v-col>
                                             <v-col cols="12" sm="6" md="4">
-                                                <v-select
+                                                <v-autocomplete
                                                     color="teal"
                                                     :items="codecs"
                                                     label="Codec"
@@ -99,32 +99,35 @@
                                                     item-text="name"
                                                     return-object
                                                     :rules="[rules.required]"
+                                                    placeholder="Start typing to filter values"
                                                     required>
-                                                </v-select>
+                                                </v-autocomplete>
                                             </v-col>
                                             <v-col cols="12" sm="6" md="4">
-                                                <v-select
+                                                <v-autocomplete
                                                     color="teal"
-                                                    :items="featureCategiries"
+                                                    :items="featureCategories"
                                                     label="Feature Category"
                                                     v-model="editedSubfeature.category"
                                                     item-text="name"
                                                     return-object
+                                                    placeholder="Start typing to filter values"
                                                     :rules="[rules.required]"
                                                     required>
-                                                </v-select>
+                                                </v-autocomplete>
                                             </v-col>
                                             <v-col cols="12" sm="6" md="4">
-                                                <v-select
+                                                <v-autocomplete
                                                     color="teal"
                                                     :items="features"
                                                     label="Feature"
                                                     v-model="editedSubfeature.feature"
                                                     item-text="name"
                                                     return-object
+                                                    placeholder="Start typing to filter values"
                                                     :rules="[rules.required]"
                                                     required>
-                                                </v-select>
+                                                </v-autocomplete>
                                             </v-col>
                                         </v-row>
                                         <v-divider></v-divider>
@@ -187,7 +190,7 @@
                             <v-container>
                                 <v-row>
                                     <v-col cols="12">
-                                        <v-select
+                                        <v-autocomplete
                                             color="teal"
                                             chips
                                             multiple
@@ -195,8 +198,9 @@
                                             label="Platforms"
                                             v-model="editedPlatforms"
                                             return-object
+                                            placeholder="Start typing to filter values"
                                             item-text="short_name">
-                                        </v-select>
+                                        </v-autocomplete>
                                     </v-col>
                                 </v-row>
                             </v-container>
@@ -246,10 +250,10 @@
                         <template v-for="gen in selectedGenerations">
                             <template v-for="platform in platformsByGen[gen.name]">
                                 <th class="col-os" :key="'win_'+platform.id" v-if="isSelectedPlatform(platform)">
-                                    <v-icon small>mdi-microsoft-windows</v-icon>
+                                    <v-icon small :title="oses.WINDOWS_OS">mdi-microsoft-windows</v-icon>
                                 </th>
                                 <th class="col-os" :key="'lin_'+platform.id" v-if="isSelectedPlatform(platform)">
-                                    <v-icon small>mdi-linux</v-icon>
+                                    <v-icon small :title="oses.LINUX_OS">mdi-linux</v-icon>
                                 </th>
                             </template>
                         </template>
@@ -277,12 +281,24 @@
                             <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="editSubfeatures(item, index)">mdi-pencil</v-icon>
                         </v-hover>
                         <v-hover v-slot:default="{ hover }">
-                            <v-icon small :class="{ 'primary--text': hover }" @click="deleteSubfeatures(item, index)">mdi-delete</v-icon>
+                            <v-icon small :class="{ 'red--text': hover }" @click="openDeleteDialog(item)">mdi-delete</v-icon>
                         </v-hover>
                     </td>
                 </tr>
             </template>
         </v-data-table>
+        <!-- Subfeature deleting dialog -->
+        <v-dialog v-model="dialogDelete" max-width="500px">
+            <v-card>
+                <v-card-title>Delete subfeature</v-card-title>
+                <v-card-text>Are you sure you want to delete {{ subfeatureToDelete.name }} subfeature?</v-card-text>
+                <v-card-actions>
+                <v-btn color="primary" text @click="dialogDelete = false">Close</v-btn>
+                <v-spacer></v-spacer>
+                <v-btn color="red" text @click="deleteSubfeature()">Delete</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </v-card>
 </template>
 
@@ -293,10 +309,12 @@
         WINDOWS_OS: 'Windows',
         LINUX_OS: 'Linux'
     })
+    const url = 'test_verifier/features_data/'
 
     export default {
         data() {
             return {
+                url,
                 oses,
                 search: '',
                 loading: false,
@@ -304,12 +322,13 @@
                 valid: true,
                 dialog: false,
                 dialogPlatforms: false,
+                dialogDelete: false,
                 rules: {
                     required: value => !!value || 'Required.'
                 },
 
                 codecs: [],
-                featureCategiries: [],
+                featureCategories: [],
                 features: [],
                 generations: [],
                 platforms: [],
@@ -328,6 +347,7 @@
                     'win_platforms': [],
                     'lin_platforms': [],
                 },
+                subfeatureToDelete: {},
                 editedPlatforms: [],
             }
         },
@@ -343,10 +363,16 @@
             dialogPlatforms(val) {
                 val || this.closePlatforms()
             },
+            dialogDelete(val) {
+                val || this.closeDeleteDialog()
+            },
         },
         methods: {
             uniq(arr) {
                 return arr.filter((v, i, a) => a.findIndex(t => (JSON.stringify(t) === JSON.stringify(v))) === i)
+            },
+            sortNumeric(arr) {
+                return arr.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
             },
             platformKey(os) {
                 return `${os.substring(0, 3).toLowerCase()}_platforms`
@@ -380,7 +406,7 @@
             },
             changeGens() {
                 // Sorting generations after toggle filters
-                this.selectedGenerations = this._.sortBy(this.selectedGenerations, 'name')
+                this.selectedGenerations = this.sortNumeric(this.selectedGenerations)
             },
             changeGen(gen) {
                 // Remove/Add platform by Gen toggle
@@ -398,7 +424,7 @@
                 let genIndex = this._.findIndex(this.selectedGenerations, {name: platform.generation.name})
                 if (genIndex < 0 && this.selectedPlatforms.indexOf(platform.id) >= 0) {
                     this.selectedGenerations.push(gen)
-                    this.selectedGenerations = this._.sortBy(this.selectedGenerations, 'name')
+                    this.selectedGenerations = this.sortNumeric(this.selectedGenerations)
                 } else {
                     let platformsByGen = this.platformsByGen[platform.generation.name].map((item) => item.id)
                     if (this._.intersection(platformsByGen, this.selectedPlatforms).length === 0) {
@@ -408,28 +434,18 @@
             },
             getSubFeatures() {
                 this.loading = true
-                let url = 'test_verifier/features_data/'
                 server
-                    .get(url)
+                    .get(this.url)
                     .then(featuresData => {
                         this.subFeatures = featuresData.data
-                        this.codecs = this.subFeatures.map((item) => item.codec)
-                        this.featureCategiries = this.subFeatures.map((item) => item.category)
-                        this.features = this.subFeatures.map((item) => item.feature)
-                        let platforms = this.uniq(this._.flattenDeep(featuresData.data.map((item) => [item.lin_platforms, item.win_platforms])))
-                        this.platforms = this._.sortBy(platforms, 'name')
-                        let generations = this.uniq(platforms.map((item) => item.generation))
-                        this.generations = this._.sortBy(generations, 'name')
-                        this.platformsByGen = this._.reduce(platforms, (result, item) => {
-                            if (result[item.generation.name]) {
-                                result[item.generation.name].push(item)
-                            } else {
-                                result[item.generation.name] = [item]
-                            }
-                            return result
-                        }, {})
-                        this.selectedGenerations = [...this.generations]
-                        this.selectedPlatforms = platforms.map((item) => item.id)
+                        this.headers = [
+                            { text: 'Codec', rowspan: 4, class: 'col-codec', value: 'codec.name' },
+                            { text: 'Feature Category', rowspan: 4, class: 'col-category', value: 'category.name' },
+                            { text: 'Feature', rowspan: 4, class: 'col-feature', value: 'feature.name' },
+                            { text: 'Sub Feature', rowspan: 4, value: 'name' },
+                            { text: '', value:"platform", class: 'col-support' },
+                            { text: 'Actions', rowspan: 4, class: 'col-actions' },
+                        ]
                     })
                     .catch(error => {
                         if (error.handleGlobally) {
@@ -439,14 +455,6 @@
                         }
                     })
                     .finally(() => this.loading = false)
-                this.headers = [
-                  { text: 'Codec', rowspan: 4, class: 'col-codec', value: 'codec.name' },
-                  { text: 'Feature Category', rowspan: 4, class: 'col-category', value: 'category.name' },
-                  { text: 'Feature', rowspan: 4, class: 'col-feature', value: 'feature.name' },
-                  { text: 'Sub Feature', rowspan: 4, value: 'name' },
-                  { text: '', value:"platform", class: 'col-support' },
-                  { text: 'Actions', rowspan: 4, class: 'col-actions' },
-                ]
             },
             checkSupport(item, os, platform) {
                 let item_platform = item[this.platformKey(os)].filter((p) => p.id == platform.id)
@@ -466,23 +474,26 @@
                 this.editedSubfeature = Object.assign({}, item)
                 this.dialog = true
             },
-            deleteSubfeatures(item, index) {
-                if (confirm(`Are you sure you want to delete ${item.name} subfeature?`)) {
-                    let url = `test_verifier/features_data/${item.id}/`
-                    server
-                        .delete(url)
-                        .then(response => {
-                            this.subFeatures.splice(index, 1)
-                            this.$toasted.success('Subfeature has been removed')
-                        })
-                        .catch(error => {
-                            if (error.handleGlobally) {
-                                error.handleGlobally('Error during deletion', url)
-                            } else {
-                                this.$toasted.global.alert_error(error)
-                            }
-                        })
-                }
+            openDeleteDialog(item) {
+                this.subfeatureToDelete = item
+                this.dialogDelete = !this.dialogDelete
+            },
+            deleteSubfeature() {
+                server
+                    .delete(`${url}${this.subfeatureToDelete.id}/`)
+                    .then(response => {
+                        let index = this._.findIndex(this.subFeatures, {id: this.subfeatureToDelete.id})
+                        this.subFeatures.splice(index, 1)
+                        this.$toasted.success('Subfeature has been removed')
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during deletion', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    })
+                    .finally(() => this.closeDeleteDialog())
             },
             close() {
                 this.dialog = false
@@ -497,6 +508,12 @@
                     this.editedPlatforms = []
                 })
             },
+            closeDeleteDialog() {
+                this.dialogDelete = false
+                this.$nextTick(() => {
+                    this.subfeatureToDelete = {}
+                })
+            },
             save() {
                 let sfSaving = {
                     name: this.editedSubfeature.name,
@@ -508,9 +525,8 @@
                 }
 
                 if (this.editedIndex > -1) {
-                    let url = `test_verifier/features_data/update/${this.editedSubfeature.id}/`
                     server
-                        .put(url, sfSaving)
+                        .put(`${url}${this.editedSubfeature.id}/`, sfSaving)
                         .then(response => {
                             Object.assign(this.subFeatures[this.editedIndex], response.data)
                             this.close()
@@ -525,9 +541,8 @@
                             }
                         })
                 } else {
-                    let url = 'test_verifier/features_data/add/'
                     server
-                        .post(url, sfSaving)
+                        .post(this.url, sfSaving)
                         .then(response => {
                             this.editedSubfeature.id = response.data.id
                             this.subFeatures.unshift(response.data)
@@ -544,6 +559,74 @@
                         })
                 }
             },
+        },
+        created() {
+            // Initial codecs, categories, features, platforms
+            let url = 'test_verifier/codecs/'
+            server
+                .get(url)
+                .then(response => {
+                    this.codecs = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get codecs', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+            url = 'test_verifier/categories/'
+            server
+                .get(url)
+                .then(response => {
+                    this.featureCategories = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get categories', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+            url = 'test_verifier/features/'
+            server
+                .get(url)
+                .then(response => {
+                    this.features = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get features', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+            url = 'api/platform/'
+            server
+                .get(url)
+                .then(response => {
+                    this.platforms = response.data
+                    let generations = this.uniq(response.data.map((item) => item.generation))
+                    this.generations = this.sortNumeric(generations)
+                    this.selectedGenerations = [...this.generations].slice(-3)
+                    let genIds = this.selectedGenerations.map((item) => item.id)
+                    this.selectedPlatforms = response.data.filter((item) => genIds.indexOf(item.generation.id) >= 0).map((item) => item.id)
+                    this.platformsByGen = this._.reduce(response.data, (result, item) => {
+                        if (result[item.generation.name]) {
+                            result[item.generation.name].push(item)
+                        } else {
+                            result[item.generation.name] = [item]
+                        }
+                        return result
+                    }, {})
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get platforms', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
         },
         mounted() {
             this.getSubFeatures()

@@ -73,10 +73,12 @@ urlpatterns = [
     path('api/generation/table/', views.GenerationTableView().as_view()),
     path('api/platform/table/', views.PlatformTableView().as_view()),
     path('api/os/table/', views.OsTableView().as_view()),
+    path('api/env/table/', views.EnvTableView().as_view()),
     path('api/component/', views.ComponentView().as_view()),
     path('api/generation/', views.GenerationView().as_view()),
     path('api/platform/', views.PlatformView().as_view()),
     path('api/os/', views.OsView().as_view()),
+    path('api/env/', views.EnvView().as_view()),
 
 
     path('admin/', admin.site.urls),

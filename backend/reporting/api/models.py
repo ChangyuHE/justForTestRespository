@@ -84,6 +84,9 @@ class Env(models.Model):
 class Component(models.Model):
     name = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.name
+
 
 class Driver(models.Model):
     name = models.CharField(max_length=255)
@@ -123,6 +126,7 @@ class Os(models.Model):
                 name='unique_os_shortcut'
             )
         ]
+        verbose_name_plural = 'Oses'
 
     def __str__(self):
         return self.name
@@ -144,6 +148,12 @@ class OsGroup(models.Model):
 class Status(models.Model):
     test_status = models.CharField(max_length=255)
     priority = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = 'Statuses'
+
+    def __str__(self):
+        return self.test_status
 
 
 class Run(models.Model):

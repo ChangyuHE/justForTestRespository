@@ -1,5 +1,6 @@
 import json
 import re
+import urllib.parse
 from dataclasses import dataclass
 from typing import Dict, Tuple, List
 
@@ -142,6 +143,22 @@ class ComponentView(LoggingMixin, generics.ListAPIView):
 class ComponentTableView(LoggingMixin, generics.ListAPIView):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self, actions=False)
+
+
+# Environment
+class EnvView(LoggingMixin, generics.ListAPIView):
+    queryset = Env.objects.all()
+    serializer_class = EnvSerializer
+    filterset_fields = ['name']
+
+
+class EnvTableView(LoggingMixin, generics.ListAPIView):
+    queryset = Env.objects.all()
+    serializer_class = EnvSerializer
     filterset_fields = ['name']
 
     def get(self, request, *args, **kwargs):
@@ -798,13 +815,13 @@ class RequestModelCreation(APIView):
         model = request.data['model']
         fields = request.data['fields']
         requester = request.data['requester']
+        staff_emails = get_user_model().staff_emails()
 
-        staff_emails = get_user_model().objects \
-            .filter(is_staff=True) \
-            .exclude(email__isnull=True) \
-            .exclude(email__exact='') \
-            .values_list('email', flat=True)
-        url = request.build_absolute_uri(reverse(f'admin:api_{model.lower()}_add'))  # url to add new object
+        # field names and values to be inserted into the url and later will be inserted into the form on the admin page
+        autocomplete_data = '?' + urllib.parse.urlencode(fields)
+
+        # url to create new object on the admin page
+        url = request.build_absolute_uri(reverse(f'admin:api_{model.lower()}_add')) + autocomplete_data
         msg = render_to_string('request_creation.html', {'first_name': requester['first_name'],
                                                          'last_name': requester['last_name'],
                                                          'username': requester['username'],

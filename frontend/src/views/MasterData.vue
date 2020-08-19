@@ -21,7 +21,7 @@
                         <v-list-item
                             v-if="item.name != 'divider'"
                             :key="item.name"
-                            v-ripple="{ class: `primary--text` }"
+                            v-ripple="{ class: 'primary--text' }"
                             @click=""
                         >
                             <!-- Content -->
@@ -171,55 +171,19 @@
         </v-dialog>
 
         <!-- Request Item dialog -->
-        <v-dialog v-model="requestItemDialog" max-width="50%">
-            <v-card>
-                <v-card-title>
-                    New {{ model }} item creation request
-                </v-card-title>
-                <v-card-text class="text-body-1">
-                    <div> You are going to send request to administrators for {{ model }} item creation: </div>
-                    <v-form v-model="isFormValid" @submit.prevent>
-                        <v-col cols="12" class="pt-0 pb-1" v-for="field in fields[model]" :key="model + field.label">
-                            <v-text-field v-if="field.type == 'text'"
-                                color="blue-grey" clearable
-                                :label="field.label"
-                                :rules="[rules.required(requestedItem[field.name], field.name)]"
-                                v-model="requestedItem[field.name]"
-                            ></v-text-field>
-                            <api-auto-complete v-else-if="field.type == 'autocomplete'"
-                                class="my-0 pb-1"
-                                type="defined"
-                                color="blue-grey"
-                                :model-name="field.name"
-                                :rules="[rules.required(requestedItem[field.name], field.name)]"
-                                v-model="requestedItem[field.name]"
-                            ></api-auto-complete>
-                        </v-col>
-                    </v-form>
-
-                </v-card-text>
-                <v-card-actions>
-                    <v-spacer></v-spacer>
-                    <v-btn color="blue-grey darken-1" text @click="closeRequestDialog" :disabled="sending">
-                        Close
-                    </v-btn>
-                    <v-btn color="cyan darken-2" text @click="sendRequest" :loading="sending" :disabled="!isFormValid">
-                        Send
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <request-item-dialog-component v-if="requestItemDialog == model" :model="model" />
     </v-row>
 </template>
 
 <script>
     import server from '@/server'
     import { mapState } from 'vuex'
-    import ApiAutoComplete from '@/components/APIAutoComplete'
+    import { fields } from '@/store/request'
+    import requestItemDialogComponent from '@/components/RequestItemDialog'
 
     export default {
         components: {
-            ApiAutoComplete
+            requestItemDialogComponent,
         },
         data() {
             return {
@@ -231,6 +195,7 @@
                             { name: 'generation', label: 'Generation', requested: true }, { name: 'divider' },
                             { name: 'platform', label: 'Platform', requested: true }, { name: 'divider' },
                             { name: 'os', label: 'Os', requested: true }, { name: 'divider' },
+                            { name: 'env', label: 'Env', requested: true }, { name: 'divider' },
                         ]
                     },
                     {
@@ -242,40 +207,8 @@
                         ]
                     }
                 ],
-                rules: {
-                    required: (value, field) => {
-                        if (this._.includes(['name', 'short_name', 'generation'], field))
-                            return !!value || 'Required'
-                        return true
-                    }
-                },
-                fields: {
-                    component: [
-                        { label: 'Name', name: 'name', type: 'text' }
-                    ],
-                    generation: [
-                        { label: 'Name', name: 'name', type: 'text' }
-                    ],
-                    platform: [
-                        { label: 'Short name', name: 'short_name', type: 'text' },
-                        { label: 'Name', name: 'name', type: 'text' },
-                        { label: 'Aliases (optional)', name: 'aliases', type: 'text' },
-                        { label: 'Generation', name: 'generation', type: 'autocomplete' }
-                    ],
-                    os: [
-                        { label: 'Name', name: 'name', type: 'text' },
-                        { label: 'Aliases (optional)', name: 'aliases', type: 'text' },
-                    ],
-                    milestone: [
-                        { label: 'Name', name: 'name', type: 'text' }
-                    ],
-                    feature: [
-                        { label: 'Name', name: 'name', type: 'text' }
-                    ],
-                    scenario: [
-                        { label: 'Name', name: 'name', type: 'text' }
-                    ]
-                },
+
+                fields: fields,
                 active: {},
                 items: [],
                 openedGroups: {general: true, fmt: true},
@@ -292,16 +225,11 @@
 
                 eData: {},
                 errorsDialog: false,
-
-                requestItemDialog: false,
-                requestedItem: {},
-                sending: false,
-
                 maxHeight: 0,
             }
         },
         computed: {
-            ...mapState(['userData']),
+            ...mapState('request', ['requestItemDialog', 'rules']),
             computedTableHeaders() {
                 // show all columns excepth of id one
                 return this.tableHeaders.filter(h => h.value != 'id')
@@ -314,7 +242,7 @@
             },
             saveDisabled() {
                 return this._.isEqual(this.tableItems[this.editedIndex], this.editedItem)
-            }
+            },
         },
         methods: {
             // setActiveItem(item, group) {
@@ -456,50 +384,7 @@
                 })
             },
             openRequestDialog() {
-                this.requestItemDialog = true
-            },
-            closeRequestDialog() {
-                this.requestItemDialog = false
-                this.$nextTick(() => {
-                    this.requestedItem = {}
-                })
-            },
-            // Send item creation request
-            sendRequest() {
-                this.sending = true
-                let data = { model: this.model, fields: {}, requester: this.userData }
-                // prepare item data to send
-                for (let [k, v] of Object.entries(this.requestedItem)) {
-                    // change auto-complete fields
-                    if (typeof(v) === 'object') {
-                        this.requestedItem[k] = v !== null ? v.name : null
-                        data.fields[k] = v !== null ? v.id : null
-                    // empty fields
-                    } else if (v === undefined || v === '') {
-                        this.requestedItem[k] = null
-                        data.fields[k] = null
-                    // text and boolean values
-                    } else {
-                        data.fields[k] = v
-                    }
-                }
-                server
-                    .post('api/objects/create/', data)
-                    .then(response => {
-                        this.requestItemDialog = false
-                        this.$toasted.success('Request has been sent')
-                    })
-                    .catch(error => {
-                        if (error.handleGlobally) {
-                            error.handleGlobally('Error during requesting creation of a new object', url)
-                        } else {
-                            this.$toasted.global.alert_error(error)
-                        }
-                    })
-                    .finally(() => {
-                        this.sending = false
-                        this.closeRequestDialog()
-                    })
+                this.$store.dispatch('request/setRequestDialogState', this.model)
             },
             // set max height variable according to browser's inner size
             onResize () {

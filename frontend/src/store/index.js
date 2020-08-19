@@ -5,12 +5,14 @@ Vue.use(Vuex)
 
 import tree from './tree'
 import reports from './reports'
+import { request } from './request'
 import server from '@/server'
 
 export default new Vuex.Store({
     modules: {
         tree,
-        reports
+        reports,
+        request,
     },
     state: {
         userData: {username: ''},

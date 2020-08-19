@@ -14,6 +14,9 @@ class Codec(models.Model):
 class FeatureCategory(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
+    class Meta:
+        verbose_name_plural = 'Feature categories'
+
     def __str__(self):
         return self.name
 

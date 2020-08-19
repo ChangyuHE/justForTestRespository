@@ -37,46 +37,17 @@
                 />
             </v-dialog>
 
-            <!-- Request item creation -->
-            <v-dialog v-if="mustBeRequested"
-                v-model="requestItemDialog"
-                persistent max-width="50%"
-            >
-                <template v-slot:activator="{ on }">
-                    <v-btn small v-on="on">Request creation</v-btn>
-                </template>
+            <!-- Request creation button -->
+            <template>
+                <v-btn small v-if="mustBeRequested" @click="changeRequestItemDialog">Request creation</v-btn>
+            </template>
 
-                <v-card>
-                    <v-card-title>
-                        New {{ error.entity.model }} item creation request
-                    </v-card-title>
-                    <v-card-text class="text-body-1">
-                        <div> You are going to send request to administrators for {{ error.entity.model }} item creation </div>
-                        <div> New values: </div>
-                        <div v-for="(value, key) in error.entity.fields" :key="key">
-                            - {{ key }} : {{ value }}
-                        </div>
-                    </v-card-text>
-                    <v-card-actions>
-                        <v-spacer></v-spacer>
-                        <v-btn
-                            color="red" text
-                            @click="requestItemDialog = false"
-                            :disabled="sending"
-                        >
-                            Close
-                        </v-btn>
-                        <v-btn
-                            color="cyan darken-2" text
-                            @click="sendRequest"
-                            :loading="sending"
-                        >
-                            Send
-                        </v-btn>
-                    </v-card-actions>
-                </v-card>
-
-            </v-dialog>
+            <!-- Request Item dialog -->
+            <request-item-dialog-component
+                v-if="requestItemDialog == error.entity.model && mustBeRequested"
+                :model="error.entity.model.toLowerCase()"
+                :filling="error.entity.fields"
+            />
         </v-col>
     </v-card>
 </template>
@@ -86,6 +57,7 @@
     import { mapState } from 'vuex'
     import createItemCard from '@/components/CreateItemCard'
     import createManyCard from '@/components/CreateManyCard'
+    import requestItemDialogComponent from '@/components/RequestItemDialog'
 
     const ERR_CODE_MAPPING = {
         'ERR_MISSING_ENTITY': 'object not found in DB',
@@ -99,16 +71,16 @@
     }
 
     const CAN_BE_CREATED = ['Driver', 'Item']
-    const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Status', 'Generation']
+    const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Generation']
 
     export default {
         components: {
-            createItemCard, createManyCard
+            createItemCard, createManyCard, requestItemDialogComponent
         },
         data() {
             return {
                 createItemDialog: null,
-                requestItemDialog: null,
+                showRequestItemDialog: null,
                 sending: false,
             }
         },
@@ -119,6 +91,7 @@
         },
         computed: {
             ...mapState(['userData']),
+            ...mapState('request', ['requestItemDialog']),
             error() {
                 if (Array.isArray(this.errorData)) {
                     return this.errorData[0]
@@ -175,24 +148,9 @@
             },
         },
         methods: {
-            sendRequest() {
-                this.sending = true
-                let data = {model: this.error.entity.model, fields: this.error.entity.fields, requester: this.userData}
-                server
-                    .post('api/objects/create/', data)
-                    .then(response => {
-                        this.requestItemDialog = false
-                        this.$toasted.success('Request has been sent')
-                    })
-                    .catch(error => {
-                        if (error.handleGlobally) {
-                            error.handleGlobally('Error during requesting creation of a new object', url)
-                        } else {
-                            this.$toasted.global.alert_error(error)
-                        }
-                    })
-                    .finally(() => (this.sending = false))
-            }
+            changeRequestItemDialog() {
+                this.$store.dispatch('request/setRequestDialogState', this.error.entity.model)
+            },
         }
     }
 </script>

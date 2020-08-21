@@ -301,7 +301,12 @@ class ValidationsDeleteByIdView(LoggingMixin, generics.DestroyAPIView):
 class ValidationsFlatView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         d = []
-        validations_qs = Validation.objects.all().order_by('-id')
+        ids = request.GET.get('ids', '')
+        if ids:
+            id_list = ids.split(',')
+            validations_qs = Validation.objects.filter(id__in=id_list).order_by('-id')
+        else:
+            validations_qs = Validation.objects.all().order_by('-id')
         for v in validations_qs:
             d.append({
                 'name': f'{v.name} ({v.platform.name}, {v.env.name}, {v.os.name})',

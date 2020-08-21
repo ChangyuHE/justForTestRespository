@@ -20,7 +20,7 @@ urlpatterns = [
     path('api/users/', views.UserList.as_view(), name='user-list'),
 
     path('api/validations/', views.ValidationsView.as_view()),
-    path('api/validations/flat', views.ValidationsFlatView.as_view()),
+    path('api/validations/flat/', views.ValidationsFlatView.as_view()),
     path('api/validations/structure', views.ValidationsStructureView.as_view()),
     path('api/validations/hard_delete/<int:pk>', views.ValidationsDeleteByIdView.as_view()),
 

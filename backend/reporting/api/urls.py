@@ -44,18 +44,16 @@ urlpatterns = [
     path('api/feature_mapping/import/', view.feature_mapping.FeatureMappingPostView.as_view(), name='fmt-import'),
 
     # .. mappings
-    path('api/feature_mapping/delete/<int:pk>/', view.feature_mapping.FeatureMappingDeleteView.as_view()),
-    path('api/feature_mapping/update/<int:pk>/', view.feature_mapping.FeatureMappingUpdateView.as_view()),
-    path('api/feature_mapping/export/<int:pk>/', view.feature_mapping.FeatureMappingExportView.as_view()),
     path('api/feature_mapping/table/', view.feature_mapping.FeatureMappingDetailsTableView.as_view()),
+    path('api/feature_mapping/<int:pk>/', view.feature_mapping.FeatureMappingDetailsView.as_view()),
+    path('api/feature_mapping/export/<int:pk>/', view.feature_mapping.FeatureMappingExportView.as_view()),
     path('api/feature_mapping/', view.feature_mapping.FeatureMappingListView.as_view()),
 
     # .. rules
-    path('api/feature_mapping/rules/delete/<int:pk>/', view.feature_mapping.FeatureMappingRuleDeleteView.as_view()),
-    path('api/feature_mapping/rules/update/<int:pk>/', view.feature_mapping.FeatureMappingRuleUpdateView.as_view()),
-    path('api/feature_mapping/rules/create/', view.feature_mapping.FeatureMappingRuleCreateView.as_view()),
     path('api/feature_mapping/rules/table/', view.feature_mapping.FeatureMappingRuleDetailsTableView.as_view()),
-    path('api/feature_mapping/rules/', view.feature_mapping.FeatureMappingRuleDetailsView.as_view()),
+    path('api/feature_mapping/rules/create/', view.feature_mapping.FeatureMappingRuleCreateView.as_view()),
+    path('api/feature_mapping/rules/<int:pk>/', view.feature_mapping.FeatureMappingRuleDetailsView.as_view()),
+    path('api/feature_mapping/rules/', view.feature_mapping.FeatureMappingRuleListView.as_view()),
 
     # .. rules components
     path(r'api/milestone/table/', view.feature_mapping.FeatureMappingMilestoneTableView.as_view()),
@@ -79,6 +77,7 @@ urlpatterns = [
     path('api/platform/', views.PlatformView().as_view()),
     path('api/os/', views.OsView().as_view()),
     path('api/env/', views.EnvView().as_view()),
+    path('api/codec/', views.CodecView().as_view()),
 
 
     path('admin/', admin.site.urls),

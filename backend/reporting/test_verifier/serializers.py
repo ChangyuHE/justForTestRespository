@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from .models import SubFeature, Codec, Feature, FeatureCategory
-from api.serializers import PlatformSerializer
 
 
 class CodecSerializer(serializers.ModelSerializer):
@@ -23,6 +22,8 @@ class FeatureCategorySerializer(serializers.ModelSerializer):
 
 
 class SubFeatureFullSerializer(serializers.ModelSerializer):
+    from api.serializers import PlatformSerializer
+
     codec = CodecSerializer()
     feature = FeatureSerializer()
     category = FeatureCategorySerializer()

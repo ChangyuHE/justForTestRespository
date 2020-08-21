@@ -23,6 +23,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.reverse import reverse
 
 from .serializers import *
+from test_verifier.serializers import CodecSerializer
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -39,6 +40,7 @@ from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
 from .models import *
+from test_verifier.models import Codec
 
 from reporting.settings import production
 
@@ -163,6 +165,12 @@ class EnvTableView(LoggingMixin, generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self, actions=False)
+
+
+class CodecView(LoggingMixin, generics.ListAPIView):
+    queryset = Codec.objects.all()
+    serializer_class = CodecSerializer
+    filterset_fields = ['name']
 
 
 ICONS = [

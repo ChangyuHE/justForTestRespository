@@ -70,6 +70,8 @@
             ...mapState('request', ['requestItemDialog', 'rules']),
             disableInput() {
                 return currentField => {
+                    if (!this.filling)
+                        return false
                     return !!this._.filter(Object.keys(this.filling), function(f) { return f == currentField.name}).length
                 }
             }

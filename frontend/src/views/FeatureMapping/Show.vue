@@ -149,106 +149,160 @@
         </template>
 
         <!-- Rules data-table -->
-        <template>
-            <v-row justify="center" v-if="showRulesTable">
-                <v-col  md="12" lg="10">
-                    <v-data-table
-                        dense multi-sort
-                        :search="search"
-                        :loading="loading"
-                        :headers="computedHeaders"
-                        :items="items"
-                        :items-per-page="15"
-                        :footer-props="{'items-per-page-options':[15, 30, 50, 100, -1]}"
-                    >
-                        <template v-slot:top>
-                            <v-toolbar flat color="white">
-                                <v-toolbar-title><b>{{ activeRulesTableTitle }}</b> rules
-                                    <v-btn icon @click="showRulesTable = false">
-                                        <v-icon>mdi-close</v-icon>
-                                    </v-btn>
-                                </v-toolbar-title>
-                                <v-spacer></v-spacer>
-                                <v-spacer></v-spacer>
-                                <v-text-field
-                                    label="Search"
-                                    color="blue-grey"
-                                    append-icon="mdi-magnify"
-                                    single-line hide-details clearable
-                                    v-model="search"
-                                ></v-text-field>
+        <v-row justify="center" v-if="showRulesTable">
+            <v-col  md="12" lg="10">
+                <v-data-table
+                    dense multi-sort
+                    :search="search"
+                    :loading="loading"
+                    :headers="computedHeaders"
+                    :items="items"
+                    :items-per-page="15"
+                    :footer-props="{'items-per-page-options':[15, 30, 50, 100, -1]}"
+                >
+                    <template v-slot:top>
+                        <v-toolbar flat color="white">
+                            <v-toolbar-title><b>{{ activeRulesTableTitle }}</b> rules
+                                <v-btn icon @click="showRulesTable = false">
+                                    <v-icon>mdi-close</v-icon>
+                                </v-btn>
+                            </v-toolbar-title>
+                            <v-spacer></v-spacer>
+                            <v-spacer></v-spacer>
+                            <v-text-field
+                                label="Search"
+                                color="blue-grey"
+                                append-icon="mdi-magnify"
+                                single-line hide-details clearable
+                                v-model="search"
+                            ></v-text-field>
 
-                                <!-- Create/Edit item dialog -->
-                                <v-dialog v-model="editRuleItemDialog" max-width="1000px">
-                                    <!-- Add button -->
-                                    <template v-slot:activator="{ on, attrs }" v-if="mappingType == 'my'">
-                                        <v-btn
-                                            color="teal" dark fab small title="New item"
-                                            class="mb-2 ml-2"
-                                            v-bind="attrs"
-                                            v-on="on"
-                                        ><v-icon>mdi-plus</v-icon></v-btn>
+                            <!-- Create/Edit item dialog -->
+                            <v-dialog v-model="editRuleItemDialog" max-width="1000px">
+                                <!-- Add button -->
+                                <template v-slot:activator="{ on, attrs }" v-if="mappingType == 'my'">
+                                    <v-btn
+                                        color="teal" dark fab small title="New item"
+                                        class="mb-2 ml-2"
+                                        v-bind="attrs"
+                                        v-on="on"
+                                    ><v-icon>mdi-plus</v-icon></v-btn>
+                                </template>
+                                <v-card>
+                                    <v-card-title>
+                                        <span class="headline">{{ formTitle }}</span>
+                                    </v-card-title>
+                                    <v-card-text>
+                                        <v-form v-model="isFormValid" @submit.prevent>
+                                        <v-container>
+                                            <v-row>
+                                                <!-- Params selectors -->
+                                                <v-col :cols="paramCols(modelName)" class="pt-0 pb-1" v-for="_, modelName in showParams" :key="modelName">
+                                                    <api-auto-complete v-if="modelName != 'ids'"
+                                                        class="my-0 pb-1"
+                                                        type="defined"
+                                                        color="blue-grey"
+                                                        :model-name="modelName"
+                                                        :rules="[rules.required(editedItem[modelName], modelName)]"
+                                                        v-model="editedItem[modelName]"
+                                                    ></api-auto-complete>
+                                                    <v-combobox v-else
+                                                        label="Ids"
+                                                        v-model="idItems"
+                                                        :delimiters="[',', ' ']"
+                                                        single-line
+                                                        :hide-no-data="!searchId"
+                                                        :search-input.sync="searchId"
+                                                        :items="idsToSelect"
+                                                        small-chips multiple counter deletable-chips clearable hide-selected
+                                                        menu-props="auto"
+                                                    >
+                                                        <template v-slot:no-data>
+                                                            Press <kbd>enter</kbd>, <kbd>space</kbd> or <kbd>,</kbd> to create
+                                                            <v-chip>{{ searchId }}</v-chip> id
+                                                        </template>
+                                                    </v-combobox>
+                                                </v-col>
+                                            </v-row>
+                                        </v-container>
+                                        </v-form>
+                                    </v-card-text>
+
+                                    <v-card-actions>
+                                        <v-spacer></v-spacer>
+                                        <v-btn color="blue-grey darken-1" text @click="closeRuleDialog">Cancel</v-btn>
+                                        <v-btn color="cyan darken-2" text @click="saveRule" :disabled="!isFormValid || saveRuleDisabled">Save</v-btn>
+                                    </v-card-actions>
+                                </v-card>
+                            </v-dialog>
+                        </v-toolbar>
+                    </template>
+                    <!-- Item slot -->
+                    <template v-slot:item="{ item, index }">
+                        <tr>
+                            <td>{{ item.milestone.name }}</td>
+                            <td>{{ item.codec.name }}</td>
+                            <td>{{ item.feature.name }}</td>
+                            <td>{{ item.scenario.name }}</td>
+                            <td>
+                                <template v-if="item.ids">
+                                    <template v-for="(id, i) in ids(item.ids)">
+                                        <v-tooltip top :key="id">
+                                            <template v-slot:activator="{ on, attrs }">
+                                                <v-chip v-show="i < 5"
+                                                    small style="margin: 1px"
+                                                    v-on="on"
+                                                    v-bind="attrs"
+                                                    :data-row-id="index"
+                                                    :data-hidable="i >= 5 ? true : false"
+                                                >
+                                                    <span
+                                                        class="d-inline-block text-truncate"
+                                                        style="max-width: 50px"
+                                                    >
+                                                        {{ id }}
+                                                    </span>
+                                                </v-chip>
+                                            </template>
+                                            <span>{{ id }}</span>
+                                        </v-tooltip>
                                     </template>
-                                    <v-card>
-                                        <v-card-title>
-                                            <span class="headline">{{ formTitle }}</span>
-                                        </v-card-title>
-                                        <v-card-text>
-                                            <v-form v-model="isFormValid" @submit.prevent>
-                                            <v-container>
-                                                <v-row>
-                                                    <!-- Params selectors -->
-                                                    <v-col :cols="paramCols(modelName)" class="pt-0 pb-1" v-for="_, modelName in showParams" :key="modelName">
-                                                        <api-auto-complete
-                                                            class="my-0 pb-1"
-                                                            type="defined"
-                                                            color="blue-grey"
-                                                            :model-name="modelName"
-                                                            :rules="[rules.required(editedItem[modelName], modelName)]"
-                                                            v-model="editedItem[modelName]"
-                                                        ></api-auto-complete>
-                                                    </v-col>
-                                                </v-row>
-                                            </v-container>
-                                            </v-form>
-                                        </v-card-text>
-
-                                        <v-card-actions>
-                                            <v-spacer></v-spacer>
-                                            <v-btn color="blue-grey darken-1" text @click="closeRuleDialog">Cancel</v-btn>
-                                            <v-btn color="cyan darken-2" text @click="saveRule" :disabled="!isFormValid || saveRuleDisabled">Save</v-btn>
-                                        </v-card-actions>
-                                    </v-card>
-                                </v-dialog>
-                            </v-toolbar>
-                        </template>
-                        <!-- Actions icons -->
-                        <template v-slot:item.actions="{ item }" v-if="mappingType == 'my'">
-                            <v-hover v-slot:default="{ hover }">
-                                <v-icon
-                                    small title="Edit rule"
-                                    class="mr-1"
-                                    :class="{ 'primary--text': hover }"
-                                    :data-row-rule-id="item.id"
-                                    @click="editRuleItem(item)"
-                                >
-                                    mdi-pencil
-                                </v-icon>
-                            </v-hover>
-                            <v-hover v-slot:default="{ hover }">
-                                <v-icon
-                                    small title="Delete rule"
-                                    :class="{ 'primary--text': hover }"
-                                    @click="deleteRuleItem(item)"
-                                >
-                                    mdi-delete
-                                </v-icon>
-                            </v-hover>
-                        </template>
-                    </v-data-table>
-                </v-col>
-            </v-row>
-        </template>
+                                    <v-btn icon v-if="ids(item.ids).length > 5" @click="toggleIds(index)">
+                                        <v-icon
+                                            color="teal darken-2" small class="toggle-icon" v-text="toggle[index] ? 'mdi-chevron-double-left' : 'mdi-dots-horizontal'"
+                                        ></v-icon>
+                                    </v-btn>
+                                </template>
+                            </td>
+                            <td>
+                                <template v-if="mappingType == 'my'">
+                                    <v-hover v-slot:default="{ hover }">
+                                        <v-icon
+                                            small title="Edit rule"
+                                            class="mr-1"
+                                            :class="{ 'primary--text': hover }"
+                                            :data-row-rule-id="item.id"
+                                            @click="editRuleItem(item)"
+                                        >
+                                            mdi-pencil
+                                        </v-icon>
+                                    </v-hover>
+                                    <v-hover v-slot:default="{ hover }">
+                                        <v-icon
+                                            small title="Delete rule"
+                                            :class="{ 'primary--text': hover }"
+                                            @click="deleteRuleItem(item)"
+                                        >
+                                            mdi-delete
+                                        </v-icon>
+                                    </v-hover>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </v-data-table>
+            </v-col>
+        </v-row>
     </v-container>
 </template>
 
@@ -257,6 +311,7 @@
     import { mapState, mapGetters } from 'vuex'
     import ApiAutoComplete from '@/components/APIAutoComplete'
     import ImportFeatureMappings from './Import'
+    import Vue from 'vue'
 
     // "just edited" animation
     function justEditedAnimation(id, class_name, type) {
@@ -275,10 +330,14 @@
                 showRulesTable: false,
                 loading: false,
                 showType: 'show',
-                showParams: {'milestone': undefined, 'feature': undefined, 'scenario': undefined},
+                showParams: {'milestone': undefined, 'codec': undefined, 'feature': undefined, 'scenario': undefined, 'ids': undefined},
                 headers: [],
                 items: [],
                 search: null,
+                toggle: {},
+                searchId: null,
+                idItems: [],
+                idsToSelect: [],
 
                 // Show mapping data
                 mappingType: null,
@@ -291,8 +350,8 @@
 
                 // Edit mappings
                 editMappingItemDialog: false,
-                editedMapItem: {'name': undefined, 'platform': undefined, 'os': undefined, 'component': undefined, 'public': undefined, 'official': undefined},
-                defaultMapItem: {'name': undefined, 'platform': undefined, 'os': undefined, 'component': undefined, 'public': undefined, 'official': undefined},
+                editedMapItem: {},
+                defaultMapItem: {},
                 mapRules: {
                     required(value, model) {
                         const notEmptyModels = ['name', 'platform', 'os', 'component'];
@@ -307,11 +366,11 @@
                 // Edit rules
                 editRuleItemDialog: false,
                 editedIndex: -1,
-                editedItem: {'milestone': undefined, 'feature': undefined, 'scenario': undefined},
-                defaultItem: {'milestone': undefined, 'feature': undefined, 'scenario': undefined},
+                editedItem: {},
+                defaultItem: {},
                 rules: {
                     required(value, model) {
-                        const notEmptyModels = ['milestone', 'feature', 'scenario'];
+                        const notEmptyModels = ['milestone', 'feature', 'scenario', 'codec'];
                         if (notEmptyModels.includes(model))
                             return !!value || 'Required'
                         return true
@@ -342,13 +401,58 @@
                 return this._.compact(this._.values(this.showParams)).length == 0
             },
             saveRuleDisabled() {
-                return this._.isEqual(this.items[this.editedIndex], this.editedItem)
+                let bodyOk = this._.isEqual(this.items[this.editedIndex], this.editedItem)
+                let idsOk = true
+                if (!this._.isEmpty(this.idItems) || !this._.isEmpty(this.editedItem.ids))
+                    idsOk = this._.join(this.idItems, ',') == this.editedItem.ids
+                return bodyOk && idsOk
             },
             activeRulesTableTitle() {
                 return this.activeMapping.name
             }
         },
+        watch: {
+            idItems(val, prev) {
+                if (val.length === prev.length) return
+                this.idItems = val.map(v => {
+                    this.idsToSelect = this._.union(this.idsToSelect, [v])
+                    return v
+                })
+            },
+            editMappingItemDialog(val) {
+                val || this.closeMapDialog()
+            },
+            editRuleItemDialog(val) {
+                val || this.closeRuleDialog()
+            },
+        },
         methods: {
+            filter(item, queryText, itemText) {
+                if (item.header) return false
+
+                const hasValue = val => val != null ? val : ''
+
+                const text = hasValue(itemText)
+                const query = hasValue(queryText)
+
+                return text.toString()
+                    .toLowerCase()
+                    .indexOf(query.toString().toLowerCase()) > -1
+            },
+            ids(idsString) {
+                if (idsString)
+                    return idsString.split(',')
+                return []
+            },
+            toggleIds(index) {
+                if (!this.toggle[index]) {
+                    document.querySelectorAll(`[data-row-id="${index}"][data-hidable=true]`).forEach(el => el.style.display = 'inline-block')
+                    Vue.set(this.toggle, index, true)
+                } else {
+                    document.querySelectorAll(`[data-row-id="${index}"][data-hidable=true]`).forEach(el => el.style.display = 'none')
+                    Vue.set(this.toggle, index, false)
+                }
+            },
             // action on toggling "show"|"import"
             showTypeChange() {
                 if (this.showType == 'show')
@@ -374,7 +478,11 @@
                         this.mappingItems = response.data.items
                     })
                     .catch(error => {
-                        error.handleGlobally && error.handleGlobally('Error during FeatureMappings data loading', url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during FeatureMappings data loading', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     })
                     .finally(() => { this.loading = false })
             },
@@ -398,7 +506,7 @@
             closeMapDialog() {
                 this.editMappingItemDialog = false
                 this.$nextTick(() => {
-                    this.editedMapItem = Object.assign({}, this.defaultItem)
+                    this.editedMapItem = Object.assign({}, this.defaultMapItem)
                     this.editedIndex = -1
                 })
             },
@@ -418,54 +526,36 @@
                 // prepare item data to send
                 let item = {}
                 for (let [k, v] of Object.entries(this.editedMapItem)) {
-                    // change auto-complete fields
                     if (typeof(v) === 'object') {
-                        this.editedMapItem[k] = v !== null ? v.name : null
                         item[k] = v !== null ? v.id : null
-                    // empty fields
-                    } else if (v === undefined) {
-                        this.editedMapItem[k] = null
+                    } else if (v === undefined || v === '') {
                         item[k] = null
-                    // text and boolean values
-                    } else if (this._.includes(['name', 'official', 'public'], k)) {
+                    } else {
                         item[k] = v
                     }
                 }
-
                 // back: edit existing one
-                const url = `api/feature_mapping/update/${this.editedMapItem.id}/`
+                const url = `api/feature_mapping/${this.editedMapItem.id}/`
                 let itemId = this.editedMapItem.id
                 server
                     .patch(url, item)
                     .then(response => {
                         this.$toasted.success('Successfully updated')
                         justEditedAnimation(itemId, 'selected-row-ok', 'map')
-                        // update DataTable items (front)
-                        if (this.editedIndex > -1) {
-                            Object.assign(this.mappingItems[this.editedIndex], this.editedMapItem)
-                        } else {
-                            this.mappingItems.push(this.editedMapItem)
-                        }
+                        Object.assign(this.mappingItems[this.editedIndex], response.data)
                         this.closeMapDialog()
                     })
                     .catch(error => {
-                        if (error.response) {           // Request made and server responded out of range of 2xx codes
-                            if (error.response.status == 400) {
-                                let err = error.response.data
-                                if (err.non_field_errors == "The fields name, owner, component, platform, os must make a unique set.")
-                                    this.$toasted.global.alert_error('You are trying to create existing map')
-                            } else {
-                                error.handleGlobally && error.handleGlobally('Could not update mapping item', url)
-                            }
-                        } else if (error.request) {     // The request was made but no response was received
-                            console.log('No response, request:', error.request)
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                        if (error.response && error.response.status == 400) {
+                            this.$toasted.global.alert_error(JSON.stringify(error.response.data))
                         } else {
-                            console.log('Something happened in setting up the request that triggered an Error:', error.message)
-                            this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Could not update mapping', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
                         }
                         justEditedAnimation(itemId, 'selected-row-error', 'map')
-                        this.closeMapDialog()
                     })
             },
             deleteMappingItemDebounced(item) {
@@ -477,16 +567,19 @@
                 const index = this.mappingItems.indexOf(item)
                 let proceed = confirm('Are you sure you want to delete this item?')
                 if (proceed) {
-                    const url = `api/feature_mapping/delete/${item.id}/`
+                    const url = `api/feature_mapping/${item.id}/`
                     server
                         .delete(url)
                         .then(response => {
-                            // remove from table
                             this.mappingItems.splice(index, 1)
                             this.$toasted.success('Successfully deleted')
                         })
                         .catch(error => {
-                            error.handleGlobally && error.handleGlobally('Could not delete mapping item', url)
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Could not delete mapping item', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
                         })
                         .finally(() => this.showRulesTable = false)
                 }
@@ -498,7 +591,11 @@
                 this.$store
                     .dispatch('reports/reportExcel', { url })
                     .catch(error => {
-                        error.handleGlobally && error.handleGlobally('Could not export mapping', url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Could not export mapping', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                         justEditedAnimation(itemId, 'selected-row-error', 'map')
                     });
             },
@@ -506,7 +603,6 @@
             // show rules table for map by mapping id
             loadRulesTable(item) {
                 if (this.isMapDeleting) return
-
                 this.loading = true
                 let url = `api/feature_mapping/rules/table/?mapping=${item.id}`
 
@@ -517,17 +613,24 @@
                         this.items = response.data.items
                         this.showRulesTable = true
                         this.activeMapping = item
+                        if (this.headers[6])    // ids column
+                            this.headers[6].width = 450
                     })
                     .catch(error => {
-                        error.handleGlobally && error.handleGlobally('Could not load feature mapping rules', url)
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Could not load feature mapping rules', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
                     })
-                    .finally(() => { this.loading = false })
+                    .finally(() => this.loading = false)
             },
             // show dialog and prepare for editing
             editRuleItem(item) {
                 this.editedIndex = this.items.indexOf(item)
                 this.editedItem = Object.assign({}, item)
                 this.editRuleItemDialog = true
+                this.idItems = this.ids(this.editedItem.ids)
             },
             // Delete item from front and back
             deleteRuleItem(item) {
@@ -536,7 +639,7 @@
                 let proceed = confirm('Are you sure you want to delete this item?')
                 if (proceed) {
                     // send delete request to backend
-                    const url = `api/feature_mapping/rules/delete/${item.id}/`
+                    const url = `api/feature_mapping/rules/${item.id}/`
                     server
                         .delete(url)
                         .then(response => {
@@ -545,103 +648,77 @@
                             this.$toasted.success('Successfully deleted')
                         })
                         .catch(error => {
-                            error.handleGlobally && error.handleGlobally('Could not delete item', url)
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Could not delete item', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
                         })
                 }
                 this.loading = false
             },
             // Create of save edited Rule
             saveRule() {
-                // detect create or edit mode
-                let toCreate = true
-
-                if (this._.has(this.editedItem, 'id'))
-                    toCreate = false
-
-                // prepare item object with ids only
+                // prepare item object to create/edit
                 let item = {}
                 for (let [k, v] of Object.entries(this.editedItem)) {
                     if (typeof(v) === 'object') {
-                        this.editedItem[k] = v !== null ? v.name : null
                         item[k] = v !== null ? v.id : null
-                    } else if (v === undefined) {
-                        this.editedItem[k] = null
+                    } else if (v === undefined || v === '') {
                         item[k] = null
+                    } else {
+                        item[k] = v
                     }
                 }
+                item.ids = this._.join(this.idItems, ',')
+                if (item.ids == '')
+                    item.ids = null
 
                 // back: create new item back request ..
-                if (toCreate) {
+                if (this.editedIndex == -1) {
                     item.mapping = this.activeMapping.id
                     const url = `api/feature_mapping/rules/create/`
                     server
                         .post(url, item)
                         .then(response => {
                             this.$toasted.success('Successfully created')
-
-                            // update DataTable items (front)
-                            if (this.editedIndex > -1) {
-                                Object.assign(this.items[this.editedIndex], this.editedItem)
-                            } else {
-                                this.items.push(this.editedItem)
-                            }
+                            this.items.push(response.data)
                             this.closeRuleDialog()
-                            this.loadRulesTable(this.activeMapping)
                         })
                         .catch(error => {
-                            if (error.response) {           // Request made and server responded out of range of 2xx codes
-                                if (error.response.status == 400) {
-                                    let err = error.response.data
-                                    if (err.non_field_errors == "The fields milestone, feature, scenario, mapping must make a unique set.")
-                                        this.$toasted.global.alert_error('You are trying to create existing rule')
-                                } else {
-                                    error.handleGlobally && error.handleGlobally('Could not create item', url)
-                                }
-                            } else if (error.request) {     // The request was made but no response was received
-                                console.log('No response, request:', error.request)
-                                this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                            if (error.response && error.response.status == 400) {
+                                this.$toasted.global.alert_error(JSON.stringify(error.response.data))
                             } else {
-                                console.log('Something happened in setting up the request that triggered an Error:', error.message)
-                                this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                                if (error.handleGlobally) {
+                                    error.handleGlobally('Could not create rule', url)
+                                } else {
+                                    this.$toasted.global.alert_error(error)
+                                }
                             }
                         })
                 } else {
                     // .. edit existing one
-                    const url = `api/feature_mapping/rules/update/${this.editedItem.id}/`
+                    const url = `api/feature_mapping/rules/${this.editedItem.id}/`
                     let itemId = this.editedItem.id
                     server
                         .patch(url, item)
                         .then(response => {
-                            console.log(response)
                             this.$toasted.success('Successfully updated')
-
+                            Object.assign(this.items[this.editedIndex], response.data)
                             justEditedAnimation(itemId, 'selected-row-ok', 'rule')
-                            // update DataTable items (front)
-                            if (this.editedIndex > -1) {
-                                Object.assign(this.items[this.editedIndex], this.editedItem)
-                            } else {
-                                this.items.push(this.editedItem)
-                            }
                             this.closeRuleDialog()
                         })
                         .catch(error => {
-                            if (error.response) {           // Request made and server responded out of range of 2xx codes
-                                if (error.response.status == 400) {
-                                    let err = error.response.data
-                                    if (err.non_field_errors == "The fields milestone, feature, scenario, mapping must make a unique set.")
-                                        this.$toasted.global.alert_error('You are trying to create existing rule')
-                                } else {
-                                    error.handleGlobally && error.handleGlobally('Could not update item', url)
-                                }
-                            } else if (error.request) {     // The request was made but no response was received
-                                console.log('No response, request:', error.request)
-                                this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                            if (error.response && error.response.status == 400) {
+                                this.$toasted.global.alert_error(JSON.stringify(error.response.data))
                             } else {
-                                console.log('Something happened in setting up the request that triggered an Error:', error.message)
-                                this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
+                                if (error.handleGlobally) {
+                                    error.handleGlobally('Could not update rule', url)
+                                } else {
+                                    this.$toasted.global.alert_error(error)
+                                }
                             }
                             justEditedAnimation(itemId, 'selected-row-error', 'rule')
-                            this.closeRuleDialog()
                         })
                 }
             },
@@ -651,11 +728,12 @@
                 this.$nextTick(() => {
                     this.editedItem = Object.assign({}, this.defaultItem)
                     this.editedIndex = -1
+                    this.idItems = []
                 })
             },
             // get columns width according to model
             paramCols(model) {
-                if (model == 'scenario') {
+                if (this._.includes(['scenario', 'ids'], model)) {
                     return 12
                 } else if (model == 'feature') {
                     return 8
@@ -673,6 +751,9 @@
 <style scoped>
     .row-pointer >>> tbody tr :hover {
         cursor: pointer;
+    }
+    kbd {
+        background-color: #546E7A;
     }
 </style>
 <style>

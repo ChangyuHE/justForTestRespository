@@ -18,7 +18,7 @@
     ></v-autocomplete>
     <v-autocomplete v-else
         class="api-auto-complete"
-        item-text="name"
+        :item-text="modelName == 'platform' ? 'short_name' : 'name'"
         return-object hide-no-data hide-selected clearable hide-details
         :disabled="disabled"
         :label="modelName"
@@ -37,11 +37,11 @@
 
     export default {
         props: {
-            value: {required: true},
-            rules: {type: Array, required: false},
-            modelName: {type: String, required: true},
-            color: {type: String, required: false},
-            disabled: {type: Boolean, required: false},
+            value: { required: true },
+            rules: { type: Array, required: false },
+            modelName: { type: String, required: true },
+            color: { type: String, required: false },
+            disabled: { type: Boolean, required: false },
             type: {
                 type: String,
                 required: true,

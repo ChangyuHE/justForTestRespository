@@ -284,8 +284,11 @@ class TestScenario(models.Model):
 
 class FeatureMappingRule(models.Model):
     milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE)
+    codec = models.ForeignKey('test_verifier.Codec', on_delete=models.CASCADE)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
+    ids = models.TextField(null=True, blank=True)
+
     mapping = models.ForeignKey('FeatureMapping', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:

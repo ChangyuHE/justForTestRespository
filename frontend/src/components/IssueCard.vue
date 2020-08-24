@@ -44,7 +44,7 @@
 
             <!-- Request Item dialog -->
             <request-item-dialog-component
-                v-if="requestItemDialog == error.entity.model && mustBeRequested"
+                v-if="error.entity !== undefined && requestItemDialog == error.entity.model && mustBeRequested"
                 :model="error.entity.model.toLowerCase()"
                 :filling="error.entity.fields"
             />

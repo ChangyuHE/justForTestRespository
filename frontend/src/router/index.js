@@ -41,6 +41,11 @@ const routes = [
         name: 'master-data',
         component: () => import(/* webpackChunkName: "master-data" */ '../views/MasterData.vue')
     },
+    {
+        path: '/validation/:id/',
+        name: 'validation',
+        component: () => import(/* webpackChunkName: "validation" */ '../views/ValidationOverview.vue')
+    },
     // {
     //     path: '/about',
     //     name: 'About',

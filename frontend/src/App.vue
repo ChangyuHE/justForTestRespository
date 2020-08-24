@@ -12,7 +12,7 @@
             </v-list-item>
             <v-divider></v-divider>
             <v-list dense>
-                <v-list-item link :to="'master-data'" @click="drawer = !drawer">
+                <v-list-item link to='/master-data' @click="drawer = !drawer">
                     <v-list-item-action class="mr-2">
                         <v-icon small>mdi-sitemap</v-icon>
                     </v-list-item-action>

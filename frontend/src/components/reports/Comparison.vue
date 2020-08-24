@@ -1,7 +1,7 @@
 <template>
     <v-card class="my-4 elevation-3">
         <v-card-title class="mb-n6 ml-4">
-            <span>Validations comparison:</span>
+            <span>{{ reportHeader }}</span>
             <v-spacer></v-spacer>
             <!-- Search field -->
             <v-text-field
@@ -37,7 +37,7 @@
                     class="ml-2" color="teal" mandatory
                     @change="changeGrouping"
                 >
-                    <v-btn small v-for="name in compareFilters" :key="name">
+                    <v-btn small v-for="name in compareFilters" :disabled="name == 'diff' && validations.length < 2" :key="name">
                         {{ name }}
                     </v-btn>
                 </v-btn-toggle>
@@ -91,14 +91,18 @@
             }
         },
         props: {
-            type: { type: String, required: true }
+            type: { type: String, required: true },
+            title: { type: String, required: false }
         },
         computed: {
             ...mapState('tree', ['validations', 'branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'headers', 'items']),
             url() {
                 return `api/report/compare/${this.validations}`;
-            }
+            },
+            reportHeader() {
+                return this.title !== undefined ? this.title: 'Validations comparison'
+            },
         },
         methods: {
             reportExcel() {

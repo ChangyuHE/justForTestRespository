@@ -6,7 +6,9 @@
             :headers="headers"
             :items="subFeatures"
             :search="search"
-            :loading="loading">
+            :loading="loading"
+            :sort-by.sync="sortBy"
+            :sort-desc.sync="sortDesc">
             <template v-slot:top>
                 <v-toolbar flat>
                     <!-- Generations buttons group -->
@@ -215,14 +217,16 @@
             </template>
             <!-- Subfeatures Table's header -->
             <template v-slot:header="{ props: { headers } }" >
-                <thead>
+                <thead class="v-data-table-header">
                     <tr>
                         <th v-for="header in headers"
                             :key="header.text"
-                            :class="header.class"
                             :rowspan="header.rowspan"
-                            :colspan="header.value == 'platform' ?  getColspanForSupport() : 1">
+                            :colspan="header.value == 'platform' ? getColspanForSupport() : 1"
+                            :class="[header.class, 'sortable', sortDesc ? 'desc' : 'asc', header.value === sortBy ? 'active' : '']"
+                            @click="toggleOrder(header)">
                                 <span>{{ header.text }}</span>
+                                <v-icon class="v-data-table-header__icon" v-if="header.sortable !== false" small>mdi-arrow-up</v-icon>
                         </th>
                     </tr>
                     <tr>
@@ -319,6 +323,8 @@
                 search: '',
                 loading: false,
                 headers: [],
+                sortBy: 'name',
+                sortDesc: false,
                 valid: true,
                 dialog: false,
                 dialogPlatforms: false,
@@ -368,6 +374,11 @@
             },
         },
         methods: {
+            toggleOrder (header) {
+                // Header sorting for Data Table
+                this.sortDesc = !this.sortDesc
+                this.sortBy = header.value
+            },
             uniq(arr) {
                 return arr.filter((v, i, a) => a.findIndex(t => (JSON.stringify(t) === JSON.stringify(v))) === i)
             },
@@ -443,7 +454,7 @@
                             { text: 'Feature Category', rowspan: 4, class: 'col-category', value: 'category.name' },
                             { text: 'Feature', rowspan: 4, class: 'col-feature', value: 'feature.name' },
                             { text: 'Sub Feature', rowspan: 4, value: 'name' },
-                            { text: '', value:"platform", class: 'col-support' },
+                            { text: '', value: "platform", class: 'col-support', sortable: false },
                             { text: 'Actions', rowspan: 4, class: 'col-actions' },
                         ]
                     })

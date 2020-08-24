@@ -11,10 +11,21 @@ def serialiazed_to_datatable_json(serialized, exclude=None, actions=True):
     if not serialized:
         return {'headers': [], 'items': []}
 
-    for field_name, field_values in serialized[0].items():
+    for field_name, field_value in serialized[0].items():
         if field_name in exclude:
             continue
-        headers.append({'text': field_name.title(), 'sortable': True, 'value': field_name})
+
+        # integers (boolean as well) and string values
+        if isinstance(field_value, int) or isinstance(field_value, str):
+            value = field_name
+        elif field_name == 'platform':
+            value = 'platform.short_name'
+        elif field_name == 'owner':
+            value = 'owner.username'
+        else:
+            value = f'{field_name}.name'
+
+        headers.append({'text': field_name.title(), 'sortable': True, 'value': value})
 
     if actions:
         headers.append({'text': 'Actions', 'value': 'actions', 'sortable': False, 'width': 10})
@@ -26,17 +37,7 @@ def serialiazed_to_datatable_json(serialized, exclude=None, actions=True):
                 continue
 
             if field_value is not None:
-                # integers (boolean as well) and strings
-                if isinstance(field_value, int) or isinstance(field_value, str):
-                    item_data[field_name] = field_value
-                else:
-                    # dicts
-                    if field_name == 'platform':
-                        item_data[field_name] = field_value['short_name']
-                    elif field_name == 'owner':
-                        item_data[field_name] = field_value['username']
-                    else:
-                        item_data[field_name] = field_value['name']
+                item_data[field_name] = field_value
             else:
                 item_data[field_name] = None
 

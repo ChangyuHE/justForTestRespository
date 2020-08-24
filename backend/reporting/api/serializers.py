@@ -151,22 +151,26 @@ class FeatureMappingSimpleSerializer(serializers.ModelSerializer):
 
 
 class FeatureMappingRuleSerializer(serializers.ModelSerializer):
+    from test_verifier.serializers import CodecSerializer
+
     milestone = MilestoneSerializer()
+    codec = CodecSerializer()
     feature = FeatureSerializer()
     scenario = TestScenarioSerializer()
 
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['id', 'milestone', 'feature', 'scenario', 'mapping']
+        fields = ['id', 'milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids']
 
 
 class FeatureMappingSimpleRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['milestone', 'feature', 'scenario', 'mapping']
+        fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids']
         validators = [
             UniqueTogetherValidator(
                 queryset=models.FeatureMappingRule.objects.all(),
-                fields=['milestone', 'feature', 'scenario', 'mapping']
-            )
+                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids'],
+                message='Duplicate creation attempt'
+            ),
         ]

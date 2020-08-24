@@ -12,7 +12,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.parsers import FileUploadParser
 
 from datetime import datetime
@@ -72,14 +72,29 @@ class FeatureMappingDetailsTableView(LoggingMixin, generics.ListAPIView):
         return get_datatable_json(self, exclude=exclude)
 
 
-class FeatureMappingUpdateView(LoggingMixin, generics.UpdateAPIView):
+class FeatureMappingDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
     queryset = FeatureMapping.objects.all()
     serializer_class = FeatureMappingSimpleSerializer
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
 
-class FeatureMappingDeleteView(LoggingMixin,  generics.DestroyAPIView):
-    queryset = FeatureMapping.objects.all()
-    serializer_class = FeatureMappingSerializer
+        try:
+            serializer = FeatureMappingSerializer(serializer.save())
+        except IntegrityError:
+            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
+        except Exception as e:
+            raise ValidationError({"detail": e})
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 
 class FeatureMappingExportView(LoggingMixin, APIView):
@@ -108,18 +123,18 @@ def export_mapping(mapping):
     ws = wb.active
 
     # first row (headers)
-    for col, value in enumerate(('milestone', 'feature', 'scenario'), start=1):
+    for col, value in enumerate(('milestone', 'codec', 'feature', 'scenario', 'ids'), start=1):
         ws.cell(row=1, column=col).value = value
 
     current_row = 2
     col_width = dict()
     # fill rows with data
     for values in FeatureMappingRule.objects.filter(mapping=mapping) \
-            .values_list('milestone__name', 'feature__name', 'scenario__name'):
+            .values_list('milestone__name', 'codec__name', 'feature__name', 'scenario__name', 'ids'):
         for col, value in enumerate(values, start=1):
             # collect max width per column
             col_width.setdefault(col, 0)
-            if len(value) > col_width[col]:
+            if value and len(value) > col_width[col]:
                 col_width[col] = len(value)
 
             ws.cell(row=current_row, column=col).value = value
@@ -127,12 +142,12 @@ def export_mapping(mapping):
 
     # set default column width
     for col_ind in col_width:
-        ws.column_dimensions[to_letter(col_ind)].width = col_width[col_ind] + 2
+        ws.column_dimensions[to_letter(col_ind)].width = col_width[col_ind] + 3
 
     medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
 
     table = Table(
-        ref=f'A1:C{current_row - 1}', displayName='FMT', tableStyleInfo=medium_style)
+        ref=f'A1:E{current_row - 1}', displayName='FMT', tableStyleInfo=medium_style)
     ws.add_table(table)
 
     return wb
@@ -140,37 +155,66 @@ def export_mapping(mapping):
 
 # FeatureMapping Rules views
 
-class FeatureMappingRuleDetailsView(LoggingMixin, generics.ListAPIView):
-    """ Get details about FeatureMappingRules according to provided filters """
+class FeatureMappingRuleDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """ FeatureMappingRules single object management """
     queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingRuleSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
-    ordering_fields = '__all__'
-    ordering = ['milestone']
+    serializer_class = FeatureMappingSimpleRuleSerializer
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            serializer = FeatureMappingRuleSerializer(serializer.save())
+        except IntegrityError:
+            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
+        except Exception as e:
+            raise ValidationError({"detail": e})
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 
 class FeatureMappingRuleCreateView(LoggingMixin, generics.CreateAPIView):
+    """ FeatureMappingRules creation endpoint """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingSimpleRuleSerializer
 
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            serializer = FeatureMappingRuleSerializer(serializer.save())
+        except IntegrityError:
+            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
+        except Exception as e:
+            raise ValidationError({"detail": e})
 
-class FeatureMappingRuleUpdateView(LoggingMixin, generics.UpdateAPIView):
-    queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingSimpleRuleSerializer
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class FeatureMappingRuleDeleteView(LoggingMixin,  generics.DestroyAPIView):
-    """ Delete specified rule from FeatureMappingRules table """
+class FeatureMappingRuleListView(LoggingMixin, generics.ListAPIView):
+    """ List FeatureMappingRules objects according to filters """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
+    ordering_fields = '__all__'
+    ordering = ['milestone']
 
 
 class FeatureMappingRuleDetailsTableView(LoggingMixin, generics.ListAPIView):
     """ Rules table view formatted for DataTable """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
+    filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = '__all__'
     ordering = ['milestone']
@@ -290,7 +334,7 @@ def import_feature_mapping(file, serializer):
 
             for i, row in enumerate(rows):
                 milestone_name, codec_name, feature_name, scenario_name, ids_value = [cell.value for cell in row]
-                if all([milestone_name, codec_name, feature_name, scenario_name, ids_value]):
+                if all([milestone_name, codec_name, feature_name, scenario_name]):
                     milestone, _ = Milestone.objects.get_or_create(name=milestone_name)
                     codec, _ = Codec.objects.get_or_create(name=codec_name)
                     feature, _ = Feature.objects.get_or_create(name=feature_name)
@@ -298,7 +342,7 @@ def import_feature_mapping(file, serializer):
 
                     fm_rules.append(FeatureMappingRule(
                         mapping=mapping, milestone=milestone, codec=codec, feature=feature, scenario=scenario,
-                        ids=ids_value
+                        ids=ids_value if ids_value else None
                     ))
                 else:
                     errors.append({f'workbook error (row {i + 2})': 'Empty cell'})

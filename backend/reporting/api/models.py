@@ -3,7 +3,7 @@ from pathlib import Path
 from django.conf import settings
 
 from django.db import models
-from django.db.models import UniqueConstraint
+from django.db.models import UniqueConstraint, Q
 from django.contrib.postgres.fields import JSONField
 from django.contrib.auth import get_user_model
 
@@ -294,8 +294,13 @@ class FeatureMappingRule(models.Model):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=['milestone', 'feature', 'scenario', 'mapping'],
-                name='unique_%(class)s_composite_constraint'
+                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids'],
+                name='unique_%(class)s_composite_constraint_with_ids'
+            ),
+            UniqueConstraint(
+                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping'],
+                condition=Q(ids=None),
+                name='unique_%(class)s_composite_constraint_without_ids'
             )
         ]
 

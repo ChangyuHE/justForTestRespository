@@ -102,7 +102,7 @@
                     }
                 }
                 server
-                    .post('api/objects/create/', data)
+                    .post('api/objects/request-creation/', data)
                     .then(response => {
                         this.$store.dispatch('request/setRequestDialogState', '')
                         this.$toasted.success('Request has been sent')

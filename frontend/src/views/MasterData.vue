@@ -129,12 +129,14 @@
                                     small title="Edit item"
                                     class="mr-1"
                                     :class="{ 'primary--text': hover }"
+                                    :data-row-id="item.id"
                                     @click="editItem(item)"
                                 >
                                     mdi-pencil
                                 </v-icon>
                             </v-hover>
-                            <v-hover v-slot:default="{ hover }">
+                            <!-- Commented untill perssions invention -->
+                            <!-- <v-hover v-slot:default="{ hover }">
                                 <v-icon
                                     small title="Delete item"
                                     :class="{ 'primary--text': hover }"
@@ -142,7 +144,7 @@
                                 >
                                     mdi-delete
                                 </v-icon>
-                            </v-hover>
+                            </v-hover> -->
                         </template>
                     </v-data-table>
             </v-card>
@@ -180,6 +182,7 @@
     import { mapState } from 'vuex'
     import { fields } from '@/store/request'
     import requestItemDialogComponent from '@/components/RequestItemDialog'
+    import { justEditedAnimation } from '@/utils/data-table-animation.js'
 
     export default {
         components: {
@@ -196,6 +199,7 @@
                             { name: 'platform', label: 'Platform', requested: true }, { name: 'divider' },
                             { name: 'os', label: 'Os', requested: true }, { name: 'divider' },
                             { name: 'env', label: 'Env', requested: true }, { name: 'divider' },
+                            { name: 'codec', label: 'Codec', requested: false }, { name: 'divider' },
                         ]
                     },
                     {
@@ -244,6 +248,11 @@
                 return this._.isEqual(this.tableItems[this.editedIndex], this.editedItem)
             },
         },
+        watch: {
+            editItemDialog(val) {
+                val || this.closeDialog()
+            },
+        },
         methods: {
             // setActiveItem(item, group) {
             setActiveItem(item) {
@@ -275,25 +284,26 @@
             },
             // Create or save edited item
             save() {
-                let toCreate = true
-                if (this._.has(this.editedItem, 'id'))
-                    toCreate = false
-
-                let url = `api/${this.model}/`
+                // prepare item object to create/edit
+                let item = {}
+                for (let [k, v] of Object.entries(this.editedItem)) {
+                    if (typeof(v) === 'object') {
+                        item[k] = v !== null ? v.id : null
+                    } else if (v === undefined || v === '') {
+                        item[k] = null
+                    } else {
+                        item[k] = v
+                    }
+                }
 
                 // back: create new item back request ..
-                if (toCreate) {
+                if (this.editedIndex == -1) {
+                    const url = `api/${this.model}/`
                     server
                         .post(url, this.editedItem)
                         .then(response => {
                             this.$toasted.success(`Created new ${this.model} item`)
-
-                            // update DataTable items (front)
-                            if (this.editedIndex > -1) {
-                                Object.assign(this.tableItems[this.editedIndex], this.editedItem)
-                            } else {
-                                this.tableItems.push(this.editedItem)
-                            }
+                            this.tableItems.push(response.data)
                         })
                         .catch(error => {
                             if (error.response && error.response.status == 400) {
@@ -310,25 +320,16 @@
                                 }
                             }
                         })
-                        .finally(() => {
-                            this.closeDialog()
-                            this.showItemValues()
-                        })
+                        .finally(() => this.closeDialog())
                 } else {
                     // .. edit existing one
                     const url = `api/${this.model}/${this.editedItem.id}/`
                     server
                         .patch(url, this.editedItem)
                         .then(response => {
-                            console.log(response)
+                            Object.assign(this.tableItems[this.editedIndex], response.data)
                             this.$toasted.success('Successfully updated')
-
-                            // update DataTable items (front)
-                            if (this.editedIndex > -1) {
-                                Object.assign(this.tableItems[this.editedIndex], this.editedItem)
-                            } else {
-                                this.tableItems.push(this.editedItem)
-                            }
+                            justEditedAnimation(this.editedItem.id, 'selected-row-ok', 'data-row-id')
                         })
                         .catch(error => {
                             if (error.response && error.response.status == 400) {
@@ -344,6 +345,7 @@
                                     this.$toasted.global.alert_error(error)
                                 }
                             }
+                            justEditedAnimation(this.editedItem.id, 'selected-row-error', 'data-row-id')
                         })
                         .finally(() => this.closeDialog())
                 }

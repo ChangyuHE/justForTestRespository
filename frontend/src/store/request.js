@@ -30,6 +30,9 @@ const fields = {
     env: [
         { label: 'Name', name: 'name', type: 'text' }
     ],
+    codec: [
+        { label: 'Name', name: 'name', type: 'text' }
+    ],
 }
 
 const request = {

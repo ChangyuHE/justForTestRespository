@@ -148,4 +148,20 @@
     .toasted-container.top-right {
         right: 1% !important;
     }
+    /* just edited "ok" animation */
+    .selected-row-ok {
+        animation: selected-row-ok 2s 1;
+    }
+    @keyframes selected-row-ok {
+        from {background-color: rgba(166, 219, 206, 0.647)}
+        to {background-color: rgba(255, 255, 255, 0)}
+    }
+    /* just edited "error" animation */
+    .selected-row-error {
+        animation: selected-row-error 2s 1;
+    }
+    @keyframes selected-row-error {
+        from {background-color: rgba(255, 41, 41, 0.452)}
+        to {background-color: rgba(255, 255, 255, 0)}
+    }
 </style>

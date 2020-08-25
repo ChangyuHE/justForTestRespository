@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
 
 from api import views
-from api import view
+from api.view import feature_mapping
 
 schema_view = get_swagger_view(title='Reporting API')
 
@@ -24,61 +24,68 @@ urlpatterns = [
     path('api/validations/structure', views.ValidationsStructureView.as_view()),
     path('api/validations/hard_delete/<int:pk>', views.ValidationsDeleteByIdView.as_view()),
 
-    # reports
+    # Reports
     re_path(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),     # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
 
-    # import
+    # Import
     # with mandatory parameters model, fields, emails (staff emails), requester
-    path('api/objects/create/', views.RequestModelCreation.as_view()),
+    path('api/objects/request-creation/', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
-
-    # Test Verifier
-    path('', include('test_verifier.urls')),
 
     # Feature mapping
     # .. import
-    path('api/feature_mapping/form/', view.feature_mapping.feature_mapping_form),
-    path('api/feature_mapping/import/', view.feature_mapping.FeatureMappingPostView.as_view(), name='fmt-import'),
+    path('api/feature_mapping/form/', feature_mapping.feature_mapping_form),   # debug only
+    path('api/feature_mapping/import/', feature_mapping.FeatureMappingPostView.as_view(), name='fmt-import'),
 
     # .. mappings
-    path('api/feature_mapping/table/', view.feature_mapping.FeatureMappingDetailsTableView.as_view()),
-    path('api/feature_mapping/<int:pk>/', view.feature_mapping.FeatureMappingDetailsView.as_view()),
-    path('api/feature_mapping/export/<int:pk>/', view.feature_mapping.FeatureMappingExportView.as_view()),
-    path('api/feature_mapping/', view.feature_mapping.FeatureMappingListView.as_view()),
+    path('api/feature_mapping/table/', feature_mapping.FeatureMappingTableView.as_view()),
+    path('api/feature_mapping/<int:pk>/', feature_mapping.FeatureMappingDetailsView.as_view()),
+    path('api/feature_mapping/export/<int:pk>/', feature_mapping.FeatureMappingExportView.as_view()),
+    path('api/feature_mapping/', feature_mapping.FeatureMappingListView.as_view()),
 
     # .. rules
-    path('api/feature_mapping/rules/table/', view.feature_mapping.FeatureMappingRuleDetailsTableView.as_view()),
-    path('api/feature_mapping/rules/create/', view.feature_mapping.FeatureMappingRuleCreateView.as_view()),
-    path('api/feature_mapping/rules/<int:pk>/', view.feature_mapping.FeatureMappingRuleDetailsView.as_view()),
-    path('api/feature_mapping/rules/', view.feature_mapping.FeatureMappingRuleListView.as_view()),
+    path('api/feature_mapping/rules/table/', feature_mapping.FeatureMappingRuleTableView.as_view()),
+    path('api/feature_mapping/rules/<int:pk>/', feature_mapping.FeatureMappingRuleDetailsView.as_view()),
+    path('api/feature_mapping/rules/', feature_mapping.FeatureMappingRuleView.as_view()),
 
     # .. rules components
-    path(r'api/milestone/table/', view.feature_mapping.FeatureMappingMilestoneTableView.as_view()),
-    path(r'api/feature/table/', view.feature_mapping.FeatureMappingFeatureTableView.as_view()),
-    path(r'api/scenario/table/', view.feature_mapping.FeatureMappingScenarioTableView.as_view()),
-    path(r'api/milestone/<int:pk>/', view.feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
-    path(r'api/milestone/', view.feature_mapping.FeatureMappingMilestoneView.as_view()),
-    path(r'api/feature/<int:pk>/', view.feature_mapping.FeatureMappingFeatureDetailsView.as_view()),
-    path(r'api/feature/', view.feature_mapping.FeatureMappingFeatureView.as_view()),
-    path(r'api/scenario/<int:pk>/', view.feature_mapping.FeatureMappingScenarioDetailsView.as_view()),
-    path(r'api/scenario/', view.feature_mapping.FeatureMappingScenarioView.as_view()),
+    path('api/milestone/table/', feature_mapping.FeatureMappingMilestoneTableView.as_view()),
+    path('api/milestone/<int:pk>/', feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
+    path('api/milestone/', feature_mapping.FeatureMappingMilestoneView.as_view()),
+
+    path('api/feature/table/', feature_mapping.FeatureMappingFeatureTableView.as_view()),
+    path('api/feature/<int:pk>/', feature_mapping.FeatureMappingFeatureDetailsView.as_view()),
+    path('api/feature/', feature_mapping.FeatureMappingFeatureView.as_view()),
+
+    path('api/scenario/table/', feature_mapping.FeatureMappingScenarioTableView.as_view()),
+    path('api/scenario/<int:pk>/', feature_mapping.FeatureMappingScenarioDetailsView.as_view()),
+    path('api/scenario/', feature_mapping.FeatureMappingScenarioView.as_view()),
 
     # Common
     path('api/component/table/', views.ComponentTableView().as_view()),
-    path('api/generation/table/', views.GenerationTableView().as_view()),
-    path('api/platform/table/', views.PlatformTableView().as_view()),
-    path('api/os/table/', views.OsTableView().as_view()),
-    path('api/env/table/', views.EnvTableView().as_view()),
     path('api/component/', views.ComponentView().as_view()),
+
+    path('api/generation/table/', views.GenerationTableView().as_view()),
     path('api/generation/', views.GenerationView().as_view()),
+
+    path('api/platform/table/', views.PlatformTableView().as_view()),
     path('api/platform/', views.PlatformView().as_view()),
+
+    path('api/os/table/', views.OsTableView().as_view()),
     path('api/os/', views.OsView().as_view()),
+
+    path('api/env/table/', views.EnvTableView().as_view()),
     path('api/env/', views.EnvView().as_view()),
+
+    path('api/codec/table/', views.CodecTableView().as_view()),
+    path('api/codec/<int:pk>/', views.CodecDetailsView.as_view()),
     path('api/codec/', views.CodecView().as_view()),
 
+    # Test Verifier
+    path('', include('test_verifier.urls')),
 
     path('admin/', admin.site.urls),
 ]\

@@ -1,6 +1,5 @@
 import logging
 
-import django_filters.rest_framework
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
@@ -21,15 +20,15 @@ from openpyxl.utils import get_column_letter as to_letter
 from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-
 from api.models import FeatureMapping, FeatureMappingRule, Milestone, Feature, TestScenario
 from api.forms import FeatureMappingFileForm
-from api.serializers import *
+from api.serializers import FeatureMappingSimpleSerializer, FeatureMappingSerializer, FeatureMappingRuleSerializer, \
+    FeatureMappingSimpleRuleSerializer, MilestoneSerializer, FeatureSerializer, TestScenarioSerializer
 from test_verifier.models import Codec
 
 from utils.api_logging import LoggingMixin
-from utils.api_helpers import get_datatable_json
-
+from utils.api_helpers import get_datatable_json, DefaultNameOrdering
+from utils import api_helpers
 
 log = logging.getLogger(__name__)
 
@@ -52,17 +51,18 @@ class FeatureMappingPostView(LoggingMixin, APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class FeatureMappingListView(LoggingMixin, generics.ListAPIView):
+class FeatureMappingListView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     """ List of available FeatureMappings filtered by owner/platform/os/component"""
     queryset = FeatureMapping.objects.all()
     serializer_class = FeatureMappingSerializer
-    filterset_fields = ['owner', 'platform', 'os', 'component', 'public', 'official']
+    filterset_fields = ['name', 'owner', 'platform', 'os', 'component', 'public', 'official']
 
 
-class FeatureMappingDetailsTableView(LoggingMixin, generics.ListAPIView):
+class FeatureMappingTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ FeatureMapping table view formatted for DataTable """
     queryset = FeatureMapping.objects.all()
     serializer_class = FeatureMappingSerializer
-    filterset_fields = ['owner', 'platform', 'os', 'component', 'public', 'official']
+    filterset_fields = ['name', 'owner', 'platform', 'os', 'component', 'public', 'official']
 
     def get(self, request, *args, **kwargs):
         public = request.GET.get('public')
@@ -72,29 +72,11 @@ class FeatureMappingDetailsTableView(LoggingMixin, generics.ListAPIView):
         return get_datatable_json(self, exclude=exclude)
 
 
-class FeatureMappingDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+class FeatureMappingDetailsView(LoggingMixin, generics.RetrieveDestroyAPIView, api_helpers.UpdateWOutputAPIView):
+    """ FeatureMapping single object management """
     queryset = FeatureMapping.objects.all()
     serializer_class = FeatureMappingSimpleSerializer
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            serializer = FeatureMappingSerializer(serializer.save())
-        except IntegrityError:
-            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
-        except Exception as e:
-            raise ValidationError({"detail": e})
-
-        if getattr(instance, '_prefetched_objects_cache', None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            instance._prefetched_objects_cache = {}
-
-        return Response(serializer.data)
+    serializer_output_class = FeatureMappingSerializer
 
 
 class FeatureMappingExportView(LoggingMixin, APIView):
@@ -155,87 +137,58 @@ def export_mapping(mapping):
 
 # FeatureMapping Rules views
 
-class FeatureMappingRuleDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
-    """ FeatureMappingRules single object management """
+class FeatureMappingRuleDetailsView(LoggingMixin, generics.RetrieveDestroyAPIView, api_helpers.UpdateWOutputAPIView):
+    """ FeatureMappingRule single object management """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingSimpleRuleSerializer
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            serializer = FeatureMappingRuleSerializer(serializer.save())
-        except IntegrityError:
-            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
-        except Exception as e:
-            raise ValidationError({"detail": e})
-
-        if getattr(instance, '_prefetched_objects_cache', None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            instance._prefetched_objects_cache = {}
-
-        return Response(serializer.data)
+    serializer_output_class = FeatureMappingRuleSerializer
 
 
-class FeatureMappingRuleCreateView(LoggingMixin, generics.CreateAPIView):
-    """ FeatureMappingRules creation endpoint """
+class FeatureMappingRuleView(LoggingMixin, generics.ListAPIView, api_helpers.CreateWOutputApiView):
+    """
+        get: List FeatureMappingRule objects according to filters
+        post: Create FeatureMappingRule object using simple serializer, output with fill data
+    """
     queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingSimpleRuleSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer = FeatureMappingRuleSerializer(serializer.save())
-        except IntegrityError:
-            raise ValidationError({"integrity error": 'Duplicate creation attempt'})
-        except Exception as e:
-            raise ValidationError({"detail": e})
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-
-class FeatureMappingRuleListView(LoggingMixin, generics.ListAPIView):
-    """ List FeatureMappingRules objects according to filters """
-    queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingRuleSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    serializer_output_class = FeatureMappingRuleSerializer
     filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
     ordering_fields = '__all__'
-    ordering = ['milestone']
+    ordering = ['milestone__name']
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return FeatureMappingRuleSerializer
+        return FeatureMappingSimpleRuleSerializer
 
 
-class FeatureMappingRuleDetailsTableView(LoggingMixin, generics.ListAPIView):
-    """ Rules table view formatted for DataTable """
+class FeatureMappingRuleTableView(LoggingMixin, generics.ListAPIView):
+    """ FeatureMappingRule table view formatted for DataTable """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
     filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = '__all__'
-    ordering = ['milestone']
+    ordering = ['milestone__name']
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self)
 
 
 # Milestone views
-class FeatureMappingMilestoneView(LoggingMixin, generics.ListCreateAPIView):
+class FeatureMappingMilestoneView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List FeatureMapping Milestone objects """
     queryset = Milestone.objects.all()
     serializer_class = MilestoneSerializer
     filterset_fields = ['name']
 
 
 class FeatureMappingMilestoneDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """ FeatureMapping Milestone single object management """
     queryset = Milestone.objects.all()
     serializer_class = MilestoneSerializer
 
 
-class FeatureMappingMilestoneTableView(LoggingMixin, generics.ListAPIView):
+class FeatureMappingMilestoneTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ FeatureMapping Milestone table view formatted for DataTable """
     queryset = Milestone.objects.all()
     serializer_class = MilestoneSerializer
     filterset_fields = ['name']
@@ -245,18 +198,24 @@ class FeatureMappingMilestoneTableView(LoggingMixin, generics.ListAPIView):
 
 
 # Feature views
-class FeatureMappingFeatureView(LoggingMixin, generics.ListCreateAPIView):
+class FeatureMappingFeatureView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
+    """
+        get: List FeatureMapping Feature objects according to filters
+        post: Create FeatureMapping Feature object
+    """
     queryset = Feature.objects.all()
     serializer_class = FeatureSerializer
     filterset_fields = ['name']
 
 
 class FeatureMappingFeatureDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """ FeatureMapping Feature single object management """
     queryset = Feature.objects.all()
     serializer_class = FeatureSerializer
 
 
-class FeatureMappingFeatureTableView(LoggingMixin, generics.ListCreateAPIView):
+class FeatureMappingFeatureTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ FeatureMapping Feature table view formatted for DataTable """
     queryset = Feature.objects.all()
     serializer_class = FeatureSerializer
     filterset_fields = ['name']
@@ -266,19 +225,24 @@ class FeatureMappingFeatureTableView(LoggingMixin, generics.ListCreateAPIView):
 
 
 # Scenario views
-class FeatureMappingScenarioView(LoggingMixin, generics.ListCreateAPIView):
+class FeatureMappingScenarioView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
+    """
+        get: List FeatureMapping Test Scenario objects according to filters
+        post: Create FeatureMapping Test Scenario object
+    """
     queryset = TestScenario.objects.all()
     serializer_class = TestScenarioSerializer
     filterset_fields = ['name']
 
 
 class FeatureMappingScenarioDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """ FeatureMapping Test Scenario single object management """
     queryset = TestScenario.objects.all()
     serializer_class = TestScenarioSerializer
-    filterset_fields = ['name']
 
 
-class FeatureMappingScenarioTableView(LoggingMixin, generics.ListCreateAPIView):
+class FeatureMappingScenarioTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ FeatureMapping Test Scenario table view formatted for DataTable """
     queryset = TestScenario.objects.all()
     serializer_class = TestScenarioSerializer
     filterset_fields = ['name']

@@ -3,49 +3,47 @@ import re
 import urllib.parse
 from dataclasses import dataclass
 from typing import Dict, Tuple, List
+from datetime import datetime
 
 import pandas as pd
 import numpy as np
 import dateutil.parser
 
-from datetime import datetime
-
-import django_filters.rest_framework
+from django.db import transaction
 from django.core.mail import EmailMessage
-
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
-from django.shortcuts import render
 from django.views.decorators.cache import never_cache
-from django.db import transaction
-from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.reverse import reverse
+from django_filters.rest_framework import DjangoFilterBackend
 
-from .serializers import *
-from test_verifier.serializers import CodecSerializer
 
-from rest_framework import generics, status
+from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from anytree import Node, AnyNode
 from anytree.search import find_by_attr
 from anytree.exporter import JsonExporter
 
-from sqlalchemy.sql import func
 from sqlalchemy import and_
+from sqlalchemy.sql import func
 
 from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
-from .models import *
+from api.models import Generation, Platform, Env, Component, Item, Driver, Status, Os, OsGroup, Validation, Action, \
+    Result, ResultGroupNew, Run
+from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
+    EnvSerializer, OsSerializer
 from test_verifier.models import Codec
-
-from reporting.settings import production
+from test_verifier.serializers import CodecSerializer
 
 from utils.api_logging import get_user_object, LoggingMixin
-from utils.api_helpers import get_datatable_json
+from utils.api_helpers import get_datatable_json, DefaultNameOrdering
 
 
 @never_cache
@@ -66,12 +64,14 @@ class PassToVue(TemplateView):
 
 # Users block
 class UserList(LoggingMixin, generics.ListAPIView):
+    """ List Users """
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
     filterset_fields = ['is_staff', 'username']
 
 
 class CurrentUser(LoggingMixin, APIView):
+    """ User's details """
     def get(self, request):
         user_object = get_user_object(request)
         user_data = UserSerializer(user_object).data
@@ -79,14 +79,17 @@ class CurrentUser(LoggingMixin, APIView):
 
 
 # Common data block
+
 # Platform
-class PlatformView(LoggingMixin, generics.ListAPIView):
+class PlatformView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List Platform objects """
     queryset = Platform.objects.all()
     serializer_class = PlatformSerializer
     filterset_fields = ['name', 'short_name', 'generation__name']
 
 
-class PlatformTableView(LoggingMixin, generics.ListAPIView):
+class PlatformTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Platform table view formatted for DataTable """
     queryset = Platform.objects.all()
     serializer_class = PlatformSerializer
     filterset_fields = ['name', 'short_name', 'generation__name']
@@ -96,13 +99,15 @@ class PlatformTableView(LoggingMixin, generics.ListAPIView):
 
 
 # Generation
-class GenerationView(LoggingMixin, generics.ListAPIView):
+class GenerationView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List Generation objects """
     queryset = Generation.objects.all()
     serializer_class = GenerationSerializer
     filterset_fields = ['name']
 
 
-class GenerationTableView(LoggingMixin, generics.ListAPIView):
+class GenerationTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Generation table view formatted for DataTable """
     queryset = Generation.objects.all()
     serializer_class = GenerationSerializer
     filterset_fields = ['name']
@@ -112,7 +117,8 @@ class GenerationTableView(LoggingMixin, generics.ListAPIView):
 
 
 # Os
-class OsView(LoggingMixin, generics.ListAPIView):
+class OsView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List Os objects """
     queryset = Os.objects.all().prefetch_related('group')
     serializer_class = OsSerializer
     filterset_fields = {
@@ -122,7 +128,8 @@ class OsView(LoggingMixin, generics.ListAPIView):
     }
 
 
-class OsTableView(LoggingMixin, generics.ListAPIView):
+class OsTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Os table view formatted for DataTable """
     queryset = Os.objects.all()
     serializer_class = OsSerializer
     filterset_fields = {
@@ -136,13 +143,15 @@ class OsTableView(LoggingMixin, generics.ListAPIView):
 
 
 # Component
-class ComponentView(LoggingMixin, generics.ListAPIView):
+class ComponentView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List Component objects """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filterset_fields = ['name']
 
 
-class ComponentTableView(LoggingMixin, generics.ListAPIView):
+class ComponentTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Component table view formatted for DataTable """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filterset_fields = ['name']
@@ -152,13 +161,15 @@ class ComponentTableView(LoggingMixin, generics.ListAPIView):
 
 
 # Environment
-class EnvView(LoggingMixin, generics.ListAPIView):
+class EnvView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ List Env objects """
     queryset = Env.objects.all()
     serializer_class = EnvSerializer
     filterset_fields = ['name']
 
 
-class EnvTableView(LoggingMixin, generics.ListAPIView):
+class EnvTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Env table view formatted for DataTable """
     queryset = Env.objects.all()
     serializer_class = EnvSerializer
     filterset_fields = ['name']
@@ -167,10 +178,31 @@ class EnvTableView(LoggingMixin, generics.ListAPIView):
         return get_datatable_json(self, actions=False)
 
 
-class CodecView(LoggingMixin, generics.ListAPIView):
+class CodecView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
+    """
+        get: List Codec objects
+        post: Create Codec object
+    """
     queryset = Codec.objects.all()
     serializer_class = CodecSerializer
     filterset_fields = ['name']
+
+
+class CodecDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """ Codec single object management """
+    queryset = Codec.objects.all()
+    serializer_class = CodecSerializer
+    filterset_fields = ['name']
+
+
+class CodecTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ Codec table view formatted for DataTable """
+    queryset = Codec.objects.all()
+    serializer_class = CodecSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self)
 
 
 ICONS = [

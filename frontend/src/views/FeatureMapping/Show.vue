@@ -307,18 +307,12 @@
 </template>
 
 <script>
-    import server from '@/server'
+    import Vue from 'vue'
     import { mapState, mapGetters } from 'vuex'
+    import server from '@/server'
     import ApiAutoComplete from '@/components/APIAutoComplete'
     import ImportFeatureMappings from './Import'
-    import Vue from 'vue'
-
-    // "just edited" animation
-    function justEditedAnimation(id, class_name, type) {
-        let editedRow = document.querySelector(`[data-row-${type}-id="${id}"]`).closest('tr')
-        editedRow.classList.add(class_name)
-        setTimeout(() => editedRow.classList.remove(class_name), 2000)
-    }
+    import { justEditedAnimation } from '@/utils/data-table-animation.js'
 
     export default {
         components: {
@@ -540,9 +534,9 @@
                 server
                     .patch(url, item)
                     .then(response => {
-                        this.$toasted.success('Successfully updated')
-                        justEditedAnimation(itemId, 'selected-row-ok', 'map')
                         Object.assign(this.mappingItems[this.editedIndex], response.data)
+                        this.$toasted.success('Successfully updated')
+                        justEditedAnimation(itemId, 'selected-row-ok', 'data-row-map-id')
                         this.closeMapDialog()
                     })
                     .catch(error => {
@@ -555,7 +549,7 @@
                                 this.$toasted.global.alert_error(error)
                             }
                         }
-                        justEditedAnimation(itemId, 'selected-row-error', 'map')
+                        justEditedAnimation(itemId, 'selected-row-error', 'data-row-map-id')
                     })
             },
             deleteMappingItemDebounced(item) {
@@ -596,7 +590,7 @@
                         } else {
                             this.$toasted.global.alert_error(error)
                         }
-                        justEditedAnimation(itemId, 'selected-row-error', 'map')
+                        justEditedAnimation(itemId, 'selected-row-error', 'data-row-map-id')
                     });
             },
             // RULES
@@ -677,12 +671,12 @@
                 // back: create new item back request ..
                 if (this.editedIndex == -1) {
                     item.mapping = this.activeMapping.id
-                    const url = `api/feature_mapping/rules/create/`
+                    const url = 'api/feature_mapping/rules/'
                     server
                         .post(url, item)
                         .then(response => {
-                            this.$toasted.success('Successfully created')
                             this.items.push(response.data)
+                            this.$toasted.success('Successfully created')
                             this.closeRuleDialog()
                         })
                         .catch(error => {
@@ -703,9 +697,9 @@
                     server
                         .patch(url, item)
                         .then(response => {
-                            this.$toasted.success('Successfully updated')
                             Object.assign(this.items[this.editedIndex], response.data)
-                            justEditedAnimation(itemId, 'selected-row-ok', 'rule')
+                            this.$toasted.success('Successfully updated')
+                            justEditedAnimation(itemId, 'selected-row-ok', 'data-row-rule-id')
                             this.closeRuleDialog()
                         })
                         .catch(error => {
@@ -718,7 +712,7 @@
                                     this.$toasted.global.alert_error(error)
                                 }
                             }
-                            justEditedAnimation(itemId, 'selected-row-error', 'rule')
+                            justEditedAnimation(itemId, 'selected-row-error', 'data-row-rule-id')
                         })
                 }
             },
@@ -754,24 +748,5 @@
     }
     kbd {
         background-color: #546E7A;
-    }
-</style>
-<style>
-    /* just selected "ok" animation */
-    .selected-row-ok {
-        animation: selected-row-ok 2s 1;
-    }
-    @keyframes selected-row-ok {
-        from {background-color: rgba(166, 219, 206, 0.647)}
-        to {background-color: rgba(255, 255, 255, 0)}
-    }
-
-    /* just selected "error" animation */
-    .selected-row-error {
-        animation: selected-row-error 2s 1;
-    }
-    @keyframes selected-row-error {
-        from {background-color: rgba(255, 41, 41, 0.452)}
-        to {background-color: rgba(255, 255, 255, 0)}
     }
 </style>

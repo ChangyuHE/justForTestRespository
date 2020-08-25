@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 
 import dramatiq
+from django.template import Template, Context
 
 from ..models import ImportJob
 from django.contrib.auth import get_user_model
@@ -32,7 +33,7 @@ class Changes:
 
 
 @dramatiq.actor
-def do_import(job_id: int, validation_id: int, force_run: bool):
+def do_import(job_id: int, validation_id: int, force_run: bool, site_url: str):
     to_emails = []
     validation_info = '<unknown>'
 
@@ -79,15 +80,28 @@ def do_import(job_id: int, validation_id: int, force_run: bool):
         topic = f'Reporter: import of validation {validation_info} failed'
         job.status = ImportJob.Status.FAILED
     else:
-        text = f"""
-Import of validation <b>{validation_info}</b> is done.<br>
+        template = Template("""
+Import of validation <a href="{{ site_url }}validation/{{ validation_id }}">{{ validation_info }}</a> is done.<br>
 Test items:
 <ul>
-    <li>added: {changes.added}</li>
-    <li>updated: {changes.updated}</li>
-    <li>skipped: {changes.skipped}</li>
+    {% if added %}
+        <li>added: {{ added }}</li>
+    {% endif %}
+    {% if updated %}
+        <li>updated: {{ updated }}</li>
+    {% endif %}
+    {% if skipped %}
+        <li>skipped: {{ skipped }}</li>
+    {% endif %}
 </ul>
-"""
+""")
+        context = Context({'validation_info': validation_info,
+                           'added': changes.added,
+                           'updated': changes.updated,
+                           'skipped': changes.skipped,
+                           'site_url': site_url,
+                           'validation_id': validation_id})
+        text = template.render(context)
         topic = f'Reporter: import of validation {validation_info}'
         job.status = ImportJob.Status.DONE
     finally:

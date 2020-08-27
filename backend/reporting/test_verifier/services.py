@@ -1,7 +1,5 @@
-import json
 from dataclasses import dataclass
-from types import SimpleNamespace
-from typing import List, Dict
+from typing import List
 
 from openpyxl import load_workbook
 
@@ -28,7 +26,7 @@ YES = 'Y'
 NO = 'N'
 
 
-def import_features(file):
+def import_features(file, user):
     outcome = OutcomeBuilder()
     platform_cells, column_mapping, sheet = verify_file(file, outcome)
 
@@ -43,7 +41,7 @@ def import_features(file):
         return outcome
 
     subfeature_builder = SubFeatureBuilder(sheet, LOWEST_HEADER_ROW, column_mapping,
-                                           outcome, platform_builder.platforms)
+                                           outcome, platform_builder.platforms, user)
     subfeature_builder.parse_subfeatures()
     return outcome
 
@@ -95,7 +93,7 @@ class PlatformRecord:
 
 
 class SubFeatureBuilder:
-    def __init__(self, sheet, row_number, column_mapping, outcome, platforms: List[PlatformRecord]):
+    def __init__(self, sheet, row_number, column_mapping, outcome, platforms: List[PlatformRecord], user):
         self.sheet = sheet
         self.row_index = row_number
         self.column_mapping = column_mapping
@@ -103,10 +101,11 @@ class SubFeatureBuilder:
         self.platforms = platforms
         self.records = []
         self.entities = []
+        self.user = user
 
     def parse_subfeatures(self):
         rows = tuple(self.sheet.rows)
-        for row in rows[self.row_index + 1:]:
+        for row in rows[self.row_index:]:
             record = {'Codec': None,
                       'FeatureCategory': None,
                       'Feature': None,
@@ -145,7 +144,9 @@ class SubFeatureBuilder:
                                 codec=entity['codec'],
                                 category=entity['category'],
                                 feature=entity['feature'],
-                                notes=entity['notes'])
+                                notes=entity['notes'],
+                                imported=True,
+                                created_by=self.user)
             record.save()
             for platform in entity['lin_platforms']:
                 record.lin_platforms.add(platform)

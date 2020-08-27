@@ -32,10 +32,10 @@ class SubFeatureFullSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SubFeature
-        fields = ['id', 'name', 'category', 'feature', 'codec', 'lin_platforms', 'win_platforms', 'notes']
+        fields = '__all__'
 
 
 class SubFeatureIDSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubFeature
-        fields = ['id', 'name', 'category', 'feature', 'codec', 'lin_platforms', 'win_platforms', 'notes']
+        fields = '__all__'

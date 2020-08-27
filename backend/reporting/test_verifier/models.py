@@ -1,7 +1,10 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
 
 from api.models import Platform
+
+from reporting.settings import AUTH_USER_MODEL
 
 
 class Codec(models.Model):
@@ -36,6 +39,12 @@ class SubFeature(models.Model):
     lin_platforms = models.ManyToManyField(Platform, related_name='lin_subfeatures', blank=True)
     win_platforms = models.ManyToManyField(Platform, related_name='win_subfeatures', blank=True)
     notes = models.CharField(max_length=255, blank=True, null=True)
+    imported = models.BooleanField()
+    created = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_subfeatures')
+    updated = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, blank=True, null=True,
+                                   on_delete=models.SET_NULL, related_name='updated_subfeatures')
 
     class Meta:
         constraints = [

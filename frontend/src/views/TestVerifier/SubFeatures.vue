@@ -532,7 +532,12 @@
                     category: this.editedSubfeature.category.id,
                     feature: this.editedSubfeature.feature.id,
                     lin_platforms: this.editedSubfeature.lin_platforms.map((item) => item.id),
-                    win_platforms: this.editedSubfeature.win_platforms.map((item) => item.id)
+                    win_platforms: this.editedSubfeature.win_platforms.map((item) => item.id),
+                    imported: this.editedSubfeature.imported,
+                    created: this.editedSubfeature.created,
+                    created_by: this.editedSubfeature.created_by,
+                    updated: this.editedSubfeature.updated,
+                    updated_by: this.editedSubfeature.updated_by,
                 }
 
                 if (this.editedIndex > -1) {

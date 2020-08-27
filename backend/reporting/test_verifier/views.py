@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import ValidationError, ParseError
 from rest_framework.response import Response
@@ -12,6 +13,7 @@ from api.views import LoggingMixin
 from api.models import Platform
 from api.serializers import PlatformSerializer
 from .services import import_features
+from utils.api_logging import get_user_object
 
 
 class ImportView(LoggingMixin, APIView):
@@ -22,7 +24,8 @@ class ImportView(LoggingMixin, APIView):
         if 'file' not in request.data:
             raise ParseError("'file' parameter is missing in form data.")
         file = request.data['file']
-        outcome = import_features(file)
+        user = get_user_object(request)
+        outcome = import_features(file, user)
 
         data = outcome.build()
         code = status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -40,6 +43,9 @@ class SubFeatureListView(LoggingMixin, generics.ListCreateAPIView):
     serializer_class = SubFeatureFullSerializer
 
     def post(self, request):
+        request.data['created_by'] = get_user_object(request).id
+        request.data['imported'] = False
+
         input_serializer = SubFeatureIDSerializer(data=request.data)
         if not input_serializer.is_valid():
             return Response(
@@ -64,6 +70,11 @@ class SubFeatureDetailView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
 
     def put(self, request, pk):
         subfeature = get_object_or_404(SubFeature.objects.all(), pk=pk)
+
+        request.data['updated'] = timezone.now().replace(microsecond=0)
+        request.data['updated_by'] = get_user_object(request).id
+        request.data['imported'] = False
+
         input_serializer = SubFeatureIDSerializer(instance=subfeature, data=request.data)
         if not input_serializer.is_valid():
             return Response(
@@ -77,6 +88,11 @@ class SubFeatureDetailView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
 
     def patch(self, request, pk):
         subfeature = get_object_or_404(SubFeature.objects.all(), pk=pk)
+
+        request.data['updated'] = timezone.now().replace(microsecond=0)
+        request.data['updated_by'] = get_user_object(request).id
+        request.data['imported'] = False
+
         input_serializer = SubFeatureIDSerializer(instance=subfeature, data=request.data, partial=True)
         if not input_serializer.is_valid():
             return Response(

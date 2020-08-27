@@ -219,10 +219,11 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
     d = json.loads(dataframe.to_json(orient='table'))
 
     headers = []
-    for f_dict in d['schema']['fields']:
-        text = str(f_dict['name'])
-        value = text.lower().replace(' ', '_')
+    for i, field in enumerate(d['schema']['fields']):
+        text = str(field['name'])
+        value = f'f{i}'
         headers.append({'text': text, 'value': value})
+
     items = []
     for d_dict in d['data']:
         i_dict = {}

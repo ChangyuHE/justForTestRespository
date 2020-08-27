@@ -164,7 +164,7 @@ def _store_results(xlsx, request, mapping: Tuple[Worksheet, dict], descriptor: I
         # "disable_background_task" flag is used ONLY for tests.
         # If this flag is used validation will not be saved!
         from .tasks import do_import
-        do_import.send(obj.id, descriptor.validation.pk, descriptor.force_run)
+        do_import.send(obj.id, descriptor.validation.pk, descriptor.force_run, request.build_absolute_uri('/'))
 
 
 def _namespace_to_dict(namespace):

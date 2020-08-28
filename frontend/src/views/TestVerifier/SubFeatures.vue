@@ -265,7 +265,7 @@
                 </thead>
             </template>
             <!-- Subfeatures Body's header -->
-            <template v-slot:item="{ item, index }">
+            <template v-slot:item="{ item }">
                 <tr class="subfeature" v-if="isShow(item)">
                     <td>{{ item.codec.name }}</td>
                     <td>{{ item.category.name }}</td>
@@ -282,7 +282,7 @@
                     </template>
                     <td>
                         <v-hover v-slot:default="{ hover }">
-                            <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="editSubfeatures(item, index)">mdi-pencil</v-icon>
+                            <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="editSubfeatures(item)">mdi-pencil</v-icon>
                         </v-hover>
                         <v-hover v-slot:default="{ hover }">
                             <v-icon small :class="{ 'red--text': hover }" @click="openDeleteDialog(item)">mdi-delete</v-icon>
@@ -480,13 +480,13 @@
                 this.selectedOS = os
                 this.editedPlatforms = this.editedSubfeature[this.platformKey(os)]
             },
-            editSubfeatures(item, index) {
-                this.editedIndex = index
+            editSubfeatures(item) {
+                this.editedIndex = this.subFeatures.indexOf(item)
                 this.editedSubfeature = Object.assign({}, item)
                 this.dialog = true
             },
             openDeleteDialog(item) {
-                this.subfeatureToDelete = item
+                this.subfeatureToDelete = Object.assign({}, item)
                 this.dialogDelete = !this.dialogDelete
             },
             deleteSubfeature() {
@@ -545,34 +545,32 @@
                         .put(`${url}${this.editedSubfeature.id}/`, sfSaving)
                         .then(response => {
                             Object.assign(this.subFeatures[this.editedIndex], response.data)
-                            this.close()
                             this.$toasted.success('Subfeature has been edited')
                         })
                         .catch(error => {
-                            this.close()
                             if (error.handleGlobally) {
                                 error.handleGlobally('Error during requesting edition of this object', url)
                             } else {
                                 this.$toasted.global.alert_error(error)
                             }
                         })
+                        .finally(() => this.close())
                 } else {
                     server
                         .post(this.url, sfSaving)
                         .then(response => {
                             this.editedSubfeature.id = response.data.id
                             this.subFeatures.unshift(response.data)
-                            this.close()
                             this.$toasted.success('Subfeature has been created')
                         })
                         .catch(error => {
-                            this.close()
                             if (error.handleGlobally) {
                                 error.handleGlobally('Error during requesting creation of a new object', url)
                             } else {
                                 this.$toasted.global.alert_error(error)
                             }
                         })
+                        .finally(() => this.close())
                 }
             },
         },

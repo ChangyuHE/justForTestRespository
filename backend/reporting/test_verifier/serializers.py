@@ -22,13 +22,15 @@ class FeatureCategorySerializer(serializers.ModelSerializer):
 
 
 class SubFeatureFullSerializer(serializers.ModelSerializer):
-    from api.serializers import PlatformSerializer
+    from api.serializers import PlatformSerializer, UserCutSerializer
 
     codec = CodecSerializer()
     feature = FeatureSerializer()
     category = FeatureCategorySerializer()
     lin_platforms = PlatformSerializer(many=True, read_only=True)
     win_platforms = PlatformSerializer(many=True, read_only=True)
+    created_by = UserCutSerializer()
+    updated_by = UserCutSerializer()
 
     class Meta:
         model = SubFeature

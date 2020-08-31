@@ -17,6 +17,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'last_login', 'username', 'first_name', 'last_name', 'email', 'is_staff']
 
 
+class UserCutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ['id', 'username', 'first_name', 'last_name']
+
+
 class EnvSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Env

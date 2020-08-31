@@ -43,7 +43,6 @@ class SubFeatureListView(LoggingMixin, generics.ListCreateAPIView):
     serializer_class = SubFeatureFullSerializer
 
     def post(self, request):
-        request.data['created_by'] = get_user_object(request).id
         request.data['imported'] = False
 
         input_serializer = SubFeatureIDSerializer(data=request.data)

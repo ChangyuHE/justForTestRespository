@@ -308,6 +308,7 @@
 
 <script>
     import server from '@/server'
+    import { mapState } from 'vuex'
 
     const oses = Object.freeze({
         WINDOWS_OS: 'Windows',
@@ -358,6 +359,7 @@
             }
         },
         computed: {
+            ...mapState(['userData']),
             formTitle() {
                 return this.editedIndex == -1 ? 'New Subfeature' : 'Edit Subfeature'
             },
@@ -535,9 +537,9 @@
                     win_platforms: this.editedSubfeature.win_platforms.map((item) => item.id),
                     imported: this.editedSubfeature.imported,
                     created: this.editedSubfeature.created,
-                    created_by: this.editedSubfeature.created_by,
+                    created_by: this.editedSubfeature.created_by ? this.editedSubfeature.created_by.id : this.userData.id,
                     updated: this.editedSubfeature.updated,
-                    updated_by: this.editedSubfeature.updated_by,
+                    updated_by: this.editedSubfeature.updated_by ? this.editedSubfeature.updated_by.id : null,
                 }
 
                 if (this.editedIndex > -1) {

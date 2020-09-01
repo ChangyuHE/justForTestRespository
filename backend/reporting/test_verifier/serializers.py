@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Codec, FeatureCategory, Feature, SubFeature
+from .models import Codec, FeatureCategory, Feature, SubFeature, RuleGroup, Rule
 from api.serializers import ComponentSerializer, PlatformSerializer, UserCutSerializer
 
 
@@ -40,4 +40,25 @@ class SubFeatureFullSerializer(serializers.ModelSerializer):
 class SubFeatureIDSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubFeature
+        fields = '__all__'
+
+
+class RuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rule
+        fields = '__all__'
+
+
+class RuleGroupFullSerializer(serializers.ModelSerializer):
+    rule = RuleSerializer(source='rules', many=True)
+    subfeature = SubFeatureFullSerializer()
+
+    class Meta:
+        model = RuleGroup
+        fields = '__all__'
+
+
+class RuleGroupIDSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RuleGroup
         fields = '__all__'

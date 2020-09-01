@@ -1,19 +1,17 @@
-from django.utils import timezone
 from rest_framework import status
-from rest_framework.exceptions import ValidationError, ParseError
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
-from django.shortcuts import get_object_or_404
 
-from .models import SubFeature, Codec, Feature, FeatureCategory
-from .serializers import SubFeatureFullSerializer, SubFeatureIDSerializer, CodecSerializer, \
-    FeatureSerializer, FeatureCategorySerializer
-from api.views import LoggingMixin
-from api.models import Platform
-from api.serializers import PlatformSerializer
 from .services import import_features
+from api.views import LoggingMixin
 from utils.api_logging import get_user_object
+from utils import api_helpers
+
+from .models import Codec, FeatureCategory, Feature, SubFeature
+from .serializers import (CodecSerializer, FeatureCategorySerializer, FeatureSerializer,
+                          SubFeatureFullSerializer, SubFeatureIDSerializer)
 
 
 class ImportView(LoggingMixin, APIView):
@@ -33,87 +31,45 @@ class ImportView(LoggingMixin, APIView):
         return Response(data=data, status=code)
 
 
-class SubFeatureListView(LoggingMixin, generics.ListCreateAPIView):
-    """
-        Getting SubFeatures full list and full info
-        post: Add new SubFeature
-    """
-    queryset = SubFeature.objects.all().prefetch_related('win_platforms__generation',
-                                                         'lin_platforms__generation').select_related()
-    serializer_class = SubFeatureFullSerializer
-
-    def post(self, request):
-        request.data['imported'] = False
-
-        input_serializer = SubFeatureIDSerializer(data=request.data)
-        if not input_serializer.is_valid():
-            return Response(
-                    {'errors': input_serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-        try:
-            output_serializer = SubFeatureFullSerializer(input_serializer.save())
-        except Exception as e:
-            raise ValidationError({"detail": e})
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
-
-
-class SubFeatureDetailView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
-    """
-    get: Get SubFeature info by id
-    delete: Delete SubFeature by id
-    put: Update existing SubFeature's or replace it with new fields
-    patch: Update only existing SubFeature fields
-    """
-    queryset = SubFeature.objects.all()
-    serializer_class = SubFeatureFullSerializer
-
-    def put(self, request, pk):
-        subfeature = get_object_or_404(SubFeature.objects.all(), pk=pk)
-
-        request.data['updated'] = timezone.now().replace(microsecond=0)
-        request.data['updated_by'] = get_user_object(request).id
-        request.data['imported'] = False
-
-        input_serializer = SubFeatureIDSerializer(instance=subfeature, data=request.data)
-        if not input_serializer.is_valid():
-            return Response(
-                    {'errors': input_serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-        try:
-            output_serializer = SubFeatureFullSerializer(input_serializer.save())
-        except Exception as e:
-            raise ValidationError({"detail": e})
-        return Response(output_serializer.data, status.HTTP_201_CREATED)
-
-    def patch(self, request, pk):
-        subfeature = get_object_or_404(SubFeature.objects.all(), pk=pk)
-
-        request.data['updated'] = timezone.now().replace(microsecond=0)
-        request.data['updated_by'] = get_user_object(request).id
-        request.data['imported'] = False
-
-        input_serializer = SubFeatureIDSerializer(instance=subfeature, data=request.data, partial=True)
-        if not input_serializer.is_valid():
-            return Response(
-                    {'errors': input_serializer.errors},
-                    status=status.HTTP_400_BAD_REQUEST)
-        try:
-            output_serializer = SubFeatureFullSerializer(input_serializer.save())
-        except Exception as e:
-            raise ValidationError({"detail": e})
-        return Response(output_serializer.data, status.HTTP_201_CREATED)
-
-
 class CodecListView(LoggingMixin, generics.ListAPIView):
+    """Getting Codec's related full list"""
     queryset = Codec.objects.all()
     serializer_class = CodecSerializer
 
 
-class CategoryListView(LoggingMixin, generics.ListAPIView):
+class FeatureCategoryListView(LoggingMixin, generics.ListAPIView):
+    """Getting Feature Categories full list"""
     queryset = FeatureCategory.objects.all()
     serializer_class = FeatureCategorySerializer
 
 
 class FeatureListView(LoggingMixin, generics.ListAPIView):
+    """Getting Feature's full list"""
     queryset = Feature.objects.all()
     serializer_class = FeatureSerializer
+
+
+class SubFeatureListCreateView(LoggingMixin, generics.ListAPIView, api_helpers.CreateWOutputApiView):
+    """
+    get: Getting SubFeatures full list and full info
+    post: Add new SubFeature
+    """
+    queryset = SubFeature.objects.all().prefetch_related('win_platforms__generation',
+                                                         'lin_platforms__generation').select_related()
+    serializer_output_class = SubFeatureFullSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return SubFeatureFullSerializer
+        return SubFeatureIDSerializer
+
+
+class SubFeatureUpdateView(LoggingMixin, api_helpers.UpdateWOutputAPIView, generics.DestroyAPIView):
+    """
+    put: Update existing SubFeature's or replace it with new fields
+    patch: Update only existing SubFeature fields
+    delete: Delete SubFeature by id
+    """
+    queryset = SubFeature.objects.all()
+    serializer_class = SubFeatureIDSerializer
+    serializer_output_class = SubFeatureFullSerializer

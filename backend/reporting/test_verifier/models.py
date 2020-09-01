@@ -1,8 +1,7 @@
-from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import UniqueConstraint
 
-from api.models import Platform
+from api.models import Platform, Component
 
 from reporting.settings import AUTH_USER_MODEL
 
@@ -18,7 +17,7 @@ class FeatureCategory(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
     class Meta:
-        verbose_name_plural = 'Feature categories'
+        verbose_name_plural = 'Feature Categories'
 
     def __str__(self):
         return self.name
@@ -36,10 +35,11 @@ class SubFeature(models.Model):
     category = models.ForeignKey(FeatureCategory, on_delete=models.CASCADE)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     codec = models.ForeignKey(Codec, on_delete=models.CASCADE)
+    component = models.ForeignKey(Component, on_delete=models.PROTECT)
     lin_platforms = models.ManyToManyField(Platform, related_name='lin_subfeatures', blank=True)
     win_platforms = models.ManyToManyField(Platform, related_name='win_subfeatures', blank=True)
     notes = models.CharField(max_length=255, blank=True, null=True)
-    imported = models.BooleanField()
+    imported = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_subfeatures')
     updated = models.DateTimeField(null=True, blank=True)
@@ -49,7 +49,7 @@ class SubFeature(models.Model):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=['name', 'category', 'feature', 'codec'],
+                fields=['name', 'category', 'feature', 'codec', 'component'],
                 name='unique_subfeature'
             )
         ]

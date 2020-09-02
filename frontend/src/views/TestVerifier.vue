@@ -26,13 +26,56 @@
                         :disabled="uploading"
                     ></v-file-input>
                 </dnd-frame>
+
+                <v-row>
+                    <v-col cols=2>
+                        <api-auto-complete
+                            class="my-0 ml-0"
+                            type="defined"
+                            color="blue-grey"
+                            model-name="component"
+                            v-model="component"
+                            :rules="[rules.required(component, 'name')]"
+                        >
+                        </api-auto-complete>
+                    </v-col>
+
+                    <v-icon
+                        class="mt-2 pt-2"
+                        size="1.25em"
+                        title="Request new component creation"
+                        @click="requestComponentCreation"
+                    >mdi-message-plus-outline</v-icon>
+                </v-row>
+
                 <v-btn
                     color="teal" class="white--text mt-2"
                     :loading="uploading"
-                    @click="onUpload"
+                    @click="confirmationWindow = true"
+                    :disabled="component == undefined || !file"
                 >
                     Upload
                 </v-btn>
+
+                <!-- Request Item dialog -->
+                <request-item-dialog-component v-if="requestItemDialog" model="component" />
+
+                <!-- Verification window -->
+                <v-dialog v-if="confirmationWindow" :value="confirmationWindow" max-width="30%">
+                    <v-card>
+                        <v-card-title>
+                            Import confirmation
+                        </v-card-title>
+                        <v-card-text>
+                            <p>Data from the file will be imported to component <b>{{ component.name }}</b></p>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer></v-spacer>
+                            <v-btn color="blue-grey darken-1" text @click="confirmationWindow = false">Close</v-btn>
+                            <v-btn color="cyan darken-2" text @click="confirm">Confirm</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-dialog>
 
                 <!-- Main import dialog -->
                 <v-dialog v-model="errorsDialog" persistent max-width="50%">
@@ -85,17 +128,21 @@
     import issueCard from '@/components/IssueCard'
     import subFeatures from '@/views/TestVerifier/SubFeatures'
     import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
-    import { mapGetters } from 'vuex'
+    import apiAutoComplete from '@/components/APIAutoComplete'
+    import requestItemDialogComponent from '@/components/RequestItemDialog'
+    import { mapGetters, mapState } from 'vuex'
 
     function getUniqueID(){
-        return Math.random().toString(36).slice(2);
+        return Math.random().toString(36).slice(2)
     }
 
     export default {
         components: {
             issueCard,
             subFeatures,
-            'dnd-frame': dndFrame
+            'dnd-frame': dndFrame,
+            apiAutoComplete,
+            requestItemDialogComponent
         },
         data() {
             return {
@@ -110,26 +157,26 @@
                 },
                 tab: null,
                 pageTab: "subfeatures",
+                component: undefined,
+                confirmationWindow: false,
             }
         },
         computed: {
             ...mapGetters(['importErrors']),
+            ...mapState('request', ['requestItemDialog', 'rules']),
             errorsTabs() {
-                let tabs = Object.keys(this.priority);
+                let tabs = Object.keys(this.priority)
                 tabs.forEach(priority => {
                     if (!(priority in this.importErrors))
                         tabs = tabs.filter(e => e !== priority)
-                });
-                console.log(tabs);
-                return tabs;
+                })
+                return tabs
             },
             uploadFromDialogDisabled() {
-                return 'blocking' in this.importErrors || 'high' in this.importErrors;
+                return 'blocking' in this.importErrors || 'high' in this.importErrors
             },
             priorityWarning() {
-                console.log(this.tab);
-                console.log(this.errorsTabs)
-                let priority = this.errorsTabs[this.tab];
+                let priority = this.errorsTabs[this.tab]
                 if (priority == 'blocking') {
                     return 'Fix errors in input file to make import possible'
                 } else if (priority == 'high') {
@@ -143,27 +190,32 @@
             },
         },
         methods: {
+            confirm() {
+                this.confirmationWindow = false
+                this.onUpload()
+            },
             onUpload() {
-                let eData = {};
-                Object.keys(this.priority).forEach(p => eData[p] = {});     // blocking: {}, high: {}, ...
+                let eData = {}
+                Object.keys(this.priority).forEach(p => eData[p] = {})     // blocking: {}, high: {}, ...
 
-                this.uploading = true;
+                this.uploading = true
 
-                let formData = new FormData();
-                formData.append('file', this.file);
-                const url = 'test_verifier/import/';
+                let formData = new FormData()
+                formData.append('file', this.file)
+                formData.append('component', this.component.id)
+                const url = 'test_verifier/import/'
                 server
                 .post(url, formData, {
                     headers: {'Content-Type': 'multipart/form-data'}})
                 .then(response => {
-                    console.log('Successfully imported', response);
-                    this.$toasted.success('Successfully imported');
+                    console.log('Successfully imported', response)
+                    this.$toasted.success('Successfully imported')
                 })
                 .catch(error => {
                     if (error.response) {           // Request made and server responded out of range of 2xx codes
                         if(error.response.status != 422) {
-                            console.log(error.response);
-                            let data = JSON.stringify(error.response.data);
+                            console.log(error.response)
+                            let data = JSON.stringify(error.response.data)
                             if (data.length > 200)
                                 data = data.slice(0, 200)
 
@@ -173,41 +225,44 @@
                                 'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${data}`
                             })
                         } else {
-                            let data = error.response.data;
-                            this.errorsDialog = true;
+                            let data = error.response.data
+                            this.errorsDialog = true
 
                             // parsed data to fill errors object
                             data.errors.forEach(e => {
                                 Object.keys(this.priority).forEach(p => {
                                     if (this.priority[p].includes(e.code)) {
                                         if (!(e.code in eData[p]))
-                                            eData[p][e.code] = [];
+                                            eData[p][e.code] = []
                                         if (e.code in eData[p]) {
                                             eData[p][e.code].push(
                                                 {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
-                                            );
+                                            )
                                         }
                                     }
-                                });
-                            });
+                                })
+                            })
 
                             // delete empty priorities
                             Object.keys(eData).forEach(p => {
                                 if (Object.keys(eData[p]).length == 0)
-                                    delete eData[p];
-                            });
-                            this.$store.dispatch('setImportErrors', eData);
+                                    delete eData[p]
+                            })
+                            this.$store.dispatch('setImportErrors', eData)
                         }
                     } else if (error.request) {     // The request was made but no response was received
-                        console.log('No response, request:', error.request);
+                        console.log('No response, request:', error.request)
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     } else {
-                        console.log('Something happened in setting up the request that triggered an Error:', error.message);
+                        console.log('Something happened in setting up the request that triggered an Error:', error.message)
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     }
                 })
                 .finally(() => { this.uploading = false })
-            }
+            },
+            requestComponentCreation() {
+                this.$store.dispatch('request/setRequestDialogState', 'component')
+            },
         }
     }
 </script>

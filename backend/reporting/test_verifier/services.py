@@ -7,7 +7,7 @@ from api.models import Platform
 
 from test_verifier.models import Codec, Feature, SubFeature, FeatureCategory
 
-from api.models import Generation
+from api.models import Generation, Component
 
 PLATFORM_FEATURE_SUPPORT = 'platform feature support'
 
@@ -26,7 +26,7 @@ YES = 'Y'
 NO = 'N'
 
 
-def import_features(file, user):
+def import_features(file, user, component):
     outcome = OutcomeBuilder()
     platform_cells, column_mapping, sheet = verify_file(file, outcome)
 
@@ -41,7 +41,7 @@ def import_features(file, user):
         return outcome
 
     subfeature_builder = SubFeatureBuilder(sheet, LOWEST_HEADER_ROW, column_mapping,
-                                           outcome, platform_builder.platforms, user)
+                                           outcome, platform_builder.platforms, user, component)
     subfeature_builder.parse_subfeatures()
     return outcome
 
@@ -93,7 +93,7 @@ class PlatformRecord:
 
 
 class SubFeatureBuilder:
-    def __init__(self, sheet, row_number, column_mapping, outcome, platforms: List[PlatformRecord], user):
+    def __init__(self, sheet, row_number, column_mapping, outcome, platforms: List[PlatformRecord], user, component):
         self.sheet = sheet
         self.row_index = row_number
         self.column_mapping = column_mapping
@@ -102,6 +102,7 @@ class SubFeatureBuilder:
         self.records = []
         self.entities = []
         self.user = user
+        self.component = component
 
     def parse_subfeatures(self):
         rows = tuple(self.sheet.rows)
@@ -110,6 +111,7 @@ class SubFeatureBuilder:
                       'FeatureCategory': None,
                       'Feature': None,
                       'SubFeature': None,
+                      'Component': self.component,
                       'Notes': None,
                       'lin_platforms': [],
                       'win_platforms': [],
@@ -132,46 +134,33 @@ class SubFeatureBuilder:
             model.objects.get_or_create(name=record[model.__name__])
 
     def _create_if_needed(self, record):
-        entity = self._generate_object(record)
-        try:
-            record['id'] = SubFeature.objects.get(name=entity['name'],
-                                                  codec=entity['codec'],
-                                                  category=entity['category'],
-                                                  feature=entity['feature'],
-                                                  notes=entity['notes'])
-        except (SubFeature.DoesNotExist, SubFeature.MultipleObjectsReturned):
-            record = SubFeature(name=entity['name'],
-                                codec=entity['codec'],
-                                category=entity['category'],
-                                feature=entity['feature'],
-                                notes=entity['notes'],
-                                imported=True,
-                                created_by=self.user)
-            record.save()
-            for platform in entity['lin_platforms']:
-                record.lin_platforms.add(platform)
-            for platform in entity['win_platforms']:
-                record.win_platforms.add(platform)
-            record.save()
+        entity = self._generate_subfeature_base(record)
 
-    def _generate_object(self, record):
-        """ Generate dict which contains all fields needed to create new subfeature"""
+        subfeature, created = SubFeature.objects.get_or_create(**entity,
+                                                               defaults={'imported': True,
+                                                                         'created_by': self.user})
+        if created:
+            lin_generations = [pl.api_gen_name for pl in record['lin_platforms']]
+            for platform in Platform.objects.filter(generation__name__in=lin_generations):
+                subfeature.lin_platforms.add(platform)
+            win_generations = [pl.api_gen_name for pl in record['win_platforms']]
+            for platform in Platform.objects.filter(generation__name__in=win_generations):
+                subfeature.win_platforms.add(platform)
+            subfeature.save()
+
+    @staticmethod
+    def _generate_subfeature_base(record):
+        """ Generate dict which contains fields needed to create new subfeature beside lin_platforms, win_platforms """
 
         codec = Codec.objects.get(name=record['Codec'])
         feature_category = FeatureCategory.objects.get(name=record['FeatureCategory'])
         feature = Feature.objects.get(name=record['Feature'])
-        lin_platforms = list(Platform.objects
-                             .filter(generation__name__in=[pl.api_gen_name for pl in
-                                                           record['lin_platforms']]).values_list('id', flat=True))
-        win_platforms = list(Platform.objects
-                             .filter(generation__name__in=[pl.api_gen_name for pl in
-                                                           record['win_platforms']]).values_list('id', flat=True))
+        component = Component.objects.get(pk=record['Component'])
         return {'name': record['SubFeature'],
                 'codec': codec,
                 'category': feature_category,
                 'feature': feature,
-                'lin_platforms': lin_platforms,
-                'win_platforms': win_platforms,
+                'component': component,
                 'notes': record['Notes']}
 
 

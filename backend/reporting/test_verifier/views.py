@@ -20,11 +20,23 @@ class ImportView(LoggingMixin, APIView):
     post: Import SubFeatures data from file
     """
     def post(self, request):
-        if 'file' not in request.data:
-            raise ParseError("'file' parameter is missing in form data.")
-        file = request.data['file']
+        file = request.data.get('file')
+        component = request.data.get('component')
+
+        # check for missing parameters
+        missing_params = []
+        for param_name, value in zip(('file', 'component'), (file, component)):
+            if not value or value in ('undefined', 'null'):
+                missing_params.append(param_name)
+        if missing_params:
+            if len(missing_params) == 1:
+                msg = f"'{missing_params[0]}' parameter is missing in form data."
+            else:
+                msg = f"{', '.join(missing_params)} parameters are missing in form data."
+            raise ParseError(msg)
+
         user = get_user_object(request)
-        outcome = import_features(file, user)
+        outcome = import_features(file, user, component)
 
         data = outcome.build()
         code = status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY

@@ -56,3 +56,18 @@ class SubFeature(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class RuleGroup(models.Model):
+    subfeature = models.ForeignKey(SubFeature, on_delete=models.CASCADE)
+    plink = models.CharField(max_length=255, default='or')
+    created = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_rule_grops')
+    updated = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, blank=True, null=True,
+                                   on_delete=models.PROTECT, related_name='updated_rule_groups')
+
+
+class Rule(models.Model):
+    term = models.CharField(max_length=255)
+    rule_group = models.ForeignKey(RuleGroup, on_delete=models.CASCADE, related_name='rules')

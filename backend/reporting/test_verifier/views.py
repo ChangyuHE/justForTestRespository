@@ -9,9 +9,10 @@ from api.views import LoggingMixin
 from utils.api_logging import get_user_object
 from utils import api_helpers
 
-from .models import Codec, FeatureCategory, Feature, SubFeature
+from .models import Codec, FeatureCategory, Feature, SubFeature, RuleGroup, Rule
 from .serializers import (CodecSerializer, FeatureCategorySerializer, FeatureSerializer,
-                          SubFeatureFullSerializer, SubFeatureIDSerializer)
+                          SubFeatureFullSerializer, SubFeatureIDSerializer,
+                          RuleGroupFullSerializer, RuleGroupIDSerializer, RuleSerializer)
 
 
 class ImportView(LoggingMixin, APIView):
@@ -64,12 +65,56 @@ class SubFeatureListCreateView(LoggingMixin, generics.ListAPIView, api_helpers.C
         return SubFeatureIDSerializer
 
 
-class SubFeatureUpdateView(LoggingMixin, api_helpers.UpdateWOutputAPIView, generics.DestroyAPIView):
+class SubFeatureUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.UpdateWOutputAPIView):
     """
-    put: Update existing SubFeature's or replace it with new fields
-    patch: Update only existing SubFeature fields
+    put: Update existing SubFeature or replace it with new fields
+    patch: Update only existing SubFeature's fields
     delete: Delete SubFeature by id
     """
     queryset = SubFeature.objects.all()
     serializer_class = SubFeatureIDSerializer
     serializer_output_class = SubFeatureFullSerializer
+
+
+class RuleListCreateView(LoggingMixin, generics.ListCreateAPIView):
+    """
+    get: Getting Rules full list and full info
+    post: Add new Rule
+    """
+    queryset = Rule.objects.all()
+    serializer_class = RuleSerializer
+
+
+class RuleUpdateDestroyView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    """
+    put: Update existing Rule or replace it with new fields
+    patch: Update only existing Rule's fields
+    delete: Delete Rule by id
+    """
+    queryset = Rule.objects.all()
+    serializer_class = RuleSerializer
+
+
+class RuleGroupListCreateView(LoggingMixin, generics.ListCreateAPIView, api_helpers.CreateWOutputApiView):
+    """
+    get: Getting Rule Groups full list and full info
+    post: Add new Rules' Group
+    """
+    queryset = RuleGroup.objects.all()
+    serializer_output_class = RuleGroupFullSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return RuleGroupFullSerializer
+        return RuleGroupIDSerializer
+
+
+class RuleGroupsUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.UpdateWOutputAPIView):
+    """
+    put: Update existing Rule Group or replace it with new fields
+    patch: Update only existing Rule Group's fields
+    delete: Delete Rule Group by id
+    """
+    queryset = SubFeature.objects.all()
+    serializer_class = RuleGroupIDSerializer
+    serializer_output_class = RuleGroupFullSerializer

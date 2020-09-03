@@ -1,301 +1,344 @@
 <template>
     <v-card class="mb-2">
-        <!-- Subfeatures table -->
-        <v-data-table class="subfeatures"
-            hide-default-header
-            :headers="headers"
-            :items="subFeatures"
-            :search="search"
-            :loading="loading"
-            :sort-by.sync="sortBy"
-            :sort-desc.sync="sortDesc">
-            <template v-slot:top>
-                <v-toolbar flat>
-                    <!-- Generations buttons group -->
-                    <v-btn-toggle
-                        class="mt-2"
-                        color="blue-grey"
-                        multiple
-                        v-model="selectedGenerations"
-                        @change="changeGens()">
-                        <!-- Dropdown buttons for show Platforms list -->
-                        <v-menu open-on-hover offset-y v-for="gen in generations" :key="gen.name" :close-on-content-click="false">
-                            <template v-slot:activator="{ on }">
-                                <v-btn
-                                    v-on="on"
-                                    class="outlined"
-                                    small
-                                    :value="gen"
-                                    @click="changeGen(gen)">
-                                    {{ gen.name }}
-                                </v-btn>
-                            </template>
-                            <v-list>
-                                <v-list-item-group>
-                                    <v-list-item v-for="platform in platformsByGen[gen.name]" :key="platform.id">
-                                        <v-list-item-content class="pa-0">
-                                            <v-checkbox
-                                                small
-                                                class="platform-filter ma-0"
-                                                v-model="selectedPlatforms"
-                                                :label="platform.short_name"
-                                                :value="platform.id"
-                                                @change="changePlatform(gen, platform)"
-                                                hide-details></v-checkbox>
-                                        </v-list-item-content>
-                                    </v-list-item>
-                                </v-list-item-group>
-                            </v-list>
-                        </v-menu>
-                    </v-btn-toggle>
-                    <v-spacer></v-spacer>
-                    <v-col cols="3">
-                        <!-- Subfeatures searchbox -->
-                        <v-text-field
-                            class="pt-0 mt-0 mr-3"
-                            color="teal"
-                            v-model="search"
-                            append-icon="mdi-magnify"
-                            label="Search"
-                            hide-details
-                            clearable
-                        ></v-text-field>
-                    </v-col>
-                    <!-- Subfeature creation/edition dialog -->
-                    <v-dialog v-model="dialog" max-width="800px">
-                        <template v-slot:activator="{ on, attrs }">
-                            <v-btn fab dark small
-                                color="teal"
-                                class="mb-2"
-                                v-bind="attrs"
-                                v-on="on">
-                                    <v-icon dark>mdi-plus</v-icon>
-                            </v-btn>
-                        </template>
-                        <v-card>
-                            <v-card-title>
-                                <span class="headline">{{ formTitle }}</span>
-                            </v-card-title>
-                            <v-card-text>
-                                <v-container>
-                                    <v-form
-                                        v-model="valid">
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <v-text-field
-                                                    color="teal"
-                                                    v-model="editedSubfeature.name"
-                                                    label="SubFeature"
-                                                    :rules="[rules.required]"
-                                                    return-object
-                                                    clearable
-                                                    required>
-                                                </v-text-field>
-                                            </v-col>
-                                            <v-col cols="12" sm="6" md="4">
-                                                <v-autocomplete
-                                                    color="teal"
-                                                    :items="codecs"
-                                                    label="Codec"
-                                                    v-model="editedSubfeature.codec"
-                                                    item-text="name"
-                                                    return-object
-                                                    :rules="[rules.required]"
-                                                    placeholder="Start typing to filter values"
-                                                    required>
-                                                </v-autocomplete>
-                                            </v-col>
-                                            <v-col cols="12" sm="6" md="4">
-                                                <v-autocomplete
-                                                    color="teal"
-                                                    :items="featureCategories"
-                                                    label="Feature Category"
-                                                    v-model="editedSubfeature.category"
-                                                    item-text="name"
-                                                    return-object
-                                                    placeholder="Start typing to filter values"
-                                                    :rules="[rules.required]"
-                                                    required>
-                                                </v-autocomplete>
-                                            </v-col>
-                                            <v-col cols="12" sm="6" md="4">
-                                                <v-autocomplete
-                                                    color="teal"
-                                                    :items="features"
-                                                    label="Feature"
-                                                    v-model="editedSubfeature.feature"
-                                                    item-text="name"
-                                                    return-object
-                                                    placeholder="Start typing to filter values"
-                                                    :rules="[rules.required]"
-                                                    required>
-                                                </v-autocomplete>
-                                            </v-col>
-                                        </v-row>
-                                        <v-divider></v-divider>
-                                        <v-row>
-                                            <v-col cols="12" class="mt-0">
-                                                <v-simple-table>
-                                                    <template v-slot:default>
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-left">Feature Support</th>
-                                                            <th class="text-left">Platforms</th>
-                                                            <th></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td>{{ oses.LINUX_OS }}</td>
-                                                            <td>
-                                                                <div class="platforms">
-                                                                    <span class="platform" v-for="platform in editedSubfeature.lin_platforms" :key="platform.id">{{ platform.short_name }}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <v-icon class="mr-2" small @click="editPlatforms(oses.LINUX_OS)">mdi-pencil</v-icon>
-                                                            </td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td>{{ oses.WINDOWS_OS }}</td>
-                                                            <td>
-                                                                <div class="platforms">
-                                                                    <span class="platform" v-for="platform in editedSubfeature.win_platforms" :key="platform.id">{{ platform.short_name }}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <v-icon class="mr-2" small @click="editPlatforms(oses.WINDOWS_OS)">mdi-pencil</v-icon>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                    </template>
-                                                </v-simple-table>
-                                            </v-col>
-                                        </v-row>
-                                    </v-form>
-                                </v-container>
-                            </v-card-text>
-                            <v-card-actions>
-                                <v-spacer></v-spacer>
-                                <v-btn color="teal" text @click="close">Cancel</v-btn>
-                                <v-btn color="teal" text @click="save" :disabled="!valid">Save</v-btn>
-                            </v-card-actions>
-                        </v-card>
-                    </v-dialog>
-                    <!-- Platforms adding dialog -->
-                    <v-dialog persistent v-model="dialogPlatforms" max-width="600px">
-                        <v-card>
-                            <v-card-title>
-                                <span>Feature Platforms for {{ selectedOS }}</span>
-                                <v-spacer></v-spacer>
-                            </v-card-title>
-                            <v-container>
+        <v-tabs v-model="componentTab">
+            <v-tabs-slider></v-tabs-slider>
+            <v-tab
+                v-for="comp in components"
+                :key="comp.id"
+                :href="`#${comp.id}`"
+                @click="getSubfeaturesByComponent(comp.id)">
+                {{ comp.name }}
+            </v-tab>
+            <!-- Subfeature creation/edition dialog -->
+            <v-dialog v-model="dialog" max-width="800px">
+                <template v-slot:activator="{ on, attrs }">
+                    <v-btn dark small
+                        color="teal"
+                        class="add-subfeature"
+                        v-bind="attrs"
+                        v-on="on">
+                            Add subfeature
+                    </v-btn>
+                </template>
+                <v-card>
+                    <v-card-title>
+                        <span class="headline">{{ formTitle }}</span>
+                    </v-card-title>
+                    <v-card-text>
+                        <v-container>
+                            <v-form
+                                v-model="valid">
                                 <v-row>
                                     <v-col cols="12">
+                                        <v-text-field
+                                            color="teal"
+                                            v-model="selectedSubfeature.name"
+                                            label="SubFeature"
+                                            :rules="[rules.required]"
+                                            return-object
+                                            clearable
+                                            required>
+                                        </v-text-field>
+                                    </v-col>
+                                    <v-col cols="12" sm="6" md="6">
                                         <v-autocomplete
                                             color="teal"
-                                            chips
-                                            multiple
-                                            :items="platforms"
-                                            label="Platforms"
-                                            v-model="editedPlatforms"
+                                            :items="components"
+                                            label="Component"
+                                            v-model="selectedSubfeature.component"
+                                            item-text="name"
+                                            return-object
+                                            :rules="[rules.required]"
+                                            placeholder="Start typing to filter values"
+                                            required>
+                                        </v-autocomplete>
+                                    </v-col>
+                                    <v-col cols="12" sm="6" md="6">
+                                        <v-autocomplete
+                                            color="teal"
+                                            :items="codecs"
+                                            label="Codec"
+                                            v-model="selectedSubfeature.codec"
+                                            item-text="name"
+                                            return-object
+                                            :rules="[rules.required]"
+                                            placeholder="Start typing to filter values"
+                                            required>
+                                        </v-autocomplete>
+                                    </v-col>
+                                    <v-col cols="12" sm="6" md="6">
+                                        <v-autocomplete
+                                            color="teal"
+                                            :items="featureCategories"
+                                            label="Feature Category"
+                                            v-model="selectedSubfeature.category"
+                                            item-text="name"
                                             return-object
                                             placeholder="Start typing to filter values"
-                                            item-text="short_name">
+                                            :rules="[rules.required]"
+                                            required>
+                                        </v-autocomplete>
+                                    </v-col>
+                                    <v-col cols="12" sm="6" md="6">
+                                        <v-autocomplete
+                                            color="teal"
+                                            :items="features"
+                                            label="Feature"
+                                            v-model="selectedSubfeature.feature"
+                                            item-text="name"
+                                            return-object
+                                            placeholder="Start typing to filter values"
+                                            :rules="[rules.required]"
+                                            required>
                                         </v-autocomplete>
                                     </v-col>
                                 </v-row>
-                            </v-container>
-                            <v-card-actions>
-                                <v-spacer></v-spacer>
-                                <v-btn color="teal" text @click="closePlatforms">Close</v-btn>
-                                <v-btn color="teal" text @click="addPlatforms">Add</v-btn>
-                            </v-card-actions>
-                        </v-card>
-                    </v-dialog>
-                </v-toolbar>
-            </template>
-            <!-- Subfeatures Table's header -->
-            <template v-slot:header="{ props: { headers } }" >
-                <thead class="v-data-table-header">
-                    <tr>
-                        <th v-for="header in headers"
-                            :key="header.text"
-                            :rowspan="header.rowspan"
-                            :colspan="header.value == 'platform' ? getColspanForSupport() : 1"
-                            :class="[header.class, 'sortable', sortDesc ? 'desc' : 'asc', header.value === sortBy ? 'active' : '']"
-                            @click="toggleOrder(header)">
-                                <span>{{ header.text }}</span>
-                                <v-icon class="v-data-table-header__icon" v-if="header.sortable !== false" small>mdi-arrow-up</v-icon>
-                        </th>
-                    </tr>
-                    <tr>
-                        <!-- Generation row -->
-                        <template v-for="gen in selectedGenerations">
-                            <th :colspan="getColspanForGen(gen)" class="generation pa-0"  :key="gen.name" v-if="getColspanForGen(gen)">
-                                {{ gen.name }}
-                            </th>
+                                <v-divider></v-divider>
+                                <v-row>
+                                    <v-col cols="12" class="mt-0">
+                                        <v-simple-table>
+                                            <template v-slot:default>
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-left">Feature Support</th>
+                                                    <th class="text-left">Platforms</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{{ oses.LINUX_OS }}</td>
+                                                    <td>
+                                                        <div class="platforms">
+                                                            <span class="platform" v-for="platform in selectedSubfeature.lin_platforms" :key="platform.id">{{ platform.short_name }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <v-icon class="mr-2" small @click="editPlatforms(oses.LINUX_OS)">mdi-pencil</v-icon>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>{{ oses.WINDOWS_OS }}</td>
+                                                    <td>
+                                                        <div class="platforms">
+                                                            <span class="platform" v-for="platform in selectedSubfeature.win_platforms" :key="platform.id">{{ platform.short_name }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <v-icon class="mr-2" small @click="editPlatforms(oses.WINDOWS_OS)">mdi-pencil</v-icon>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                            </template>
+                                        </v-simple-table>
+                                    </v-col>
+                                </v-row>
+                            </v-form>
+                        </v-container>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="teal" text @click="close">Cancel</v-btn>
+                        <v-btn color="teal" text @click="save" :disabled="!valid">Save</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+            <v-tab-item
+                v-for="comp in components"
+                :key="comp.id"
+                :value="`${comp.id}`">
+                <v-card flat tile>
+                    <v-toolbar flat height="84px">
+                    <!-- Generations buttons group -->
+                        <div>
+                            <v-btn-toggle
+                                color="blue-grey"
+                                multiple
+                                v-model="selectedGenerations"
+                                @change="changeGens()">
+                                <!-- Dropdown buttons for show Platforms list -->
+                                <v-menu open-on-hover offset-y v-for="gen in generations" :key="gen.name" :close-on-content-click="false">
+                                    <template v-slot:activator="{ on }">
+                                        <v-btn
+                                            v-on="on"
+                                            class="outlined"
+                                            small
+                                            :value="gen"
+                                            @click="changeGen(gen)">
+                                            {{ gen.name }}
+                                        </v-btn>
+                                    </template>
+                                    <v-list>
+                                        <v-list-item-group>
+                                            <v-list-item v-for="platform in platformsByGen[gen.name]" :key="platform.id">
+                                                <v-list-item-content class="pa-0">
+                                                    <v-checkbox
+                                                        small
+                                                        class="platform-filter ma-0"
+                                                        v-model="selectedPlatforms"
+                                                        :label="platform.short_name"
+                                                        :value="platform.id"
+                                                        @change="changePlatform(gen, platform)"
+                                                        hide-details></v-checkbox>
+                                                </v-list-item-content>
+                                            </v-list-item>
+                                        </v-list-item-group>
+                                    </v-list>
+                                </v-menu>
+                            </v-btn-toggle>
+                            <v-btn-toggle
+                                class="mt-2 d-block"
+                                color="blue-grey"
+                                multiple
+                                v-model="selectedCodecs">
+                                <v-btn small v-for="codec in codecs" :key="codec.id" :value="codec.id">
+                                    {{ codec.name }}
+                                </v-btn>
+                            </v-btn-toggle>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <v-col cols="3">
+                            <!-- Subfeatures searchbox -->
+                            <v-text-field
+                                class="pt-0 mt-0 mr-3"
+                                color="teal"
+                                v-model="search"
+                                append-icon="mdi-magnify"
+                                label="Search"
+                                hide-details
+                                clearable
+                            ></v-text-field>
+                        </v-col>
+                    </v-toolbar>
+                    <!-- Subfeatures table -->
+                    <v-data-table class="subfeatures"
+                        hide-default-header
+                        :headers="headers"
+                        :items="subFeaturesByComponent"
+                        :search="search"
+                        :loading="loading"
+                        :sort-by.sync="sortBy"
+                        :sort-desc.sync="sortDesc">
+                        <template v-slot:top>
                         </template>
-                    </tr>
-                    <tr>
-                        <!-- Platforms row -->
-                        <template v-for="gen in selectedGenerations">
-                            <template v-for="platform in platformsByGen[gen.name]">
-                                <template v-if="isSelectedPlatform(platform)">
-                                    <th colspan="2" class="col-platform"  :key="platform.id">
-                                        <span>{{ platform.short_name }}</span>
+                        <!-- Subfeatures Table's header -->
+                        <template v-slot:header="{ props: { headers } }" >
+                            <thead class="v-data-table-header">
+                                <tr>
+                                    <th v-for="header in headers"
+                                        :key="header.text"
+                                        :rowspan="header.rowspan"
+                                        :colspan="header.value == 'platform' ? getColspanForSupport() : 1"
+                                        :class="[header.class, 'sortable', sortDesc ? 'desc' : 'asc', header.value === sortBy ? 'active' : '']"
+                                        @click="toggleOrder(header)">
+                                            <span>{{ header.text }}</span>
+                                            <v-icon class="v-data-table-header__icon" v-if="header.sortable !== false" small>mdi-arrow-up</v-icon>
                                     </th>
+                                </tr>
+                                <tr>
+                                    <!-- Generation row -->
+                                    <template v-for="gen in selectedGenerations">
+                                        <th :colspan="getColspanForGen(gen)" class="generation pa-0"  :key="gen.name" v-if="getColspanForGen(gen)">
+                                            {{ gen.name }}
+                                        </th>
+                                    </template>
+                                </tr>
+                                <tr>
+                                    <!-- Platforms row -->
+                                    <template v-for="gen in selectedGenerations">
+                                        <template v-for="platform in platformsByGen[gen.name]">
+                                            <template v-if="isSelectedPlatform(platform)">
+                                                <th colspan="2" class="col-platform"  :key="platform.id">
+                                                    <span>{{ platform.short_name }}</span>
+                                                </th>
+                                            </template>
+                                        </template>
+                                    </template>
+                                </tr>
+                                <tr>
+                                    <!-- Os row -->
+                                    <template v-for="gen in selectedGenerations">
+                                        <template v-for="platform in platformsByGen[gen.name]">
+                                            <th class="col-os" :key="'win_'+platform.id" v-if="isSelectedPlatform(platform)">
+                                                <v-icon small :title="oses.WINDOWS_OS">mdi-microsoft-windows</v-icon>
+                                            </th>
+                                            <th class="col-os" :key="'lin_'+platform.id" v-if="isSelectedPlatform(platform)">
+                                                <v-icon small :title="oses.LINUX_OS">mdi-linux</v-icon>
+                                            </th>
+                                        </template>
+                                    </template>
+                                </tr>
+                            </thead>
+                        </template>
+                        <!-- Subfeatures Body's row -->
+                        <template v-slot:item="{ item }">
+                            <tr class="subfeature" v-if="isShow(item)">
+                                <td>{{ item.codec.name }}</td>
+                                <td>{{ item.category.name }}</td>
+                                <td>{{ item.feature.name }}</td>
+                                <td>{{ item.name }}</td>
+                                <template v-for="gen in selectedGenerations">
+                                    <template v-for="platform in platformsByGen[gen.name]">
+                                        <template v-if="isSelectedPlatform(platform)">
+                                            <td class="pa-0 supporting" v-for="os in oses" :key="os+platform.id" :value="support = checkSupport(item, os, platform)">
+                                                <span :class="support">{{support}}</span>
+                                            </td>
+                                        </template>
+                                    </template>
                                 </template>
-                            </template>
-                        </template>
-                    </tr>
-                    <tr>
-                        <!-- Os row -->
-                        <template v-for="gen in selectedGenerations">
-                            <template v-for="platform in platformsByGen[gen.name]">
-                                <th class="col-os" :key="'win_'+platform.id" v-if="isSelectedPlatform(platform)">
-                                    <v-icon small :title="oses.WINDOWS_OS">mdi-microsoft-windows</v-icon>
-                                </th>
-                                <th class="col-os" :key="'lin_'+platform.id" v-if="isSelectedPlatform(platform)">
-                                    <v-icon small :title="oses.LINUX_OS">mdi-linux</v-icon>
-                                </th>
-                            </template>
-                        </template>
-                    </tr>
-                </thead>
-            </template>
-            <!-- Subfeatures Body's header -->
-            <template v-slot:item="{ item }">
-                <tr class="subfeature" v-if="isShow(item)">
-                    <td>{{ item.codec.name }}</td>
-                    <td>{{ item.category.name }}</td>
-                    <td>{{ item.feature.name }}</td>
-                    <td>{{ item.name }}</td>
-                    <template v-for="gen in selectedGenerations">
-                        <template v-for="platform in platformsByGen[gen.name]">
-                            <template v-if="isSelectedPlatform(platform)">
-                                <td class="pa-0 supporting" v-for="os in oses" :key="os+platform.id" :value="support = checkSupport(item, os, platform)">
-                                    <span :class="support">{{support}}</span>
+                                <td>
+                                    <v-hover v-slot:default="{ hover }">
+                                        <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="openInfoDialog(item)">mdi-information</v-icon>
+                                    </v-hover>
+                                    <v-hover v-slot:default="{ hover }">
+                                        <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="editSubfeatures(item)">mdi-pencil</v-icon>
+                                    </v-hover>
+                                    <v-hover v-slot:default="{ hover }">
+                                        <v-icon small :class="{ 'red--text': hover }" @click="openDeleteDialog(item)">mdi-delete</v-icon>
+                                    </v-hover>
                                 </td>
-                            </template>
+                            </tr>
                         </template>
-                    </template>
-                    <td>
-                        <v-hover v-slot:default="{ hover }">
-                            <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="editSubfeatures(item)">mdi-pencil</v-icon>
-                        </v-hover>
-                        <v-hover v-slot:default="{ hover }">
-                            <v-icon small :class="{ 'red--text': hover }" @click="openDeleteDialog(item)">mdi-delete</v-icon>
-                        </v-hover>
-                    </td>
-                </tr>
-            </template>
-        </v-data-table>
+                    </v-data-table>
+                </v-card>
+            </v-tab-item>
+        </v-tabs>
+        <!-- Platforms adding dialog -->
+        <v-dialog persistent v-model="dialogPlatforms" max-width="600px">
+            <v-card>
+                <v-card-title>
+                    <span>Feature Platforms for {{ selectedOS }}</span>
+                    <v-spacer></v-spacer>
+                </v-card-title>
+                <v-container>
+                    <v-row>
+                        <v-col cols="12">
+                            <v-autocomplete
+                                color="teal"
+                                chips
+                                multiple
+                                :items="platforms"
+                                label="Platforms"
+                                v-model="editedPlatforms"
+                                return-object
+                                placeholder="Start typing to filter values"
+                                item-text="short_name">
+                            </v-autocomplete>
+                        </v-col>
+                    </v-row>
+                </v-container>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="teal" text @click="closePlatforms">Close</v-btn>
+                    <v-btn color="teal" text @click="addPlatforms">Add</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
         <!-- Subfeature deleting dialog -->
         <v-dialog v-model="dialogDelete" max-width="500px">
             <v-card>
                 <v-card-title>Delete subfeature</v-card-title>
-                <v-card-text>Are you sure you want to delete {{ subfeatureToDelete.name }} subfeature?</v-card-text>
+                <v-card-text>Are you sure you want to delete {{ selectedSubfeature.name }} subfeature?</v-card-text>
                 <v-card-actions>
                 <v-btn color="primary" text @click="dialogDelete = false">Close</v-btn>
                 <v-spacer></v-spacer>
@@ -303,12 +346,38 @@
                 </v-card-actions>
             </v-card>
         </v-dialog>
+        <!-- Subfeature information dialog -->
+        <v-dialog v-model="dialogInfo" max-width="500px">
+            <v-card class="subfeature-info">
+                <v-card-title>Subfeature information</v-card-title>
+                <v-card-text>
+                    <dl class="row">
+                        <dt class="col-3 text-end">Name:</dt>
+                        <dd class="col-9">{{ selectedSubfeature.name }}</dd>
+                    </dl>
+                </v-card-text>
+                <v-card-text>
+                    <v-divider></v-divider>
+                    <dl class="row">
+                        <dt class="col-3 text-end">Created:</dt>
+                        <dd class="col-9">{{ selectedSubfeature.created | formatDate }}</dd>
+                        <dt class="col-3 text-end">Created By:</dt>
+                        <dd class="col-9">{{ selectedSubfeature.created_by.fullname || selectedSubfeature.created_by.username}}</dd>
+                        <template v-if="selectedSubfeature.updated_by">
+                            <dt class="col-3 text-end">Updated:</dt>
+                            <dd class="col-9">{{ selectedSubfeature.updated | formatDate }}</dd>
+                            <dt class="col-3 text-end">Updated By:</dt>
+                            <dd class="col-9">{{ selectedSubfeature.updated_by.fullname || selectedSubfeature.updated_by.username}}</dd>
+                        </template>
+                    </dl>
+                </v-card-text>
+            </v-card>
+        </v-dialog>
     </v-card>
 </template>
 
 <script>
     import server from '@/server'
-    import { mapState } from 'vuex'
 
     const oses = Object.freeze({
         WINDOWS_OS: 'Windows',
@@ -327,13 +396,19 @@
                 sortBy: 'name',
                 sortDesc: false,
                 valid: true,
+                componentTab: null,
+
+                // Dialogs
                 dialog: false,
                 dialogPlatforms: false,
                 dialogDelete: false,
+                dialogInfo: false,
+
                 rules: {
                     required: value => !!value || 'Required.'
                 },
 
+                components: [],
                 codecs: [],
                 featureCategories: [],
                 features: [],
@@ -341,25 +416,31 @@
                 platforms: [],
                 platformsByGen: {},
                 subFeatures: [],
+                subFeaturesByComponent: [],
 
                 selectedGenerations: [],
+                selectedCodecs: [],
                 selectedPlatforms: [],
                 selectedOS: oses.WINDOWS_OS,
                 editedIndex: -1,
-                editedSubfeature: {
+                selectedSubfeature: {
+                    'feature': {'name': undefined},
                     'win_platforms': [],
                     'lin_platforms': [],
+                    'created_by': {'fullname': undefined},
+                    'updated_by': {'fullname': undefined},
                 },
                 defaultSubfeature: {
+                    'feature': {'name': undefined},
                     'win_platforms': [],
                     'lin_platforms': [],
+                    'created_by': {'fullname': undefined},
+                    'updated_by': {'fullname': undefined},
                 },
-                subfeatureToDelete: {},
                 editedPlatforms: [],
             }
         },
         computed: {
-            ...mapState(['userData']),
             formTitle() {
                 return this.editedIndex == -1 ? 'New Subfeature' : 'Edit Subfeature'
             },
@@ -373,6 +454,9 @@
             },
             dialogDelete(val) {
                 val || this.closeDeleteDialog()
+            },
+            dialogInfo(val) {
+                val || this.closeInfoDialog()
             },
         },
         methods: {
@@ -389,6 +473,9 @@
             },
             platformKey(os) {
                 return `${os.substring(0, 3).toLowerCase()}_platforms`
+            },
+            getSubfeaturesByComponent(componentId) {
+                this.subFeaturesByComponent = this.subFeatures.filter((sf) => sf.component.id == componentId)
             },
             getColspanForSupport() {
                 // Dynamic column for all supporting platforms
@@ -407,15 +494,21 @@
                 return this.selectedPlatforms.indexOf(platform.id) >= 0
             },
             isShow(subfeature) {
+                // Codecs filter
                 // Subfeature that are not supported in the selected filters are not shown
-                if (this.selectedGenerations.length == this.generations.length &&
-                    this.selectedPlatforms.length == this.platforms.length) {
-                    return true
-                } else {
-                    let win_platforms = subfeature.win_platforms.filter((item) => this.selectedPlatforms.indexOf(item.id) >= 0)
-                    let lin_platforms = subfeature.lin_platforms.filter((item) => this.selectedPlatforms.indexOf(item.id) >= 0)
-                    return win_platforms.length || lin_platforms.length
+                let showCodec = this._.includes(this.selectedCodecs, subfeature.codec.id)
+                let showAllGens = this.selectedGenerations.length == this.generations.length &&
+                    this.selectedPlatforms.length == this.platforms.length
+
+                if (!showCodec) {
+                    return false
                 }
+                else if (showAllGens) {
+                    return true
+                }
+                let win_platforms = subfeature.win_platforms.filter((item) => this.selectedPlatforms.indexOf(item.id) >= 0)
+                let lin_platforms = subfeature.lin_platforms.filter((item) => this.selectedPlatforms.indexOf(item.id) >= 0)
+                return win_platforms.length || lin_platforms.length
             },
             changeGens() {
                 // Sorting generations after toggle filters
@@ -451,6 +544,7 @@
                     .get(this.url)
                     .then(featuresData => {
                         this.subFeatures = featuresData.data
+                        this.getSubfeaturesByComponent(this.components[0].id)
                         this.headers = [
                             { text: 'Codec', rowspan: 4, class: 'col-codec', value: 'codec.name' },
                             { text: 'Feature Category', rowspan: 4, class: 'col-category', value: 'category.name' },
@@ -474,28 +568,32 @@
                 return item_platform.length ? 'y' : 'n'
             },
             addPlatforms() {
-                this.editedSubfeature[this.platformKey(this.selectedOS)] = this.editedPlatforms
+                this.selectedSubfeature[this.platformKey(this.selectedOS)] = this.editedPlatforms
                 this.dialogPlatforms = false
             },
             editPlatforms(os) {
                 this.dialogPlatforms = !this.dialogPlatforms
                 this.selectedOS = os
-                this.editedPlatforms = this.editedSubfeature[this.platformKey(os)]
+                this.editedPlatforms = this.selectedSubfeature[this.platformKey(os)]
             },
             editSubfeatures(item) {
                 this.editedIndex = this.subFeatures.indexOf(item)
-                this.editedSubfeature = Object.assign({}, item)
+                this.selectedSubfeature = Object.assign({}, item)
                 this.dialog = true
             },
             openDeleteDialog(item) {
-                this.subfeatureToDelete = Object.assign({}, item)
+                this.selectedSubfeature = Object.assign({}, item)
                 this.dialogDelete = !this.dialogDelete
+            },
+            openInfoDialog(item) {
+                this.selectedSubfeature = Object.assign({}, item)
+                this.dialogInfo = !this.dialogInfo
             },
             deleteSubfeature() {
                 server
-                    .delete(`${url}${this.subfeatureToDelete.id}/`)
+                    .delete(`${url}${this.selectedSubfeature.id}/`)
                     .then(response => {
-                        let index = this._.findIndex(this.subFeatures, {id: this.subfeatureToDelete.id})
+                        let index = this._.findIndex(this.subFeatures, {id: this.selectedSubfeature.id})
                         this.subFeatures.splice(index, 1)
                         this.$toasted.success('Subfeature has been removed')
                     })
@@ -506,12 +604,15 @@
                             this.$toasted.global.alert_error(error)
                         }
                     })
-                    .finally(() => this.closeDeleteDialog())
+                    .finally(() => {
+                        this.closeDeleteDialog()
+                        this.getSubfeaturesByComponent(this.componentTab)
+                    })
             },
             close() {
                 this.dialog = false
                 this.$nextTick(() => {
-                    this.editedSubfeature = Object.assign({}, this.defaultSubfeature)
+                    this.selectedSubfeature = Object.assign({}, this.defaultSubfeature)
                     this.editedIndex = -1
                 })
             },
@@ -524,27 +625,29 @@
             closeDeleteDialog() {
                 this.dialogDelete = false
                 this.$nextTick(() => {
-                    this.subfeatureToDelete = {}
+                    this.selectedSubfeature = Object.assign({}, this.defaultSubfeature)
+                })
+            },
+            closeInfoDialog() {
+                this.dialogInfo = false
+                this.$nextTick(() => {
+                    this.selectedSubfeature = Object.assign({}, this.defaultSubfeature)
                 })
             },
             save() {
                 let sfSaving = {
-                    name: this.editedSubfeature.name,
-                    codec: this.editedSubfeature.codec.id,
-                    category: this.editedSubfeature.category.id,
-                    feature: this.editedSubfeature.feature.id,
-                    lin_platforms: this.editedSubfeature.lin_platforms.map((item) => item.id),
-                    win_platforms: this.editedSubfeature.win_platforms.map((item) => item.id),
-                    imported: this.editedSubfeature.imported,
-                    created: this.editedSubfeature.created,
-                    created_by: this.editedSubfeature.created_by ? this.editedSubfeature.created_by.id : this.userData.id,
-                    updated: this.editedSubfeature.updated,
-                    updated_by: this.editedSubfeature.updated_by ? this.editedSubfeature.updated_by.id : null,
+                    name: this.selectedSubfeature.name,
+                    component: this.selectedSubfeature.component.id,
+                    codec: this.selectedSubfeature.codec.id,
+                    category: this.selectedSubfeature.category.id,
+                    feature: this.selectedSubfeature.feature.id,
+                    lin_platforms: this.selectedSubfeature.lin_platforms.map((item) => item.id),
+                    win_platforms: this.selectedSubfeature.win_platforms.map((item) => item.id)
                 }
 
                 if (this.editedIndex > -1) {
                     server
-                        .put(`${url}${this.editedSubfeature.id}/`, sfSaving)
+                        .put(`${url}${this.selectedSubfeature.id}/`, sfSaving)
                         .then(response => {
                             Object.assign(this.subFeatures[this.editedIndex], response.data)
                             this.$toasted.success('Subfeature has been edited')
@@ -556,12 +659,15 @@
                                 this.$toasted.global.alert_error(error)
                             }
                         })
-                        .finally(() => this.close())
+                        .finally(() => {
+                            this.close()
+                            this.getSubfeaturesByComponent(this.componentTab)
+                        })
                 } else {
                     server
                         .post(this.url, sfSaving)
                         .then(response => {
-                            this.editedSubfeature.id = response.data.id
+                            this.selectedSubfeature.id = response.data.id
                             this.subFeatures.unshift(response.data)
                             this.$toasted.success('Subfeature has been created')
                         })
@@ -572,17 +678,34 @@
                                 this.$toasted.global.alert_error(error)
                             }
                         })
-                        .finally(() => this.close())
+                        .finally(() => {
+                            this.close()
+                            this.getSubfeaturesByComponent(this.componentTab)
+                        })
                 }
             },
         },
         created() {
-            // Initial codecs, categories, features, platforms
-            let url = 'test_verifier/codecs/'
+            // Initial components, codecs, categories, features, platforms
+            let url = 'api/component/'
+            server
+                .get(url)
+                .then(response => {
+                    this.components = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get components', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+            url = 'test_verifier/codecs/'
             server
                 .get(url)
                 .then(response => {
                     this.codecs = response.data
+                    this.selectedCodecs = this.codecs.map((item) => item.id)
                 })
                 .catch(error => {
                     if (error.handleGlobally) {
@@ -654,8 +777,11 @@
     .subfeatures th {
         border: thin solid rgba(0, 0, 0, 0.12);
     }
-    .subfeatures .col-codec, .col-category, .col-feature, .col-actions {
+    .subfeatures .col-codec, .col-category, .col-feature {
         width: 170px;
+    }
+    .col-actions {
+        width: 100px;
     }
     .subfeatures .col-support {
         border-bottom: 0;
@@ -717,5 +843,16 @@
     }
     .subfeatures .platform-filter label {
         font-size: 14px;
+    }
+    .subfeature-info dt, .subfeature-info dd {
+        padding-bottom: 0;
+    }
+    .subfeature-info dt {
+        font-weight: 700;
+    }
+    .add-subfeature {
+        position: absolute;
+        right: 20px;
+        top: 20px;
     }
 </style>

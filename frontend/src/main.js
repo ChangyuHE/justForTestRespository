@@ -68,6 +68,14 @@ Vue.toasted.register('alert_error_detailed',
     }
 )
 
+// format date MM/DD/YYYY, hh:mm:ss a
+Vue.filter('formatDate', function(value) {
+    if (value) {
+        let date = new Date(String(value));
+        return date.toLocaleString();
+    }
+});
+
 Vue.use(vueDebounce)
 Vue.config.productionTip = false
 

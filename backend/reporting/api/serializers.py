@@ -18,9 +18,10 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCutSerializer(serializers.ModelSerializer):
+    fullname = serializers.CharField(source='get_full_name', read_only=True)
     class Meta:
         model = get_user_model()
-        fields = ['id', 'username', 'first_name', 'last_name']
+        fields = ['id', 'username', 'fullname']
 
 
 class EnvSerializer(serializers.ModelSerializer):

@@ -3,7 +3,6 @@ from rest_framework import serializers
 from .models import Codec, FeatureCategory, Feature, SubFeature, RuleGroup, Rule
 from api.serializers import ComponentSerializer, PlatformSerializer, UserCutSerializer
 
-
 class CodecSerializer(serializers.ModelSerializer):
     class Meta:
         model = Codec
@@ -38,6 +37,7 @@ class SubFeatureFullSerializer(serializers.ModelSerializer):
 
 
 class SubFeatureIDSerializer(serializers.ModelSerializer):
+    created_by = UserCutSerializer(read_only=True)
     class Meta:
         model = SubFeature
         fields = '__all__'

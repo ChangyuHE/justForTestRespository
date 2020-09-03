@@ -76,6 +76,10 @@ class SubFeatureListCreateView(LoggingMixin, generics.ListAPIView, api_helpers.C
             return SubFeatureFullSerializer
         return SubFeatureIDSerializer
 
+    def perform_create(self, serializer):
+        serializer.save(created_by=get_user_object(self.request))
+        return super().perform_create(serializer)
+
 
 class SubFeatureUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.UpdateWOutputAPIView):
     """
@@ -86,6 +90,10 @@ class SubFeatureUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.Up
     queryset = SubFeature.objects.all()
     serializer_class = SubFeatureIDSerializer
     serializer_output_class = SubFeatureFullSerializer
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=get_user_object(self.request))
+        return super().perform_update(serializer)
 
 
 class RuleListCreateView(LoggingMixin, generics.ListCreateAPIView):

@@ -457,7 +457,7 @@ class GTAFieldParser:
 
         for model, result_field, parser_key in resultConverterTable:
             kwargs = dataclasses.asdict(cached_result_dict[parser_key])
-            value = model.objects.get_or_create(**kwargs)
+            value, _ = model.objects.get_or_create(**kwargs)
             setattr(data, result_field, value)
 
         data.additional_parameters = cached_result_dict['additional_params']

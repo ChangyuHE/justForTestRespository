@@ -5,8 +5,6 @@ from django.conf import settings
 from django.db import models
 from django.db.models import UniqueConstraint, Q
 from django.contrib.postgres.fields import JSONField
-from django.contrib.auth import get_user_model
-
 from reporting.settings import AUTH_USER_MODEL
 
 
@@ -308,7 +306,7 @@ class FeatureMappingRule(models.Model):
 
 class FeatureMapping(models.Model):
     name = models.CharField(max_length=255)
-    owner = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     component = models.ForeignKey(Component, on_delete=models.CASCADE)
     platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
@@ -345,5 +343,5 @@ class ImportJob(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
-    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
     path = models.FilePathField(path=xlsx)

@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from api.collate.business_entities import OutcomeBuilder
 
+
 class OutcomeBuilderTest(TestCase):
     def assertOutcomeContains(self, error_subset, result):
         self.assertFalse(result['success'], 'Expected failure status.')
@@ -12,7 +13,7 @@ class OutcomeBuilderTest(TestCase):
 
     def test_invalid_validation(self):
         code = 'ERR_INVALID_VALIDATION_ID'
-        message  = 'Sample invalid validation error'
+        message = 'Sample invalid validation error'
 
         outcome = OutcomeBuilder()
         outcome.add_invalid_validation_error(message)

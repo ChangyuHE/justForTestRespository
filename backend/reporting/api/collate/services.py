@@ -11,30 +11,20 @@ from django.utils import timezone
 from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 
-from api.models import Result
-from api.models import ResultGroupMask
-from api.models import ResultGroupNew
-from api.models import Validation
-from api.models import Env
-from api.models import Component
-from api.models import Item
-from api.models import Status
-from api.models import Platform
-from api.models import Os
-from api.models import Run
+from api.models import Component, Env, Item, Os, Run, Platform, Result, ResultGroupMask, ResultGroupNew, Validation, \
+    Status
 
-from api.collate.caches import QueryCache
-from api.collate.caches import ObjectsCache
 from api.collate.gta_field_parser import GTAFieldParser
 from api.collate.excel_utils import REVERSE_NAME_MAPPING
 from api.collate.excel_utils import open_excel_file
 from api.collate.excel_utils import non_empty_row
 from api.collate.business_entities import ResultData
+from api.utils.caches import QueryCache, ObjectsCache, queryset_cache
+from api.utils.cached_objects_find import find_object, find_with_alias, find_testitem_object
 
 """ Business logic """
 
 log = logging.getLogger(__name__)
-queryset_cache = QueryCache()
 new_objects_ids = ObjectsCache()
 parser = GTAFieldParser()
 
@@ -229,7 +219,7 @@ class RecordBuilder:
         record.validation = self.validation
         record.env = self._find_object(Env, name=columns['envName'])
         record.component = self._find_object(Component, name=columns['componentName'])
-        record.item = self._find_object(Item, name=columns['itemName'], args=columns['itemArgs'])
+        record.item = self._find_testitem_object(name=columns['itemName'], args=columns['itemArgs'])
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
@@ -358,55 +348,31 @@ class RecordBuilder:
         return self.__data.get_fields()
 
     def _find_object(self, cls, ignore_warnings=False, **params):
-        for obj in queryset_cache.get(cls):
-            if self.__match_by_params(obj, params):
-                return obj
+        obj = find_object(cls, **params)
+        if obj is not None:
+            return obj
 
         self._notify_object_not_found(cls, params, ignore_warnings)
+        return None
+
+    def _find_testitem_object(self, ignore_warnings=False, **params):
+        obj = find_testitem_object(**params)
+        if obj is not None:
+            return obj
+
+        self._notify_object_not_found(Item, {'name': params['name'], 'args': params['args']}, ignore_warnings)
         return None
 
     def _find_with_alias(self, cls, alias, ignore_warnings=False):
         if alias is None:
             return None
 
-        for obj in queryset_cache.get(cls):
-            if self.__match_by_alias(obj, alias):
-                return obj
+        obj = find_with_alias(cls, alias)
+        if obj is not None:
+            return obj
 
         self._notify_alias_not_found(cls, alias, ignore_warnings)
         return None
-
-    def __match_by_params(self, obj, params):
-        found = True
-
-        for key, value in params.items():
-            # case insensitive strings compare
-            if type(value) != str:
-                found &= getattr(obj, key) == value
-            else:
-                attr = getattr(obj, key, None)
-
-                if attr is not None:
-                    found &= attr.lower() == value.lower()
-                else:
-                    found = False
-                    break
-
-        return found
-
-    def __match_by_alias(self, obj, name):
-        ignore_case_name = name.lower()
-
-        if obj.name.lower() == ignore_case_name:
-            return True
-
-        if obj.aliases is None:
-            return False
-
-        if ignore_case_name in self.__iterate_aliases(obj.aliases):
-            return True
-
-        return False
 
     def __check_fields_existance(self, fields):
         return None not in fields.values()
@@ -426,6 +392,3 @@ class RecordBuilder:
     def _notify_alias_not_found(self, cls, name, ignore_warnings):
         if not ignore_warnings:
             self.__outcome.add_missing_field_error((cls.__name__, dict(name=name)), is_alias=True)
-
-    def __iterate_aliases(self, aliases):
-        return (x for x in map(str.strip, aliases.lower().split(';')) if x)

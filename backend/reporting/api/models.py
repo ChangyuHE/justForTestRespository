@@ -91,17 +91,56 @@ class Driver(models.Model):
     build_id = models.CharField(max_length=16, null=True, blank=True)
 
 
+class Plugin(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+
 class Item(models.Model):
     name = models.CharField(max_length=255)
     args = models.CharField(max_length=255)
     group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.SET_NULL)
 
+    plugin = models.ForeignKey(Plugin, null=True, blank=True, on_delete=models.CASCADE)
+    scenario = models.ForeignKey('TestScenario', null=True, blank=True, on_delete=models.CASCADE)
+    test_id = models.CharField(null=True, blank=True, max_length=255)
+
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=['name', 'args'],
+                fields=['name', 'args', 'plugin', 'scenario', 'test_id'],
                 name='unique_%(class)s_composite_constraint'
             ),
+            # all nulls
+            UniqueConstraint(
+                fields=['name', 'args'], condition=Q(test_id=None) & Q(scenario=None) & Q(plugin=None),
+                name='unique_%(class)s_composite_constraint_with_all_nulls'
+            ),
+            # two nulls
+            UniqueConstraint(
+                fields=['name', 'args', 'plugin'], condition=Q(scenario=None) & Q(test_id=None),
+                name='unique_%(class)s_composite_constraint_with_scen_id_nulls'
+            ),
+            UniqueConstraint(
+                fields=['name', 'args', 'scenario'], condition=Q(plugin=None) & Q(test_id=None),
+                name='unique_%(class)s_composite_constraint_with_plugin_id_nulls'
+            ),
+            UniqueConstraint(
+                fields=['name', 'args', 'test_id'], condition=Q(plugin=None) & Q(scenario=None),
+                name='unique_%(class)s_composite_constraint_with_plugin_scen_nulls'
+            ),
+            # one null
+            UniqueConstraint(
+                fields=['name', 'args', 'plugin', 'scenario'], condition=Q(test_id=None),
+                name='unique_%(class)s_composite_constraint_with_id_null'
+            ),
+            UniqueConstraint(
+                fields=['name', 'args', 'plugin', 'test_id'], condition=Q(scenario=None),
+                name='unique_%(class)s_composite_constraint_with_scen_null'
+            ),
+            UniqueConstraint(
+                fields=['name', 'args', 'scenario', 'test_id'], condition=Q(plugin=None),
+                name='unique_%(class)s_composite_constraint_with_plugin_null'
+            )
         ]
 
 

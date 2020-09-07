@@ -6,19 +6,11 @@ from unittest.mock import patch
 from django_dramatiq.test import DramatiqTestCase
 from django.contrib.auth.models import User
 
-from api.models import Component
-from api.models import Driver
-from api.models import Env
-from api.models import ImportJob
-from api.models import Item
-from api.models import Os
-from api.models import Platform
-from api.models import Run
-from api.models import Status
-from api.models import Validation
+from api.models import Component, Driver, Env, ImportJob, Item, Os, Platform, Plugin, Run, Status, TestScenario, \
+    Validation
 
 from api.collate.gta_field_parser import GTAFieldParser
-from api.collate.services import queryset_cache
+from api.utils.caches import queryset_cache
 
 from api.collate.tests.genetated_files import create_file
 from api.collate.tests.genetated_files import create_empty_workbook
@@ -48,16 +40,25 @@ class DbFixture(DramatiqTestCase):
         Driver.objects.create(name='gfx-driver-ci-master-3172')
         Component.objects.create(name='Media-Encode')
 
+        plugin = Plugin.objects.create(name='test_media_lucas')
+        scenario = TestScenario.objects.create(name='KBL_VDEnc_TEDDI_ISPFormats_CQP.csv')
         Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_135',
-                args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 135')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef CQP -KBL_115',
-                args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_MultiRef_CQP_Unified.csv -t 115')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_105',
-                args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv -t 105')
+                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 135',
+                            plugin=plugin, scenario=scenario, test_id='135')
         Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_123',
-                args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 123')
+                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 123',
+                            plugin=plugin, scenario=scenario, test_id='123')
         Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_112',
-                args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 112')
+                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 112',
+                            plugin=plugin, scenario=scenario, test_id='112')
+        scenario = TestScenario.objects.create(name='KBL_AVC_VDEnc_TEDDI_MultiRef_CQP_Unified.csv')
+        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef CQP -KBL_115',
+                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_MultiRef_CQP_Unified.csv -t 115',
+                            plugin=plugin, scenario=scenario, test_id='115')
+        scenario = TestScenario.objects.create(name='KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv')
+        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_105',
+                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv -t 105',
+                            plugin=plugin, scenario=scenario, test_id='105')
 
         Status.objects.create(test_status='Failed', priority=100)
         Status.objects.create(test_status='Passed', priority=100)

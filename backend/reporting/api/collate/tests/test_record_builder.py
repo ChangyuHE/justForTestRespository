@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from api.models import Platform
-from api.collate.services import queryset_cache
+from api.utils.caches import queryset_cache
 from api.collate.business_entities import Context
 from api.collate.services import RecordBuilder
 
@@ -22,6 +22,7 @@ platform_stub = [{
         'name': 'Elkhard_Lake',
         'aliases': 'Elkhard Lake;elkhard_lake;elkhart_lake;',
 }]
+
 
 class RecordBuilderTest(TestCase):
     def setUp(self):
@@ -90,4 +91,3 @@ class RecordBuilderTest(TestCase):
         result = self.builder._find_with_alias(Platform, name)
 
         self.assertIsNone(result, f'Expected empty record instead of {result}.')
-

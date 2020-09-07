@@ -209,7 +209,7 @@
                                                     <v-combobox v-else
                                                         label="Ids"
                                                         v-model="idItems"
-                                                        :delimiters="[',', ' ']"
+                                                        :delimiters="[' ']"
                                                         single-line
                                                         :hide-no-data="!searchId"
                                                         :search-input.sync="searchId"
@@ -218,8 +218,8 @@
                                                         menu-props="auto"
                                                     >
                                                         <template v-slot:no-data>
-                                                            Press <kbd>enter</kbd>, <kbd>space</kbd> or <kbd>,</kbd> to create
-                                                            <v-chip>{{ searchId }}</v-chip> id
+                                                            Press <kbd>enter</kbd> or <kbd>space</kbd> to create
+                                                            <v-chip>{{ searchId }}</v-chip> id <i>(values with "," or ";" will be splitted to separate ids)</i>
                                                         </template>
                                                     </v-combobox>
                                                 </v-col>
@@ -406,12 +406,12 @@
             }
         },
         watch: {
-            idItems(val, prev) {
-                if (val.length === prev.length) return
-                this.idItems = val.map(v => {
-                    this.idsToSelect = this._.union(this.idsToSelect, [v])
-                    return v
-                })
+            idItems(values, previous) {
+                if (values.length === previous.length) return
+                // map all items in values, split by , or ; and return back splitted ones, remove emtpy and end with by uniq
+                values = this._.uniq(this._.reject(this._.flatMap(values, v => v.split(/[,;]/)), this._.isEmpty))
+                this.idItems = values
+                values.map(v => this.idsToSelect.push(v))
             },
             editMappingItemDialog(val) {
                 val || this.closeMapDialog()

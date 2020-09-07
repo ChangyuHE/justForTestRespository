@@ -44,7 +44,7 @@ class SubFeature(models.Model):
     created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_subfeatures')
     updated = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(AUTH_USER_MODEL, blank=True, null=True,
-                                   on_delete=models.SET_NULL, related_name='updated_subfeatures')
+                                   on_delete=models.PROTECT, related_name='updated_subfeatures')
 
     class Meta:
         constraints = [

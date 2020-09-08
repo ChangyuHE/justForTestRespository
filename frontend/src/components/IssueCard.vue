@@ -66,7 +66,7 @@
         'ERR_WORKBOOK_EXCEPTION': 'Couldn\'t process Excel file',
         'ERR_DATE_FORMAT': 'Couldn\'t convert date format from input file',
         'ERR_EXISTING_VALIDATION': 'Validation duplicate is going to be imported',
-        'ERR_AMBIGUOUS_COLUMN': 'Non-unique values in column',
+        'ERR_AMBIGUOUS_COLUMN': 'Non-unique values in column - only one distinct value allowed',
         'ERR_EXISTING_RUN': 'Using already imported run'
     }
 

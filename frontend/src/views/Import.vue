@@ -198,9 +198,9 @@
                 //
                 errorsDialog: false,
                 priority: {
-                    'blocking': ['ERR_EXISTING_VALIDATION', 'ERR_INVALID_VALIDATION_ID', 'ERR_MISSING_COLUMNS', 'ERR_WORKBOOK_EXCEPTION', 'ERR_DATE_FORMAT'],
+                    'blocking': ['ERR_EXISTING_VALIDATION', 'ERR_INVALID_VALIDATION_ID', 'ERR_MISSING_COLUMNS', 'ERR_WORKBOOK_EXCEPTION', 'ERR_DATE_FORMAT', 'ERR_AMBIGUOUS_COLUMN'],
                     'high': ['ERR_MISSING_ENTITY'],
-                    'medium': ['ERR_AMBIGUOUS_COLUMN'],
+                    'medium': [],
                     'low': ['ERR_EXISTING_RUN']
                 },
                 tab: null,

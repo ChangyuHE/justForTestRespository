@@ -5,6 +5,8 @@ from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
 
+from utils.api_helpers import get_default_owner
+
 
 class Migration(migrations.Migration):
 
@@ -23,7 +25,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='subfeature',
             name='created_by',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT,
+            field=models.ForeignKey(default=get_default_owner, on_delete=django.db.models.deletion.PROTECT,
                                     related_name='created_subfeatures', to=settings.AUTH_USER_MODEL),
             preserve_default=False,
         ),

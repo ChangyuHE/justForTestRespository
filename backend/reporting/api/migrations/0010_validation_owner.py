@@ -3,13 +3,9 @@
 import api.models
 from django.conf import settings
 from django.db import migrations, models
-from django.contrib.auth.models import User
 import django.db.models.deletion
 
-
-def get_default_owner():
-    owner_values = User.objects.order_by('-is_superuser', 'pk').values('pk').first()
-    return getattr(owner_values, 'pk', 1)
+from utils.api_helpers import get_default_owner
 
 
 class Migration(migrations.Migration):

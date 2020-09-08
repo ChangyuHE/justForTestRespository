@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 
 
@@ -111,3 +112,13 @@ class CreateWOutputApiView(generics.CreateAPIView):
 class DefaultNameOrdering:
     ordering_fields = ['name']
     ordering = ['name']
+
+
+def get_default_owner():
+    superusers = get_user_model().objects.filter(is_superuser=True).order_by('pk')
+    admin = superusers.filter(username='admin')
+    if superusers.exists():
+        if admin.exists():
+            return admin[0].pk
+        return superusers[0].pk
+    return 1

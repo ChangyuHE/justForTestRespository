@@ -80,14 +80,11 @@ class UpdateWOutputAPIView(generics.UpdateAPIView):
 
     def perform_update(self, serializer):
         try:
-            return self.serializer_output_class(serializer.save())
+            return self.__class__.serializer_output_class(serializer.save())
         except IntegrityError:
             raise ValidationError({"integrity error": 'Duplicate creation attempt'})
         except Exception as e:
             raise ValidationError({"detail": e})
-
-    def serializer_output_class(self, serializer):
-        return serializer
 
 
 class CreateWOutputApiView(generics.CreateAPIView):
@@ -104,14 +101,11 @@ class CreateWOutputApiView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         try:
-            return self.serializer_output_class(serializer.save())
+            return self.__class__.serializer_output_class(serializer.save())
         except IntegrityError:
             raise ValidationError({"integrity error": 'Duplicate creation attempt'})
         except Exception as e:
             raise ValidationError({"detail": e})
-
-    def serializer_output_class(self, serializer):
-        return serializer
 
 
 class DefaultNameOrdering:

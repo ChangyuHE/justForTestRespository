@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 class QueryCache:
     def __init__(self):
         self.__cache = {}
@@ -34,3 +35,5 @@ class ObjectsCache:
 
     def is_known(self, cls, id):
         return id in self.__cache.get(cls.__name__, set())
+
+queryset_cache = QueryCache()

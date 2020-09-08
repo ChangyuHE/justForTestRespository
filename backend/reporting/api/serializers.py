@@ -5,8 +5,10 @@ from rest_framework import fields
 from rest_framework.validators import UniqueTogetherValidator
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 import api.models as models
+from api.utils.cached_objects_find import parse_item_args, TEST_ITEM_EXTRAS
 
 log = logging.getLogger(__name__)
 
@@ -42,16 +44,57 @@ class ComponentSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
+class PluginSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Plugin
+        fields = ['id', 'name']
+
+
+class TestScenarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.TestScenario
+        fields = ['id', 'name']
+
+
 class ItemSerializer(serializers.ModelSerializer):
+    args = serializers.CharField(trim_whitespace=False, max_length=255)
+
     class Meta:
         model = models.Item
-        fields = ['name', 'args', 'group']
-        validators = [
-            UniqueTogetherValidator(
-                queryset=models.Item.objects.all(),
-                fields=['name', 'args']
-            )
-        ]
+        fields = ['name', 'args']
+
+    def to_internal_value(self, data):
+        """
+        Parse item args to get additional plugin, scenario and test_id values
+        non-existing plugin and scenario stored as "*__name" fields, existing will have fk ids
+        such naming makes possible common django queryset filtering (see create_entities in api/collate/import_api.py)
+        """
+        validated_data = super().to_internal_value(data)
+        validated_data, non_existing = parse_item_args(validated_data)
+        for k, v in non_existing.items():
+            validated_data[f'{k}__name'] = v
+
+        return validated_data
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """
+        Create Item object using data format produced in to_internal_value
+        To create non-existing scenario/plugin "*__name" fields used, then after relations creation their fk ids
+        """
+        params_to_create = {}
+        relations_params = {}
+
+        for field, value in validated_data.items():
+            if '__name' in field:     # non existing relation
+                field_name = field.split('__')[0]
+                model_class = TEST_ITEM_EXTRAS[field_name]['class']
+                relations_params[field_name], _ = model_class.objects.get_or_create(name=value)
+            else:
+                params_to_create[field] = value
+
+        instance = models.Item.objects.get_or_create(**params_to_create, **relations_params)
+        return instance
 
 
 class RunSerializer(serializers.ModelSerializer):
@@ -125,12 +168,6 @@ class MilestoneSerializer(serializers.ModelSerializer):
 class FeatureSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Feature
-        fields = ['id', 'name']
-
-
-class TestScenarioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.TestScenario
         fields = ['id', 'name']
 
 

@@ -4,7 +4,6 @@ from django.conf import settings
 
 from django.db import models
 from django.db.models import UniqueConstraint, Q
-from django.contrib.postgres.fields import JSONField
 from reporting.settings import AUTH_USER_MODEL
 
 
@@ -47,7 +46,7 @@ class FulsimAsset(Asset):
 
 
 class Simics(models.Model):
-    data = JSONField()
+    data = models.JSONField()
 
 
 class Generation(models.Model):
@@ -223,7 +222,7 @@ class Result(models.Model):
     lucas_asset = models.ForeignKey(LucasAsset, null=True, blank=True, on_delete=models.CASCADE)
     fulsim_asset = models.ForeignKey(FulsimAsset, null=True, blank=True, on_delete=models.CASCADE)
     simics = models.ForeignKey(Simics, null=True, blank=True, on_delete=models.CASCADE)
-    additional_parameters = JSONField(null=True, blank=True)
+    additional_parameters = models.JSONField(null=True, blank=True)
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)

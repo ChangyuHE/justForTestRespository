@@ -59,11 +59,11 @@ class SubFeature(models.Model):
 
 
 class RuleGroup(models.Model):
-    subfeature = models.ForeignKey(SubFeature, on_delete=models.CASCADE)
+    subfeature = models.OneToOneField(SubFeature, on_delete=models.CASCADE, related_name='rule_group')
     plink = models.CharField(max_length=255, default='or')
     created = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_rule_grops')
-    updated = models.DateTimeField(null=True, blank=True)
+    updated = models.DateTimeField(auto_now=True, null=True, blank=True)
     updated_by = models.ForeignKey(AUTH_USER_MODEL, blank=True, null=True,
                                    on_delete=models.PROTECT, related_name='updated_rule_groups')
 

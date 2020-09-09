@@ -128,6 +128,10 @@ class RuleGroupListCreateView(LoggingMixin, generics.ListCreateAPIView, api_help
             return RuleGroupFullSerializer
         return RuleGroupIDSerializer
 
+    def perform_create(self, serializer):
+        serializer.save(created_by=get_user_object(self.request))
+        return super().perform_create(serializer)
+
 
 class RuleGroupsUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.UpdateWOutputAPIView):
     """
@@ -135,6 +139,10 @@ class RuleGroupsUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.Up
     patch: Update only existing Rule Group's fields
     delete: Delete Rule Group by id
     """
-    queryset = SubFeature.objects.all()
+    queryset = RuleGroup.objects.all()
     serializer_class = RuleGroupIDSerializer
     serializer_output_class = RuleGroupFullSerializer
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=get_user_object(self.request))
+        return super().perform_update(serializer)

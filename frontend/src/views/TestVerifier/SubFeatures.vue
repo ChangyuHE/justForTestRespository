@@ -138,8 +138,8 @@
                     </v-card-text>
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="teal" text @click="close">Cancel</v-btn>
-                        <v-btn color="teal" text @click="save" :disabled="!valid">Save</v-btn>
+                        <v-btn color="blue-grey" text @click="close">Cancel</v-btn>
+                        <v-btn color="primary" text @click="save" :disabled="!valid">Save</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -288,6 +288,9 @@
                                 </template>
                                 <td>
                                     <v-hover v-slot:default="{ hover }">
+                                        <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="openRulesDialog(item)">mdi-alpha-r-circle</v-icon>
+                                    </v-hover>
+                                    <v-hover v-slot:default="{ hover }">
                                         <v-icon class="mr-2" small :class="{ 'primary--text': hover }" @click="openInfoDialog(item)">mdi-information</v-icon>
                                     </v-hover>
                                     <v-hover v-slot:default="{ hover }">
@@ -329,8 +332,8 @@
                 </v-container>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="teal" text @click="closePlatforms">Close</v-btn>
-                    <v-btn color="teal" text @click="addPlatforms">Add</v-btn>
+                    <v-btn color="blue-grey" text @click="closePlatforms">Close</v-btn>
+                    <v-btn color="primary" text @click="addPlatforms">Add</v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
@@ -340,7 +343,7 @@
                 <v-card-title>Delete subfeature</v-card-title>
                 <v-card-text>Are you sure you want to delete {{ selectedSubfeature.name }} subfeature?</v-card-text>
                 <v-card-actions>
-                <v-btn color="primary" text @click="dialogDelete = false">Close</v-btn>
+                <v-btn color="blue-grey" text @click="dialogDelete = false">Close</v-btn>
                 <v-spacer></v-spacer>
                 <v-btn color="red" text @click="deleteSubfeature()">Delete</v-btn>
                 </v-card-actions>
@@ -362,15 +365,63 @@
                         <dt class="col-3 text-end">Created:</dt>
                         <dd class="col-9">{{ selectedSubfeature.created | formatDate }}</dd>
                         <dt class="col-3 text-end">Created By:</dt>
-                        <dd class="col-9">{{ selectedSubfeature.created_by.fullname || selectedSubfeature.created_by.username}}</dd>
+                        <dd class="col-9">{{ getUsername(selectedSubfeature.created_by) }}</dd>
                         <template v-if="selectedSubfeature.updated_by">
                             <dt class="col-3 text-end">Updated:</dt>
                             <dd class="col-9">{{ selectedSubfeature.updated | formatDate }}</dd>
                             <dt class="col-3 text-end">Updated By:</dt>
-                            <dd class="col-9">{{ selectedSubfeature.updated_by.fullname || selectedSubfeature.updated_by.username}}</dd>
+                            <dd class="col-9">{{ getUsername(selectedSubfeature.updated_by) }}</dd>
                         </template>
                     </dl>
                 </v-card-text>
+            </v-card>
+        </v-dialog>
+        <!-- Subfeature rules dialog -->
+        <v-dialog v-model="dialogRules" max-width="500px" @input="closeRulesDialog">
+            <v-card>
+                <v-card-title>
+                    Rules
+                    <v-spacer></v-spacer>
+                    <v-btn class="mx-2" fab dark small color="primary" @click="addRules">
+                        <v-icon dark>mdi-plus</v-icon>
+                    </v-btn>
+                </v-card-title>
+                <v-card-text class="mb-0">
+                    <v-list>
+                        <v-slide-y-transition group>
+                            <v-list-item
+                                v-for="(item, index) in selectedRuleGroup.rules"
+                                :key="index">
+                                <v-list-item-content>
+                                    <v-text-field :label="'P'+ (index + 1)" v-model="item.term" hide-details></v-text-field>
+                                </v-list-item-content>
+                                <v-list-item-action>
+                                <v-btn icon @click="removeRule(index)">
+                                    <v-icon color="grey lighten-1">mdi-close</v-icon>
+                                </v-btn>
+                                </v-list-item-action>
+                            </v-list-item>
+                        </v-slide-y-transition>
+                        <v-divider class="mt-2"></v-divider>
+                        <v-list-item>
+                            <v-list-item-content>
+                                <v-text-field label="Plink" v-model="selectedRuleGroup.plink" hide-details></v-text-field>
+                            </v-list-item-content>
+                        </v-list-item>
+                        <v-divider class="mb-2"></v-divider>
+                        <div class="text-caption text--secondary" v-if="selectedRuleGroup.created_by">
+                            Created {{ selectedRuleGroup.created | formatDate }} by {{ getUsername(selectedRuleGroup.created_by) }}
+                        </div>
+                        <div class="text-caption text--secondary" v-if="selectedRuleGroup.updated_by">
+                            Updated {{ selectedRuleGroup.updated | formatDate }} by {{ getUsername(selectedRuleGroup.updated_by) }}
+                        </div>
+                    </v-list>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="blue-grey" text @click="dialogRules = false">Close</v-btn>
+                    <v-btn color="primary" text @click="saveRules()">Save</v-btn>
+                </v-card-actions>
             </v-card>
         </v-dialog>
     </v-card>
@@ -403,6 +454,7 @@
                 dialogPlatforms: false,
                 dialogDelete: false,
                 dialogInfo: false,
+                dialogRules: false,
 
                 rules: {
                     required: value => !!value || 'Required.'
@@ -424,19 +476,22 @@
                 selectedOS: oses.WINDOWS_OS,
                 editedIndex: -1,
                 selectedSubfeature: {
-                    'feature': {'name': undefined},
                     'win_platforms': [],
                     'lin_platforms': [],
                     'created_by': {'fullname': undefined},
-                    'updated_by': {'fullname': undefined},
+                    'updated_by': {'fullname': undefined}
                 },
                 defaultSubfeature: {
-                    'feature': {'name': undefined},
                     'win_platforms': [],
                     'lin_platforms': [],
                     'created_by': {'fullname': undefined},
-                    'updated_by': {'fullname': undefined},
+                    'updated_by': {'fullname': undefined}
                 },
+                defaultRule: {
+                    'term': undefined
+                },
+                defaultRuleGroup: {'rules': []},
+                selectedRuleGroup: {},
                 editedPlatforms: [],
             }
         },
@@ -457,7 +512,7 @@
             },
             dialogInfo(val) {
                 val || this.closeInfoDialog()
-            },
+            }
         },
         methods: {
             toggleOrder (header) {
@@ -473,6 +528,9 @@
             },
             platformKey(os) {
                 return `${os.substring(0, 3).toLowerCase()}_platforms`
+            },
+            getUsername(user) {
+                return user ? user.fullname || user.username : ''
             },
             getSubfeaturesByComponent(componentId) {
                 this.subFeaturesByComponent = this.subFeatures.filter((sf) => sf.component.id == componentId)
@@ -589,6 +647,63 @@
                 this.selectedSubfeature = Object.assign({}, item)
                 this.dialogInfo = !this.dialogInfo
             },
+            openRulesDialog(item) {
+                this.selectedRuleGroup = this._.cloneDeep(item.rule_group || this.defaultRuleGroup);
+                this.selectedRuleGroup['subfeature'] = item.id
+                this.dialogRules = !this.dialogRules
+            },
+            addRules() {
+                this.selectedRuleGroup.rules.push(Object.assign({}, this.defaultRule))
+            },
+            removeRule(index) {
+                this.selectedRuleGroup.rules.splice(index, 1)
+            },
+            saveRules() {
+                let url = 'test_verifier/coverage/rule_groups/'
+                let rulesSaving = Object.assign({}, this.selectedRuleGroup)
+                if (!this.selectedRuleGroup.id) {
+                    server
+                        .post(url, this.selectedRuleGroup)
+                        .then(response => {
+                            let subfeature = this.subFeatures.find(item => {
+                                return item.id === response.data.subfeature;
+                            })
+                            subfeature.rule_group = response.data
+                            this.$toasted.success('Rules have been created')
+                        })
+                        .catch(error => {
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Error during requesting creation of a new object', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
+                        })
+                        .finally(() => {
+                            this.closeRulesDialog()
+                        })
+                } else {
+                    server
+                        .put(`${url}${id}`, this.selectedRuleGroup)
+                        .then(response => {
+                            let subfeature = this.subFeatures.find(item => {
+                                return item.id === response.data.subfeature;
+                            })
+                            subfeature.rule_group = response.data
+                            this.$toasted.success('Rules have been updated')
+                        })
+                        .catch(error => {
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Error during requesting updating of a new object', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
+                        })
+                        .finally(() => {
+                            this.closeRulesDialog()
+                        })
+                }
+
+            },
             deleteSubfeature() {
                 server
                     .delete(`${url}${this.selectedSubfeature.id}/`)
@@ -632,6 +747,12 @@
                 this.dialogInfo = false
                 this.$nextTick(() => {
                     this.selectedSubfeature = Object.assign({}, this.defaultSubfeature)
+                })
+            },
+            closeRulesDialog() {
+                this.dialogRules = false
+                this.$nextTick(() => {
+                    this.selectedRuleGroup = Object.assign({}, this.defaultRuleGroup)
                 })
             },
             save() {
@@ -780,8 +901,8 @@
     .subfeatures .col-codec, .col-category, .col-feature {
         width: 170px;
     }
-    .col-actions {
-        width: 100px;
+    .subfeatures .col-actions {
+        width: 140px;
     }
     .subfeatures .col-support {
         border-bottom: 0;

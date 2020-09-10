@@ -22,6 +22,7 @@ class RequestDTO:
     force_run: bool
     requester: User
     site_url: str
+    force_item: bool
 
     def __str__(self):
         return f"RequestDTO: {self.__dict__}"
@@ -36,9 +37,10 @@ class RequestDTO:
         dto.notes = RequestDTO.__get_field(request, 'notes')
         dto.date = RequestDTO.__extract_date(request)
         dto.source_file = RequestDTO.__get_field(request, 'source_file')
-        dto.force_run = RequestDTO.__extract_force_run(request)
+        dto.force_run = RequestDTO.__extract_boolean(request, 'force_run')
         dto.requester = api_logging.get_user_object(request)
         dto.site_url = request.build_absolute_uri('/')
+        dto.force_item =  RequestDTO.__extract_boolean(request, 'force_item')
 
         return dto
 
@@ -71,10 +73,10 @@ class RequestDTO:
         return date
 
     @staticmethod
-    def __extract_force_run(request):
-        force_run = RequestDTO.__get_field(request, 'force_run', False)
+    def __extract_boolean(request, field):
+        value = RequestDTO.__get_field(request, field, False)
 
-        return force_run in [True, 'True', 'on', 'true']
+        return value in [True, 'True', 'on', 'true']
 
 
 @dataclass
@@ -201,6 +203,14 @@ class OutcomeBuilder:
     def add_date_format_error(self, date, field_type='string'):
         message=f'Unable to auto-convert {field_type} "{date}" to excel date.'
         self.__add_error('ERR_DATE_FORMAT', message)
+
+    def add_item_changed_error(self, old_status, new_status, **kwargs):
+        if old_status != new_status:
+            message = f"Result changed from '{old_status}' to '{new_status}'"
+        else:
+            message = f"Changed Result with '{new_status}' status"
+        self.__add_error('ERR_ITEM_CHANGED', message, **kwargs)
+        self.add_warning(message)
 
 
 class Context:

@@ -383,3 +383,6 @@ class ImportJob(models.Model):
     )
     requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
     path = models.FilePathField(path=xlsx)
+    force_run = models.BooleanField(default=False)
+    force_item = models.BooleanField(default=False)
+    site_url = models.CharField(max_length=255)

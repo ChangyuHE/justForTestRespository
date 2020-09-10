@@ -4,6 +4,7 @@ from io import BytesIO
 from unittest.mock import patch
 
 from django_dramatiq.test import DramatiqTestCase
+from django.test import TransactionTestCase
 from django.contrib.auth.models import User
 
 from api.models import Component, Driver, Env, ImportJob, Item, Os, Platform, Plugin, Run, Status, TestScenario, \
@@ -18,7 +19,7 @@ from api.collate.tests.genetated_files import create_empty_workbook
 log = logging.getLogger(__name__)
 
 
-class DbFixture(DramatiqTestCase):
+class DbFixture(TransactionTestCase):
     def setUp(self):
         queryset_cache.clear()
 
@@ -67,22 +68,6 @@ class DbFixture(DramatiqTestCase):
         gta_patcher.start()
         self.addCleanup(gta_patcher.stop)
 
-    def tearDown(self):
-        self.join_dramatiq_worker()
-
-    def join_dramatiq_worker(self):
-        self.broker.join('default')
-        self.worker.join()
-
-    def assertImportSuccess(self, response_data):
-        self.join_dramatiq_worker()
-
-        job_id = response_data.get('job_id', None)
-        self.assertIsNotNone(job_id)
-
-        job = ImportJob.objects.get(pk=job_id)
-        self.assertEqual(job.status, ImportJob.Status.DONE)
-
     def set_file(self, source):
         if type(source) != str:
             self.request['file'] = source
@@ -101,3 +86,27 @@ class DbFixture(DramatiqTestCase):
         mem_file.seek(0)
 
         self.request['file'] = mem_file
+
+
+class DramatiqFixture(DramatiqTestCase, DbFixture):
+    def setUp(self):
+        DramatiqTestCase.setUp(self)
+        DbFixture.setUp(self)
+
+    def tearDown(self):
+        self.join_dramatiq_worker()
+        DbFixture.tearDown(self)
+        DramatiqTestCase.tearDown(self)
+
+    def join_dramatiq_worker(self):
+        self.broker.join('default')
+        self.worker.join()
+
+    def assertImportSuccess(self, response_data):
+        self.join_dramatiq_worker()
+
+        job_id = response_data.get('job_id', None)
+        self.assertIsNotNone(job_id)
+
+        job = ImportJob.objects.get(pk=job_id)
+        self.assertEqual(job.status, ImportJob.Status.DONE)

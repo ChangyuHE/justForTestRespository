@@ -9,3 +9,4 @@ class SelectFileForm(forms.Form):
     notes = forms.CharField(label='Notes', widget=forms.Textarea, required=False)
     source_file = forms.CharField(label='Source file', required=False)
     force_run = forms.BooleanField(label='Reuse Run instances', required=False)
+    force_item = forms.BooleanField(label='Reuse Item instances', required=False)

@@ -33,10 +33,17 @@ def _store_results(context):
         for chunk in context.request.file.chunks():
             destination.write(chunk)
 
-    obj = ImportJob.objects.create(path=tmp_name, requester=context.request.requester)
+    obj = ImportJob.objects.create(
+        path = tmp_name,
+        requester = context.request.requester,
+        force_run = context.request.force_run,
+        force_item = context.request.force_item,
+        site_url = context.request.site_url,
+    )
     validation_dto = ValidationDTO.build(context.validation)
+
     # Start background part of import
-    do_import.send(obj.id, validation_dto.to_dict(), context.request.force_run, context.request.site_url)
+    do_import.send(obj.id, validation_dto.to_dict())
     context.outcome.job_id = obj.id
 
 

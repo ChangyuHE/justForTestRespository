@@ -31,7 +31,7 @@ COLUMNS = [
 
 
 def create_file(json_data_filename):
-    filepath = Path(*__package__.split('.'), json_data_filename)
+    filepath = Path(*__package__.split('.'), 'json', json_data_filename)
     workbook = Workbook()
     sheet = workbook.active
 

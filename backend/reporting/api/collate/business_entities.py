@@ -263,10 +263,11 @@ class ResultData:
 
         return fields
 
-    def save_transient(self):
+    def save_transient(self, cache: 'ObjectsCache'):
         for entity in self.get_fields().values():
             if issubclass(type(entity), Model) and entity.id is None:
                 entity.save()
+                cache.update(entity.__class__, entity.id)
 
     def update_model(self, model: api_models.Result):
         for name, value in self.get_fields().items():

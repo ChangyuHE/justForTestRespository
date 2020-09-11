@@ -19,7 +19,7 @@ from api.collate.excel_utils import REVERSE_NAME_MAPPING
 from api.collate.excel_utils import open_excel_file
 from api.collate.excel_utils import non_empty_row
 from api.collate.business_entities import ResultData
-from api.utils.caches import QueryCache, ObjectsCache, queryset_cache
+from api.utils.caches import ObjectsCache, queryset_cache
 from api.utils.cached_objects_find import find_object, find_with_alias, find_testitem_object
 
 """ Business logic """
@@ -258,7 +258,7 @@ class RecordBuilder:
             return None
 
         self.__retrieve_extra_fields()
-        self.__data.save_transient()
+        self.__data.save_transient(new_objects_ids)
 
         entity = Result()
         self.__set_model_fields(entity)

@@ -17,6 +17,7 @@ from pathlib import Path
 from .site_settings import production
 
 import sqlalchemy_utils
+from sqlalchemy.dialects import postgresql
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -262,8 +263,12 @@ if 'test' in sys.argv:
 def uuid_field(field):
     return sqlalchemy_utils.UUIDType()
 
+def JSONB(field):
+    return postgresql.JSONB()
+
 ALDJEMY_DATA_TYPES = {
-    "UUIDField": uuid_field
+    "UUIDField": uuid_field,
+    "JSONField": JSONB
 }
 
 MEDIA_ROOT = tempfile.gettempdir()

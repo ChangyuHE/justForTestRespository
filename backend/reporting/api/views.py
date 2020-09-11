@@ -29,7 +29,7 @@ from anytree import Node, AnyNode
 from anytree.search import find_by_attr
 from anytree.exporter import JsonExporter
 
-from sqlalchemy import and_
+from sqlalchemy import and_, case, literal_column
 from sqlalchemy.sql import func
 
 from openpyxl.writer.excel import save_virtual_workbook
@@ -221,7 +221,7 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
     headers = []
     for i, field in enumerate(d['schema']['fields']):
         text = str(field['name'])
-        value = f'f{i}'
+        value = text.lower().replace(' ', '_')
         headers.append({'text': text, 'value': value})
 
     items = []
@@ -229,6 +229,44 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
         i_dict = {}
         for h_map in headers:
             i_dict[h_map['value']] = d_dict[h_map['text']]
+        items.append(i_dict)
+
+    return {'headers': headers, 'items': items}
+
+
+def create_json_for_datatables(
+    statuses: pd.DataFrame,
+    result_ids: pd.DataFrame,
+    extra_data: pd.DataFrame):
+
+    d = json.loads(statuses.to_json(orient='table'))
+    headers = []
+    for i, field in enumerate(d['schema']['fields']):
+        text = str(field['name'])
+        value = f'f{i}'
+        headers.append({'text': text, 'value': value})
+
+    result_ids = json.loads(result_ids.to_json(orient='table'))
+    extra_data = json.loads(extra_data.to_json(orient='table'))
+
+    items = []
+    for status, results, extra in zip(d['data'], result_ids['data'], extra_data['data']):
+        i_dict = {}
+        for h_map in headers:
+            # value is something like f<N>
+            # text is real header title
+            ti_id = None
+            if h_map['text'] != 'Item Name':
+                ti_id = results.get(h_map['text'])
+                extra_data = extra.get(h_map['text'])
+
+            if ti_id is None or ti_id == 0:
+                i_dict[h_map['value']] = status[h_map['text']]
+            else:
+                i_dict[h_map['value']] = {'status': status[h_map['text']], 'ti_id': ti_id}
+                if extra_data == 'yes':
+                    i_dict[h_map['value']]['extra_data'] = 'yes'
+
         items.append(i_dict)
 
     return {'headers': headers, 'items': items}
@@ -573,81 +611,163 @@ def prepare_crosstab(ct: pd.DataFrame):
     return ct
 
 
+def validation_id_to_name(validation_ids: List[int]) -> Dict[int, str]:
+    result = {}
+    for v in Validation.objects.filter(id__in=validation_ids):
+        result[int(v.id)] = f'{v.name}\n({v.platform.short_name}, {v.env.name}, {v.os.name})'
+    return result
+
+
+def result_ids(validation_ids: List[int]) -> pd.DataFrame:
+    q = Result.sa \
+        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), \
+                Item.sa.name.label('item_name'), Result.sa.item_id, Validation.sa.id.label('validation_id')) \
+        .select_from(Result.sa) \
+        .filter(Result.sa.validation_id.in_(validation_ids)) \
+        .join(Item.sa).join(Validation.sa) \
+        .group_by(Result.sa.id, Item.sa.name, Result.sa.item_id, Validation.sa.id)
+
+    df = pd.read_sql(q.statement, q.session.bind)
+    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.result_id, aggfunc='max')
+    ct = ct.replace(np.nan, 0, regex=False)
+    types = {column: 'int32' for column in validation_ids}
+    result_ids_ = ct.astype(types)
+    # renaming columns
+    id_to_name = validation_id_to_name(validation_ids)
+    result_ids_.rename(columns=id_to_name, inplace=True)
+
+    return result_ids_
+
+
+def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
+    extra_data = case([
+        (Result.sa.additional_parameters == None, literal_column("'no'")),
+        (Result.sa.additional_parameters != None, literal_column("'yes'"))
+    ]).label('extra_data')
+
+    q = Result.sa \
+        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, \
+                Item.sa.name.label('item_name'), Result.sa.item_id, Validation.sa.id.label('validation_id')) \
+        .select_from(Result.sa) \
+        .filter(Result.sa.validation_id.in_(validation_ids)) \
+        .join(Item.sa).join(Validation.sa) \
+        .group_by(Item.sa.name, Result.sa.item_id, Validation.sa.id, extra_data)
+
+    df = pd.read_sql(q.statement, q.session.bind)
+    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.extra_data, aggfunc='max')
+    ct = ct.replace(np.nan, 'no', regex=False)
+      # renaming columns
+    id_to_name = validation_id_to_name(validation_ids)
+    extra_data = ct.rename(columns=id_to_name)
+
+    return extra_data
+
+
+def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
+    q = Result.sa \
+        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), Result.sa.item_id,
+                ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
+        .select_from(Result.sa) \
+        .filter(Result.sa.validation_id.in_(validation_ids)) \
+        .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
+        .group_by(Item.sa.name, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
+
+    df = pd.read_sql(q.statement, q.session.bind)
+    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.status_id, aggfunc='max')
+    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
+    ct.index.names = ['Item name']  # rename group_name index name
+    del ct['status_id']
+    del ct['validation_id']
+    ct = ct.drop_duplicates()
+
+    # replace status_id with test_status values
+    status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
+    for v_id in validation_ids:
+        # check if validaton_id column is in DataFrame, i.e. we have items to show for this id
+        if v_id in ct:
+            ct[v_id] = ct[v_id].map(status_mapping)
+
+    # replace NaNs which appeared as result of all previous actions with empty strings
+    ct = ct.replace(np.nan, '', regex=False)
+
+    # move item_id and group_id columns to front
+    cols = ct.columns.tolist()
+    cols = cols[-2:] + list(map(lambda x: int(x), validation_ids))
+    ct = ct.reindex(columns=cols)
+    ct.rename(columns={'item_id': 'Item ID', 'group_name': 'Group Name'}, inplace=True)
+
+    return ct
+
+
 class ReportCompareView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
-        options = request.GET.get('show', 'all,show_passed').split(',')
-        filtering = options[0]
-        show_passed = options[1]
+
+        show = request.GET.get('show', 'all,show_passed').split(',')
+        if len(show) == 2:
+            show_diff, hide_passed = show
+
+        show_diff = (show_diff == 'diff')
+        hide_passed = (hide_passed == 'hide_passed')
 
         validation_ids = Validation.objects.filter(id__in=kwargs.get('id', '').split(',')) \
             .order_by('-date').values_list('id', flat=True)
 
-        q = Result.sa \
-            .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), Result.sa.item_id,
-                   ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
-            .select_from(Result.sa) \
-            .filter(Result.sa.validation_id.in_(validation_ids)) \
-            .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
-            .group_by(Item.sa.name, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
+        statuses = validation_statuses(validation_ids)
+        result_ids_ = result_ids(validation_ids)
+        extra_data = validation_extra_data(validation_ids)
 
-        df = pd.read_sql(q.statement, q.session.bind)
-        ct = pd.crosstab(index=[df.item_name], columns=[df.validation_id], values=df.status_id, aggfunc='max')
-        ct = ct.replace(np.nan, '', regex=False)
-
-        ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
-        ct.index.names = ['Item name']  # rename group_name index name
-        del ct['status_id']
-        del ct['validation_id']
-        ct = ct.drop_duplicates()
-
-        # replace status_id with test_status values
-        status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
-        for v_id in validation_ids:
-            # check if validaton_id column is in DataFrame, i.e. we have items to show for this id
-            if v_id in ct:
-                ct[v_id] = ct[v_id].map(status_mapping)
-
-        # move item_id and group_id columns to front
-        cols = ct.columns.tolist()
-        cols = cols[-2:] + list(map(lambda x: int(x), validation_ids))
-        ct = ct.reindex(columns=cols)
-
-        # turning validation ids to verbose names
-        v_mapping = {}
-        v_data = Validation.objects.filter(id__in=validation_ids) \
-            .values_list('id', 'name', 'platform__short_name', 'env__name', 'os__name').distinct()
-        for d in v_data:
-            v_mapping[d[0]] = '{}\n({}, {}, {})'.format(*d[1:])
-
-        ct.rename(columns=v_mapping, inplace=True)
-
-        # renaming, nans to empty strings
-        ct.rename(columns={'item_id': 'Item ID', 'group_name': 'Group Name'}, inplace=True)
-        ct = ct.replace(np.nan, '', regex=False)
-
-        if filtering == 'diff':
+        if show_diff:
             # drop rows where all statuses are equal
-            ct = ct[ct.apply(lambda row: len(row.loc[v_mapping.values()].unique()) > 1, axis=1)]
-        elif show_passed == 'hide_passed':
+            mask = statuses.apply(lambda row: len(row.loc[validation_ids].unique()) > 1, axis=1)
+            statuses = statuses[mask]
+            result_ids_ = result_ids_[mask]
+            extra_data = extra_data[mask]
+        elif hide_passed:
             # drop rows with only passed statuses
-            ct = ct[ct.apply(lambda row: (len(row.loc[v_mapping.values()].unique()) > 1
-                                          or 'Passed' not in row.loc[v_mapping.values()].unique()), axis=1)]
+            mask = statuses.apply(lambda row: (len(row.loc[validation_ids].unique()) > 1 or 'Passed' not in row.loc[validation_ids].unique()), axis=1)
+            statuses = statuses[mask]
+            result_ids_ = result_ids_[mask]
+            extra_data = extra_data[mask]
 
+        id_to_name = validation_id_to_name(validation_ids)
+        statuses.rename(columns=id_to_name, inplace=True)
         # If no excel report needed just finish here with json return
         if not do_excel:
-            return Response(convert_to_datatable_json(ct))
+            return Response(create_json_for_datatables(statuses, result_ids_, extra_data))
 
         # Excel part
-        workbook = excel.do_comparison_report(data=ct)
+        workbook = excel.do_comparison_report(data=statuses)
 
         filename = f'comparison_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
         response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
+
+class ExtraDataView(LoggingMixin, generics.GenericAPIView):
+    queryset = Result.objects.filter(additional_parameters__isnull=False)
+
+    def get(self, request, *args, **kwargs):
+        result = self.get_object()
+        item = result.item.name
+        validation = result.validation.name
+        platform = result.platform.short_name
+        os = result.os.name
+        env = result.env.name
+        status = result.status.test_status
+
+        return Response({
+            'item': item,
+            'validation': validation,
+            'platform': platform,
+            'os': os,
+            'env': env,
+            'status': status,
+            'extra': result.additional_parameters
+        })
 
 @dataclass
 class Part:

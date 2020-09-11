@@ -30,6 +30,10 @@ urlpatterns = [
     re_path(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),     # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
 
+    # returns additional_parameters field for Result with given pk
+    # end extra info about this result
+    path('api/report/extra-data/<int:pk>', views.ExtraDataView.as_view(), name='api-extra-data'),
+
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester
     path('api/objects/request-creation/', views.RequestModelCreation.as_view()),

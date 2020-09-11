@@ -60,22 +60,64 @@
             :headers="headers"
             :items="items"
             :search="search"
-            :loading="reportLoading || excelLoading"
+            :loading="reportLoading || excelLoading || extraDataLoading"
             disable-pagination hide-default-footer multi-sort
         >
             <template v-slot:item="{ item }">
                 <tr>
                     <td v-for="(cellValue, index) in item" :key="index">
-                        <v-chip v-if="STATUSES.includes(cellValue)" :color="getStatusColor(cellValue)" text-color="white" label>{{ cellValue }}</v-chip>
+                        <div v-if="STATUSES.includes(cellValue.status)">
+                            <v-chip :color="getStatusColor(cellValue.status)" text-color="white" label>{{ cellValue.status }}</v-chip>
+                            <v-hover v-if="cellValue.extra_data == 'yes'" v-slot:default="{ hover }">
+                                <v-icon class="ml-2" small :class="{ 'primary--text': hover }" @click="openExtraDataDialog(cellValue.ti_id)">mdi-information</v-icon>
+                            </v-hover>
+                        </div>
                         <span v-else>{{ cellValue }}</span>
                     </td>
                 </tr>
             </template>
         </v-data-table>
+
+        <v-dialog v-model="extraDataDialog" max-width="800">
+            <v-card>
+                <v-card-title class="headline">
+                    {{ this.extraData.validation }}
+                        <br>
+                    ({{ this.extraData.platform }}, {{ this.extraData.env }}, {{ this.extraData.os }})
+                </v-card-title>
+                <v-divider></v-divider>
+                <v-card-subtitle class="text-subtitle-1 mt-2">
+                    <v-chip :color="getStatusColor(this.extraData.status)" text-color="white" small label>{{ this.extraData.status }}</v-chip>&nbsp;&nbsp;&nbsp;{{ this.extraData.item }}
+                </v-card-subtitle>
+                <v-card-text>
+                    <v-simple-table>
+                        <template v-slot:default>
+                        <thead>
+                            <tr>
+                                <th class="text-left">Parameter</th>
+                                <th class="text-left">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(value, name) in extraData.extra" :key="name">
+                                <td>{{ name }}</td>
+                                <td>{{ value }}</td>
+                            </tr>
+                        </tbody>
+                        </template>
+                    </v-simple-table>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="green darken-1" text @click="extraDataDialog = false">Close</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </v-card>
 </template>
 
 <script>
+    import server from '@/server'
     import { mapState, mapGetters } from 'vuex'
 
     export default {
@@ -88,7 +130,10 @@
                 compareFiltering: 0,
                 showPassedPolicy: 0,
                 showPassedPolicies: ['show_passed', 'hide_passed'],
-            }
+                extraDataLoading: false,
+                extraDataDialog: false,
+                extraData: {},
+             }
         },
         props: {
             type: { type: String, required: true },
@@ -105,8 +150,28 @@
             },
         },
         methods: {
+            openExtraDataDialog(itemId) {
+                const url = `api/report/extra-data/${itemId}`
+                this.extraDataLoading = true
+
+                server
+                    .get(url)
+                    .then(response => {
+                        this.extraData = response.data
+                        this.extraDataDialog = true
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during getting of extra data', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    })
+                    .finally(() => this.extraDataLoading = false)
+
+            },
             reportExcel() {
-                const url = `${this.url}?report=excel`
+                const url = `${this.url}?report=excel&show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`
                 this.$store
                     .dispatch('reports/reportExcel', { url })
                     .catch(error => {

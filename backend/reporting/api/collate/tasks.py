@@ -116,7 +116,7 @@ Test items:
                            'updated': changes.updated,
                            'skipped': changes.skipped,
                            'site_url': site_url,
-                           'validation_id': validation_dict.get('id', None)})
+                           'validation_id': context.get_validation_id()})
         text = template.render(context)
         topic = f'Reporter: import of validation {validation_info}'
         job.status = ImportJob.Status.DONE

@@ -111,13 +111,13 @@ Test items:
     {% endif %}
 </ul>
 """)
-        context = django_context({'validation_info': validation_info,
+        ctx = django_context({'validation_info': validation_info,
                            'added': changes.added,
                            'updated': changes.updated,
                            'skipped': changes.skipped,
                            'site_url': site_url,
                            'validation_id': context.get_validation_id()})
-        text = template.render(context)
+        text = template.render(ctx)
         topic = f'Reporter: import of validation {validation_info}'
         job.status = ImportJob.Status.DONE
     finally:

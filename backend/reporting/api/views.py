@@ -31,6 +31,7 @@ from anytree.exporter import JsonExporter
 
 from sqlalchemy import and_, case, literal_column
 from sqlalchemy.sql import func
+from sqlalchemy.orm import Query
 
 from openpyxl.writer.excel import save_virtual_workbook
 
@@ -257,7 +258,7 @@ def create_json_for_datatables(
             # text is real header title
             key, value = header['value'], header['text']
             # handle pre-defined columns
-            if value in ('Item name', 'Item ID', 'Group Name'):
+            if value in ('Item name', 'Test ID', 'Group'):
                 item[key] = statuses[value]
             else:
                 # validation columns
@@ -628,34 +629,41 @@ def validation_id_to_name(validation_ids: List[int]) -> Dict[int, str]:
     return result
 
 
-def result_ids(validation_ids: List[int]) -> pd.DataFrame:
-    q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), \
-                Item.sa.name.label('item_name'), Result.sa.item_id, Validation.sa.id.label('validation_id')) \
-        .select_from(Result.sa) \
-        .filter(Result.sa.validation_id.in_(validation_ids)) \
-        .join(Item.sa).join(Validation.sa) \
-        .group_by(Result.sa.id, Item.sa.name, Result.sa.item_id, Validation.sa.id)
-
-    df = pd.read_sql(q.statement, q.session.bind)
-    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.result_id, aggfunc='max')
+def generate_dataframe(sql: Query, value: str) -> pd.DataFrame:
+    df = pd.read_sql(sql.statement, sql.session.bind)
+    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df[value], aggfunc='max')
     ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
     ct.index.names = ['Item name']
-    ct = ct.replace(np.nan, 0, regex=False)
 
-    del ct['result_id']
+    del ct[value]
     del ct['status_id']
     del ct['validation_id']
     ct = ct.drop_duplicates()
+    del ct['test_id']
     del ct['item_id']
 
+    return ct
+
+
+def result_ids(validation_ids: List[int]) -> pd.DataFrame:
+    q = Result.sa \
+        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), Result.sa.item_id, \
+                Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
+        .select_from(Result.sa) \
+        .filter(Result.sa.validation_id.in_(validation_ids)) \
+        .join(Item.sa).join(Validation.sa) \
+        .group_by(Result.sa.id, Result.sa.item_id, Item.sa.name, Item.sa.test_id, Validation.sa.id)
+
+    ct = generate_dataframe(q, 'result_id')
+    ct = ct.replace(np.nan, 0, regex=False)
+
     types = {column: 'int32' for column in validation_ids}
-    result_ids_ = ct.astype(types)
+    ct = ct.astype(types)
     # renaming columns
     id_to_name = validation_id_to_name(validation_ids)
-    result_ids_.rename(columns=id_to_name, inplace=True)
+    ct.rename(columns=id_to_name, inplace=True)
 
-    return result_ids_
+    return ct
 
 
 def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
@@ -665,38 +673,31 @@ def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
     ]).label('extra_data')
 
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, \
-                Item.sa.name.label('item_name'), Result.sa.item_id, Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, Result.sa.item_id, \
+                Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(Validation.sa) \
-        .group_by(Item.sa.name, Result.sa.item_id, Validation.sa.id, extra_data)
+        .group_by(Item.sa.name, Item.sa.test_id, Validation.sa.id, extra_data, Result.sa.item_id)
 
-    df = pd.read_sql(q.statement, q.session.bind)
-    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.extra_data, aggfunc='max')
-    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
-    ct.index.names = ['Item name']
+    ct = generate_dataframe(q, 'extra_data')
     ct = ct.replace(np.nan, 'no', regex=False)
-    del ct['status_id']
-    del ct['extra_data']
-    del ct['validation_id']
-    ct = ct.drop_duplicates()
-    del ct['item_id']
 
     # renaming columns
     id_to_name = validation_id_to_name(validation_ids)
-    extra_data = ct.rename(columns=id_to_name)
-    return extra_data
+    ct = ct.rename(columns=id_to_name)
+    return ct
 
 
 def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), Result.sa.item_id,
-                ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), \
+            Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name.label('group_name'), \
+            Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
-        .group_by(Item.sa.name, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
+        .group_by(Item.sa.name, Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
 
     df = pd.read_sql(q.statement, q.session.bind)
     ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.status_id, aggfunc='max')
@@ -705,6 +706,7 @@ def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     del ct['status_id']
     del ct['validation_id']
     ct = ct.drop_duplicates()
+    del ct['item_id']
 
     # replace status_id with test_status values
     status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
@@ -720,7 +722,7 @@ def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     cols = ct.columns.tolist()
     cols = cols[-2:] + list(map(lambda x: int(x), validation_ids))
     ct = ct.reindex(columns=cols)
-    ct.rename(columns={'item_id': 'Item ID', 'group_name': 'Group Name'}, inplace=True)
+    ct.rename(columns={'test_id': 'Test ID', 'group_name': 'Group'}, inplace=True)
 
     return ct
 

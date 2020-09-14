@@ -250,24 +250,34 @@ def create_json_for_datatables(
     extra_data = json.loads(extra_data.to_json(orient='table'))
 
     items = []
-    for status, results, extra in zip(d['data'], result_ids['data'], extra_data['data']):
-        i_dict = {}
-        for h_map in headers:
+    for statuses, results, extras in zip(d['data'], result_ids['data'], extra_data['data']):
+        item = {}
+        for header in headers:
             # value is something like f<N>
             # text is real header title
-            ti_id = None
-            if h_map['text'] != 'Item Name':
-                ti_id = results.get(h_map['text'])
-                extra_data = extra.get(h_map['text'])
-
-            if ti_id is None or ti_id == 0:
-                i_dict[h_map['value']] = status[h_map['text']]
+            key, value = header['value'], header['text']
+            # handle pre-defined columns
+            if value in ('Item name', 'Item ID', 'Group Name'):
+                item[key] = statuses[value]
             else:
-                i_dict[h_map['value']] = {'status': status[h_map['text']], 'ti_id': ti_id}
-                if extra_data == 'yes':
-                    i_dict[h_map['value']]['extra_data'] = 'yes'
+                # validation columns
+                status = statuses[header['text']]
+                if status == '':
+                    item[key] = ''
+                else:
+                    result_id = results.get(header['text'])
+                    extra_data = extras.get(header['text'])
 
-        items.append(i_dict)
+                    status_dict = {'status': status}
+                    if result_id is not None:
+                        if result_id != 0:
+                            status_dict['ti_id'] = result_id
+                        if extra_data == 'yes':
+                            status_dict['extra_data'] = 'yes'
+
+                    item[key] = status_dict
+
+        items.append(item)
 
     return {'headers': headers, 'items': items}
 
@@ -629,7 +639,16 @@ def result_ids(validation_ids: List[int]) -> pd.DataFrame:
 
     df = pd.read_sql(q.statement, q.session.bind)
     ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.result_id, aggfunc='max')
+    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
+    ct.index.names = ['Item name']
     ct = ct.replace(np.nan, 0, regex=False)
+
+    del ct['result_id']
+    del ct['status_id']
+    del ct['validation_id']
+    ct = ct.drop_duplicates()
+    del ct['item_id']
+
     types = {column: 'int32' for column in validation_ids}
     result_ids_ = ct.astype(types)
     # renaming columns
@@ -655,11 +674,18 @@ def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
 
     df = pd.read_sql(q.statement, q.session.bind)
     ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.extra_data, aggfunc='max')
+    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
+    ct.index.names = ['Item name']
     ct = ct.replace(np.nan, 'no', regex=False)
-      # renaming columns
+    del ct['status_id']
+    del ct['extra_data']
+    del ct['validation_id']
+    ct = ct.drop_duplicates()
+    del ct['item_id']
+
+    # renaming columns
     id_to_name = validation_id_to_name(validation_ids)
     extra_data = ct.rename(columns=id_to_name)
-
     return extra_data
 
 

@@ -1,0 +1,1 @@
+[{"model": "api.msdkasset", "pk": 1, "fields": {"root": "https://gfx-assets.intel.com/artifactory", "path": "gfx-media-build-assets/MSDK", "name": "windows", "version": "10.0.0.011_tools"}}]

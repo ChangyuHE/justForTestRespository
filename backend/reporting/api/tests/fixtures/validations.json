@@ -1,0 +1,7 @@
+[
+  {
+    "model": "api.validation",
+    "pk": 1,
+    "fields": {"name": "indicator_test_1", "env": 5, "platform": 9, "os": 7, "notes": null, "source_file": null, "date": "2020-09-18T00:00:00Z", "ignore": false, "hash_last": null, "owner": 1, "subsystem": null}
+  }
+]

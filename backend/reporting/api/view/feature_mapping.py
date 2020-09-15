@@ -105,14 +105,14 @@ def export_mapping(mapping):
     ws = wb.active
 
     # first row (headers)
-    for col, value in enumerate(('milestone', 'codec', 'feature', 'scenario', 'ids'), start=1):
+    for col, value in enumerate(('milestone', 'feature', 'scenario', 'ids'), start=1):
         ws.cell(row=1, column=col).value = value
 
     current_row = 2
     col_width = dict()
     # fill rows with data
     for values in FeatureMappingRule.objects.filter(mapping=mapping) \
-            .values_list('milestone__name', 'codec__name', 'feature__name', 'scenario__name', 'ids'):
+            .values_list('milestone__name', 'feature__name', 'scenario__name', 'ids'):
         for col, value in enumerate(values, start=1):
             # collect max width per column
             col_width.setdefault(col, 0)
@@ -129,7 +129,7 @@ def export_mapping(mapping):
     medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
 
     table = Table(
-        ref=f'A1:E{current_row - 1}', displayName='FMT', tableStyleInfo=medium_style)
+        ref=f'A1:D{current_row - 1}', displayName='FMT', tableStyleInfo=medium_style)
     ws.add_table(table)
 
     return wb
@@ -151,7 +151,7 @@ class FeatureMappingRuleView(LoggingMixin, generics.ListAPIView, api_helpers.Cre
     """
     queryset = FeatureMappingRule.objects.all()
     serializer_output_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
+    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
     ordering_fields = '__all__'
     ordering = ['milestone__name']
 
@@ -165,7 +165,7 @@ class FeatureMappingRuleTableView(LoggingMixin, generics.ListAPIView):
     """ FeatureMappingRule table view formatted for DataTable """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping']
+    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
     ordering_fields = '__all__'
     ordering = ['milestone__name']
 
@@ -276,36 +276,35 @@ def import_feature_mapping(file, serializer):
 
     rows = sheet.rows
     if not rows:
-        errors.append({'workbook format error': 'There must be 5 columns with "milestone", "codec", "feature", '
+        errors.append({'workbook format error': 'There must be 4 columns with "milestone", "feature", '
                                                 '"scenario" and "ids" data (column headers do not matter)'})
         errors.append({'workbook error': 'No rows found'})
         return errors
 
     first_row = next(rows)
     headings = [c.value for c in first_row]
-    if len(headings) != 5:
+    if len(headings) != 4:
         errors.append(
-            {'workbook format error': 'There must be 5 columns with "milestone", "codec", "feature", '
+            {'workbook format error': 'There must be 4 columns with "milestone", "feature", '
                                       '"scenario" and "ids" data (column headers do not matter)'})
         return errors
 
     fm_rules = []
     try:
         with transaction.atomic():
-            mapping = FeatureMapping.objects.create(name=data['name'], owner_id=data['owner'],
+            mapping = FeatureMapping.objects.create(name=data['name'], owner_id=data['owner'], codec_id=data['codec'],
                                                     component_id=data['component'], platform_id=data['platform'],
                                                     os_id=data['os'])
 
             for i, row in enumerate(rows):
-                milestone_name, codec_name, feature_name, scenario_name, ids_value = [cell.value for cell in row]
-                if all([milestone_name, codec_name, feature_name, scenario_name]):
+                milestone_name, feature_name, scenario_name, ids_value = [cell.value for cell in row]
+                if all([milestone_name, feature_name, scenario_name]):
                     milestone, _ = Milestone.objects.get_or_create(name=milestone_name)
-                    codec, _ = Codec.objects.get_or_create(name=codec_name)
                     feature, _ = Feature.objects.get_or_create(name=feature_name)
                     scenario, _ = TestScenario.objects.get_or_create(name=scenario_name)
 
                     fm_rules.append(FeatureMappingRule(
-                        mapping=mapping, milestone=milestone, codec=codec, feature=feature, scenario=scenario,
+                        mapping=mapping, milestone=milestone, feature=feature, scenario=scenario,
                         ids=ids_value if ids_value else None
                     ))
                 else:

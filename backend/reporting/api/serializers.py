@@ -172,6 +172,9 @@ class FeatureSerializer(serializers.ModelSerializer):
 
 
 class FeatureMappingSerializer(serializers.ModelSerializer):
+    from test_verifier.serializers import CodecSerializer
+
+    codec = CodecSerializer()
     component = ComponentSerializer()
     platform = PlatformSerializer()
     os = OsSerializer()
@@ -179,13 +182,13 @@ class FeatureMappingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.FeatureMapping
-        fields = ['id', 'name', 'owner', 'component', 'platform', 'os', 'public', 'official']
+        fields = ['id', 'name', 'owner', 'codec', 'component', 'platform', 'os', 'public', 'official']
 
 
 class FeatureMappingSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FeatureMapping
-        fields = ['name', 'owner', 'component', 'platform', 'os', 'public', 'official']
+        fields = ['name', 'owner', 'codec', 'component', 'platform', 'os', 'public', 'official']
         validators = [
             UniqueTogetherValidator(
                 queryset=models.FeatureMapping.objects.all(),
@@ -195,26 +198,23 @@ class FeatureMappingSimpleSerializer(serializers.ModelSerializer):
 
 
 class FeatureMappingRuleSerializer(serializers.ModelSerializer):
-    from test_verifier.serializers import CodecSerializer
-
     milestone = MilestoneSerializer()
-    codec = CodecSerializer()
     feature = FeatureSerializer()
     scenario = TestScenarioSerializer()
 
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['id', 'milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids']
+        fields = ['id', 'milestone', 'feature', 'scenario', 'mapping', 'ids']
 
 
 class FeatureMappingSimpleRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids']
+        fields = ['milestone', 'feature', 'scenario', 'mapping', 'ids']
         validators = [
             UniqueTogetherValidator(
                 queryset=models.FeatureMappingRule.objects.all(),
-                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids'],
+                fields=['milestone', 'feature', 'scenario', 'mapping', 'ids'],
                 message='Duplicate creation attempt'
             ),
         ]

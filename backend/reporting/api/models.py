@@ -321,7 +321,6 @@ class TestScenario(models.Model):
 
 class FeatureMappingRule(models.Model):
     milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE)
-    codec = models.ForeignKey('test_verifier.Codec', on_delete=models.CASCADE)
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
     ids = models.TextField(null=True, blank=True)
@@ -346,6 +345,7 @@ class FeatureMapping(models.Model):
     name = models.CharField(max_length=255)
     owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
 
+    codec = models.ForeignKey('test_verifier.Codec', on_delete=models.CASCADE)
     component = models.ForeignKey(Component, on_delete=models.CASCADE)
     platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
     os = models.ForeignKey(Os, on_delete=models.CASCADE)

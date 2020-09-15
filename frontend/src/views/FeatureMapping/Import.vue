@@ -1,7 +1,7 @@
 <template>
     <div>
         <v-row class="d-flex justify-center">
-            <v-col cols="6" class="pt-0">
+            <v-col cols="8" class="pt-0">
                 <!-- File input controller -->
                 <dnd-frame @file-drop="file = $event">
                     <v-file-input
@@ -24,8 +24,8 @@
                                         </v-list-item>
                                         <v-list-item>
                                             <v-list-item-content>
-                                                <p>First row is used for headers. Select names for you convenience according this mapping:</p>
-                                                <p><b>First column - "milestone", second - "feautre" and third one - "test scenario".</b></p>
+                                                <p>First row is used for headers: choose the names you like, but the meaning must match the mapping below.</p>
+                                                <p><b>First column - "milestone", second - "feature", third one - "test scenario" and the last one is "ids".</b></p>
                                             </v-list-item-content>
                                         </v-list-item>
                                     </v-list>
@@ -39,7 +39,7 @@
 
         <!-- Import parameters Platform, Os, Component -->
         <v-row class="d-flex justify-center">
-            <v-col cols="6" class="px-4 pt-0 d-flex">
+            <v-col cols="8" class="px-4 pt-0 d-flex">
                 <v-text-field
                     color="blue-grey" class="py-1 my-0"
                     clearable
@@ -60,7 +60,7 @@
             </v-col>
         </v-row>
         <v-row class="d-flex justify-center">
-            <v-col cols="6">
+            <v-col cols="8">
                 <v-btn
                     color="teal" class="white--text"
                     :disabled="uploadDisabled"
@@ -120,7 +120,7 @@
                 uploading: false,
                 showTooltip: false,
                 mapName: null,
-                importBindings: {'platform': undefined, 'os': undefined, 'component': undefined},
+                importBindings: {'codec': undefined, 'platform': undefined, 'os': undefined, 'component': undefined},
                 eData: {},
                 errorsDialog: false,
             }

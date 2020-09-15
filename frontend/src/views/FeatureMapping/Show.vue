@@ -61,7 +61,7 @@
                                 ></v-text-field>
 
                                 <!-- Edit mapping item dialog -->
-                                <v-dialog v-model="editMappingItemDialog" max-width="1000px">
+                                <v-dialog v-model="editMappingItemDialog" max-width="1200px">
                                     <v-card>
                                         <v-card-title>
                                             <span class="headline">Edit mapping</span>
@@ -76,7 +76,7 @@
                                                             class="my-0 pb-1"
                                                             label="Name"
                                                             color="blue-grey"
-                                                            hide-details
+                                                            :rules="[mapRules.required(editedMapItem[fieldName], fieldName), mapRules.counter]"
                                                             v-model="editedMapItem[fieldName]"
                                                         ></v-text-field>
                                                         <v-checkbox v-else-if="fieldName == 'public'"
@@ -93,6 +93,16 @@
                                                             :disabled="!editedMapItem['public']"
                                                             v-model="editedMapItem[fieldName]"
                                                         ></v-checkbox>
+                                                        <v-autocomplete v-else-if="fieldName == 'os'"
+                                                            class="my-0 pb-1"
+                                                            color="blue-grey"
+                                                            label="Os family"
+                                                            item-text="name"
+                                                            return-object hide-no-data hide-selected clearable hide-details
+                                                            :items="familyOses"
+                                                            :rules="[mapRules.required(editedMapItem[fieldName], fieldName)]"
+                                                            v-model="editedMapItem[fieldName]"
+                                                        ></v-autocomplete>
                                                         <api-auto-complete v-else
                                                             class="my-0 pb-1"
                                                             type="defined"
@@ -150,7 +160,7 @@
 
         <!-- Rules data-table -->
         <v-row justify="center" v-if="showRulesTable">
-            <v-col  md="12" lg="10">
+            <v-col md="12" lg="10">
                 <v-data-table
                     dense multi-sort
                     :search="search"
@@ -241,7 +251,6 @@
                     <template v-slot:item="{ item, index }">
                         <tr>
                             <td>{{ item.milestone.name }}</td>
-                            <td>{{ item.codec.name }}</td>
                             <td>{{ item.feature.name }}</td>
                             <td>{{ item.scenario.name }}</td>
                             <td>
@@ -249,12 +258,12 @@
                                     <template v-for="(id, i) in ids(item.ids)">
                                         <v-tooltip top :key="id">
                                             <template v-slot:activator="{ on, attrs }">
-                                                <v-chip v-show="i < 5"
+                                                <v-chip v-show="i < 7"
                                                     small style="margin: 1px"
                                                     v-on="on"
                                                     v-bind="attrs"
                                                     :data-row-id="index"
-                                                    :data-hidable="i >= 5 ? true : false"
+                                                    :data-hidable="i >= 7 ? true : false"
                                                 >
                                                     <span
                                                         class="d-inline-block text-truncate"
@@ -324,7 +333,7 @@
                 showRulesTable: false,
                 loading: false,
                 showType: 'show',
-                showParams: {'milestone': undefined, 'codec': undefined, 'feature': undefined, 'scenario': undefined, 'ids': undefined},
+                showParams: {'milestone': undefined, 'feature': undefined, 'scenario': undefined, 'ids': undefined},
                 headers: [],
                 items: [],
                 search: null,
@@ -332,6 +341,7 @@
                 searchId: null,
                 idItems: [],
                 idsToSelect: [],
+                familyOses: [],
 
                 // Show mapping data
                 mappingType: null,
@@ -339,7 +349,7 @@
                 showMappingTable: false,
                 mappingItems: [],
                 mappingHeaders: [],
-                showMappingParams: {'name': undefined, 'platform': undefined, 'os': undefined, 'component': undefined, 'public': undefined, 'official': undefined},
+                showMappingParams: {'name': undefined, 'codec': undefined, 'platform': undefined, 'os': undefined, 'component': undefined, 'public': undefined, 'official': undefined},
                 mappingSearch: null,
 
                 // Edit mappings
@@ -347,12 +357,13 @@
                 editedMapItem: {},
                 defaultMapItem: {},
                 mapRules: {
-                    required(value, model) {
-                        const notEmptyModels = ['name', 'platform', 'os', 'component'];
+                    required: (value, model) => {
+                        const notEmptyModels = ['name', 'codec', 'platform', 'os', 'component']
                         if (notEmptyModels.includes(model))
                             return !!value || 'Required'
                         return true
-                    }
+                    },
+                    counter: value => (value && value.length < 256) || 'Name must be less than 256 symbols'
                 },
                 isMapFormValid: null,
                 isMapDeleting: false,
@@ -364,7 +375,7 @@
                 defaultItem: {},
                 rules: {
                     required(value, model) {
-                        const notEmptyModels = ['milestone', 'feature', 'scenario', 'codec'];
+                        const notEmptyModels = ['milestone', 'feature', 'scenario']
                         if (notEmptyModels.includes(model))
                             return !!value || 'Required'
                         return true
@@ -468,7 +479,15 @@
                     .get(url)
                     .then(response => {
                         this.showMappingTable = true
-                        this.mappingHeaders = response.data.headers
+                        let headers = response.data.headers
+                        // rename Os to "Os family"
+                        var index = _.findIndex(headers, {text: 'Os'})
+                        let newOs = this._.clone(headers[index])
+                        if (newOs) {
+                            newOs.text = 'Os family'
+                            headers.splice(index, 1, newOs)
+                        }
+                        this.mappingHeaders = headers
                         this.mappingItems = response.data.items
                     })
                     .catch(error => {
@@ -508,7 +527,7 @@
             paramMappingCols(model) {
                 if (model == 'name')
                     return 12
-                return 4
+                return 3
             },
             // show edit dialog
             editMappingItem(item) {
@@ -591,7 +610,7 @@
                             this.$toasted.global.alert_error(error)
                         }
                         justEditedAnimation(itemId, 'selected-row-error', 'data-row-map-id')
-                    });
+                    })
             },
             // RULES
             // show rules table for map by mapping id
@@ -607,8 +626,8 @@
                         this.items = response.data.items
                         this.showRulesTable = true
                         this.activeMapping = item
-                        if (this.headers[6])    // ids column
-                            this.headers[6].width = 450
+                        if (this.headers[5])    // ids column
+                            this.headers[5].width = 600
                     })
                     .catch(error => {
                         if (error.handleGlobally) {
@@ -736,8 +755,23 @@
                 }
             }
         },
-        mounted() {
+        created() {
             this.getMappings()
+
+            // get family oses for Os selector items
+            const url = 'api/os/?group__name=Agnostic'
+            server
+                .get(url)
+                .then(response => {
+                    this.familyOses = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get oses', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
         }
     }
 </script>

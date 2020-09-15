@@ -657,7 +657,7 @@ def result_ids(validation_ids: List[int]) -> pd.DataFrame:
     ct = generate_dataframe(q, 'result_id')
     ct = ct.replace(np.nan, 0, regex=False)
 
-    types = {column: 'int32' for column in validation_ids}
+    types = {col: 'int32' for col in validation_ids if col in ct}
     ct = ct.astype(types)
     # renaming columns
     id_to_name = validation_id_to_name(validation_ids)

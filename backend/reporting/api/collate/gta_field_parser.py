@@ -415,10 +415,14 @@ class GTAFieldParser:
             if msdk.version == '' or msdk.version == '0000':
                 msdk = MsdkAsset(None)
             os_image = dut_os_image if dut_os_image.is_ready else simics_os_image
-            additional_params = dict()
+
+            add_params = {}
             for attr, val in ADDITIONAL_PARAMS_MAPPING.items():
                 jsn = json.loads(item[val][0]) if item[val][0] else None
-                additional_params[attr] = jsn[0] if jsn else None
+                parameter_value = jsn[0] if jsn else None
+                if parameter_value:
+                    add_params[attr] = parameter_value
+
             # Save all retrieved fields for current test item
             self.result[test_item_url] = {
                 "os": os,
@@ -429,8 +433,9 @@ class GTAFieldParser:
                 "msdk": msdk,
                 "fulsim": fulsim,
                 "simics": simics,
-                "additional_params": additional_params,
+                "additional_params": add_params if add_params else None
             }
+
             test_items_amount += 1
         log.debug(f"Finished processing {self.test_run_id}, added {test_items_amount} keys")
 

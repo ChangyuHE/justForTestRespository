@@ -330,11 +330,11 @@ class FeatureMappingRule(models.Model):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping', 'ids'],
+                fields=['milestone', 'feature', 'scenario', 'mapping', 'ids'],
                 name='unique_%(class)s_composite_constraint_with_ids'
             ),
             UniqueConstraint(
-                fields=['milestone', 'codec', 'feature', 'scenario', 'mapping'],
+                fields=['milestone', 'feature', 'scenario', 'mapping'],
                 condition=Q(ids=None),
                 name='unique_%(class)s_composite_constraint_without_ids'
             )

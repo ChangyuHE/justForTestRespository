@@ -12,6 +12,25 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RemoveConstraint(
+            model_name='featuremappingrule',
+            name='unique_featuremappingrule_composite_constraint_with_ids',
+        ),
+        migrations.RemoveConstraint(
+            model_name='featuremappingrule',
+            name='unique_featuremappingrule_composite_constraint_without_ids',
+        ),
+        migrations.AddConstraint(
+            model_name='featuremappingrule',
+            constraint=models.UniqueConstraint(fields=('milestone', 'feature', 'scenario', 'mapping', 'ids'),
+                                               name='unique_featuremappingrule_composite_constraint_with_ids'),
+        ),
+        migrations.AddConstraint(
+            model_name='featuremappingrule',
+            constraint=models.UniqueConstraint(condition=models.Q(ids=None),
+                                               fields=('milestone', 'feature', 'scenario', 'mapping'),
+                                               name='unique_featuremappingrule_composite_constraint_without_ids'),
+        ),
         migrations.RemoveField(
             model_name='featuremappingrule',
             name='codec',

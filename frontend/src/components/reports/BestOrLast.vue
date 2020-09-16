@@ -82,9 +82,10 @@
         },
         computed: {
             ...mapState('tree', ['validations', 'branches']),
-            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'headers', 'items']),
+            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading']),
+            ...mapState('reports', {'headers': 'originalHeaders', 'items':'originalItems'}),
             url() {
-                return `api/report/${this.type}/${this.validations}`;
+                return `api/report/${this.type}/${this.validations}`
             }
         },
         methods: {

@@ -6,8 +6,8 @@ export default {
         reportLoading: false,
         excelLoading: false,
         showReport: false,
-        headers: [],
-        items: [],
+        originalHeaders: [],
+        originalItems: [],
     },
     getters: {
     },
@@ -24,8 +24,8 @@ export default {
             await server
                 .get(url)
                 .then(response => {
-                    commit('SET_STATE', {'headers': response.data.headers})
-                    commit('SET_STATE', {'items': response.data.items})
+                    commit('SET_STATE', {'originalHeaders': response.data.headers})
+                    commit('SET_STATE', {'originalItems': response.data.items})
                 })
                 .catch(error => {
                     throw error

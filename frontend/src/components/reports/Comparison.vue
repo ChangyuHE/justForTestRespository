@@ -51,6 +51,16 @@
                     </v-btn>
                 </v-btn-toggle>
             </label>
+
+            <!-- Show/hide Test ID column in the data table -->
+            <label class="d-flex align-start mt-4 mr-1 subtitle-1">
+                <v-btn-toggle class="ml-2" color="teal">
+                    <v-btn small @click="toggleTestId">
+                        test id column
+                    </v-btn>
+                </v-btn-toggle>
+            </label>
+
         </v-col>
 
         <v-divider style="border-color: rgba(0, 0, 0, 0.3); height: 2px;"></v-divider>
@@ -109,7 +119,7 @@
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="green darken-1" text @click="extraDataDialog = false">Close</v-btn>
+                    <v-btn color="cyan darken-2" text @click="extraDataDialog = false">Close</v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
@@ -133,6 +143,13 @@
                 extraDataLoading: false,
                 extraDataDialog: false,
                 extraData: {},
+
+                // data-table related variables
+                filteredHeaders: [],
+                filteredItems: [],
+                filtered: false,
+
+                showHideTestIdStatus: false,
              }
         },
         props: {
@@ -141,15 +158,32 @@
         },
         computed: {
             ...mapState('tree', ['validations', 'branches']),
-            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'headers', 'items']),
+            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalHeaders', 'originalItems']),
             url() {
-                return `api/report/compare/${this.validations}`;
+                return `api/report/compare/${this.validations}`
             },
             reportHeader() {
                 return this.title !== undefined ? this.title: 'Validations comparison'
             },
+            headers() {
+                return this.showHideTestIdStatus ? this.originalHeaders : this.filteredHeaders
+            },
+            items() {
+                return this.showHideTestIdStatus ? this.originalItems : this.filteredItems
+            }
+
         },
         methods: {
+            toggleTestId() {
+                this.showHideTestIdStatus = !this.showHideTestIdStatus
+                this.reportWeb()
+            },
+            filterData() {
+                this.filteredItems = this._.cloneDeep(this.originalItems)
+                this.filteredItems.forEach(item => delete item.f1)
+                this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')
+                this.filtered = true
+            },
             openExtraDataDialog(itemId) {
                 const url = `api/report/extra-data/${itemId}`
                 this.extraDataLoading = true
@@ -183,11 +217,11 @@
                     });
             },
             changeGrouping() {
-                this.reportWeb();
+                this.reportWeb()
             },
             showHidePassed(){
-                this.showPassedPolicy = 1 - this.showPassedPolicy;
-                this.reportWeb();
+                this.showPassedPolicy = 1 - this.showPassedPolicy
+                this.reportWeb()
             },
             reportWeb() {
                 const url = `${this.url}?show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`
@@ -199,7 +233,10 @@
                         } else {
                             this.$toasted.global.alert_error(error)
                         }
-                    });
+                    })
+                    .finally(() => {
+                        if (!this.filtered) this.filterData()
+                    })
             },
             /**
              * Coloring status column in comparison report
@@ -214,7 +251,7 @@
             },
         },
         mounted() {
-            this.reportWeb();
+            this.reportWeb()
         }
     }
 </script>

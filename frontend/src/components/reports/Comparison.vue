@@ -111,7 +111,10 @@
                         <tbody>
                             <tr v-for="(value, name) in extraData.extra" :key="name">
                                 <td>{{ name }}</td>
-                                <td>{{ value }}</td>
+                                <td>
+                                    <template v-if="isFileSizeParam(name, value)">{{ formatFileSize(value) }}</template>
+                                    <template v-else>{{ value }}</template>
+                                </td>
                             </tr>
                         </tbody>
                         </template>
@@ -150,6 +153,7 @@
                 filtered: false,
 
                 showHideTestIdStatus: false,
+                fileSizeRE: /(\d+)B$/,
              }
         },
         props: {
@@ -183,6 +187,15 @@
                 this.filteredItems.forEach(item => delete item.f1)
                 this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')
                 this.filtered = true
+            },
+            isFileSizeParam(name, value) {
+                return name == 'file_size' && this.fileSizeRE.test(value)
+            },
+            formatFileSize(value) {
+                value.match(this.fileSizeRE)
+                let fileSize = parseInt(RegExp.$1)
+                fileSize = fileSize.toLocaleString()
+                return `${fileSize}\u202FB`
             },
             openExtraDataDialog(itemId) {
                 const url = `api/report/extra-data/${itemId}`

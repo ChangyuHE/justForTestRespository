@@ -14,7 +14,7 @@
             class="mt-2" v-model="showFilters"
         >
             <!-- Badge with filters amount -->
-            <v-badge class="filter-badge" color="teal darken-2"
+            <v-badge class="filter-badge" color="teal darken-3"
                 :content="badgeFilterCount"
                 :value="badgeFilterCount"
                 overlap
@@ -30,7 +30,7 @@
             class="mt-2 ml-2" background-color="blue-grey" color="blue-grey darken-4"
             v-model="showDateSlider"
         >
-            <v-badge class="date-badge" color="teal darken-2"
+            <v-badge class="date-badge" color="teal darken-3"
                 :value="enableDates"
                 overlap
             >
@@ -48,7 +48,7 @@
                     <v-text-field
                         v-debounce:500ms="doFilter"
                         v-model="valToSearch"
-                        color="teal darken-2" class="mx-3 my-3 px-4 pt-1 filter-validation"
+                        color="blue-grey" class="mx-3 my-3 px-4 pt-1 filter-validation"
                         clearable dense hide-details
                     >
                         <template v-slot:append-outer>
@@ -60,20 +60,22 @@
                             </v-tooltip>
                         </template>
                         <template v-slot:label>
-                            <span class="teal--text text--darken-4">Validation name template</span>
+                            <span class="blue-grey--text text--darken-2">Validation name template</span>
                         </template>
                     </v-text-field>
                 </v-col>
                 <!-- Selectors -->
                 <v-col cols="6" class="py-0 mx-0 px-0" v-for="i in treeStructure" :key="i.name">
                     <v-select class="mx-3 my-2 px-4 pt-1 filter-select"
+                        color="blue-grey"
+                        item-color="blue-grey"
+                        clear-icon="mdi-close"
+                        return-object multiple clearable small-chips deletable-chips hide-details
                         :items="i.items"
                         @change="doSelection($event, i.level)"
-                        clear-icon="mdi-close" color="teal darken-2" item-color="teal darken-2"
-                        multiple clearable small-chips return-object deletable-chips hide-details
                     >
                         <template v-slot:label>
-                            <span class="teal--text text--darken-4" v-text="i.label"></span>
+                            <span class="blue-grey--text text--darken-2" v-text="i.label"></span>
                         </template>
                     </v-select>
                 </v-col>

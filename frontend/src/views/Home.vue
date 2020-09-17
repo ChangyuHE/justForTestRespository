@@ -23,7 +23,14 @@
                                 :disabled="!validations.length"
                                 @click="clearSelected"
                             >
-                                clear selection
+                                <v-badge
+                                    class="d-flex justify-end clear-button-badge" color="teal darken-3"
+                                    :content="validations.length"
+                                    :value="validations.length"
+                                    overlap
+                                >
+                                    clear selection
+                                </v-badge>
                             </v-btn>
                         </div>
                     </div>
@@ -63,6 +70,15 @@
                                 >
                                     Compare selected
                                 </v-btn>
+
+                                <!-- Indicator report -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length || (validations.length != 1)"
+                                    :loading="reportTypeLoading('indicator')"
+                                    value="indicator"
+                                >
+                                    Indicator
+                                </v-btn>
                             </v-btn-toggle>
                         </v-toolbar>
 
@@ -82,7 +98,6 @@
                                 </v-list-item>
                             </v-list>
                         </template>
-
                     </div>
                 </pane>
             </splitpanes>
@@ -94,6 +109,7 @@
     import validationsTree from '@/components/tree/ValidationsTree.vue'
     import comparisonReport from '@/components/reports/Comparison.vue'
     import bestOrLastReport from '@/components/reports/BestOrLast.vue'
+    import indicatorReport from '@/components/reports/Indicator.vue'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
@@ -105,7 +121,8 @@
             Splitpanes, Pane,
             'comparison-report': comparisonReport,
             'best-report': bestOrLastReport,
-            'last-report': bestOrLastReport
+            'last-report': bestOrLastReport,
+            'indicator-report': indicatorReport,
         },
         data() {
             return {
@@ -132,20 +149,20 @@
         watch: {
             validations() {
                 this.$store.commit('reports/SET_STATE', {'showReport': false})
-                this.reportType = undefined;
+                this.reportType = undefined
             }
         },
         methods: {
             reportTypeLoading(type) {
-                return this.reportLoading && (type == this.reportType);
+                return this.reportLoading && (type == this.reportType)
             },
             expandPane() {
-                this.$refs['split'].panes[0].size = 50;
-                this.showExpand = false;
+                this.$refs['split'].panes[0].size = 50
+                this.showExpand = false
             },
             clearSelected() {
                 // direct call method from referenced component
-                this.$refs['validations-tree'].clearValidations();
+                this.$refs['validations-tree'].clearValidations()
             },
             reportClick() {
                 if (this.reportType == undefined) {
@@ -179,5 +196,13 @@
     }
     .results-table table {
         table-layout: fixed !important;
+    }
+    .clear-button-badge .v-badge__badge {
+        padding: 2px !important;
+        height: 14px !important;
+        min-width: 14px !important;
+        font-size: 9px !important;
+        left: calc(100% + 2px) !important;
+        top: -9px !important;
     }
 </style>

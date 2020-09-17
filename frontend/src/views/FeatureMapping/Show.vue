@@ -125,6 +125,18 @@
                                 </v-dialog>
                             </v-toolbar>
                         </template>
+                        <template v-slot:item.public="{ item }">
+                            <v-icon>
+                                <template v-if="item.public">mdi-checkbox-marked</template>
+                                <template v-else>mdi-checkbox-blank-outline</template>
+                            </v-icon>
+                        </template>
+                        <template v-slot:item.official="{ item }">
+                            <v-icon>
+                                <template v-if="item.official">mdi-checkbox-marked</template>
+                                <template v-else>mdi-checkbox-blank-outline</template>
+                            </v-icon>
+                        </template>
                         <!-- Actions icons -->
                         <template v-slot:item.actions="{ item }">
                             <v-hover v-slot:default="{ hover }">

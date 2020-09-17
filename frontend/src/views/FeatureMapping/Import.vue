@@ -50,13 +50,22 @@
         </v-row>
         <v-row class="d-flex justify-center">
             <v-col cols="2" class="px-4 pt-0 d-flex" v-for="_, modelName in importBindings" :key="modelName">
-                <api-auto-complete
+                <api-auto-complete v-if="modelName != 'os'"
                     color="blue-grey" class="py-0 my-0"
                     type="defined"
                     :disabled="uploading"
                     :model-name="modelName"
                     v-model="importBindings[modelName]"
                 ></api-auto-complete>
+                <v-autocomplete v-else
+                    class="my-0 py-0"
+                    color="blue-grey"
+                    label="Os family"
+                    item-text="name"
+                    return-object hide-no-data hide-selected clearable hide-details
+                    :items="familyOses"
+                    v-model="importBindings[modelName]"
+                ></v-autocomplete>
             </v-col>
         </v-row>
         <v-row class="d-flex justify-center">
@@ -123,6 +132,7 @@
                 importBindings: {'codec': undefined, 'platform': undefined, 'os': undefined, 'component': undefined},
                 eData: {},
                 errorsDialog: false,
+                familyOses: [],
             }
         },
         computed: {
@@ -195,6 +205,22 @@
                 this.mapName = null
                 this.importBindings = {'platform': undefined, 'os': undefined, 'component': undefined}
             }
+        },
+        created() {
+            // get family oses for Os selector items
+            const url = 'api/os/?group__name=Agnostic'
+            server
+                .get(url)
+                .then(response => {
+                    this.familyOses = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get oses', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
         }
     }
 </script>

@@ -73,6 +73,6 @@ router.beforeEach((to, from, next) => {
         .catch(error => {
             error.handleGlobally && error.handleGlobally('Error during initial data loading', url)
         })
-  })
+})
 
 export default router

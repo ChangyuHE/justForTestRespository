@@ -77,7 +77,13 @@
                 <tr>
                     <td v-for="(cellValue, index) in item" :key="index">
                         <div v-if="STATUSES.includes(cellValue.status)">
-                            <v-chip :color="getStatusColor(cellValue.status)" text-color="white" class="same-width" label>{{ cellValue.status }}</v-chip>
+                            <v-chip
+                                :color="getStatusColor(cellValue.status)"
+                                text-color="white"
+                                class="same-width"
+                                label
+                                @click="openDetailsDialog(cellValue.ti_id)"
+                            >{{ cellValue.status }}</v-chip>
                             <v-hover v-if="cellValue.extra_data == 'yes'" v-slot:default="{ hover }">
                                 <v-icon class="ml-2" small :class="{ 'primary--text': hover }" @click="openExtraDataDialog(cellValue.ti_id)">mdi-information</v-icon>
                             </v-hover>
@@ -88,6 +94,7 @@
             </template>
         </v-data-table>
 
+        <!-- Result item's extra data -->
         <v-dialog v-model="extraDataDialog" max-width="800">
             <v-card>
                 <v-card-title class="headline">
@@ -126,14 +133,26 @@
                 </v-card-actions>
             </v-card>
         </v-dialog>
+
+        <!-- Result item overview -->
+        <result-item-details
+            :resultItemId="selectedResultId"
+            v-if="detailsDialog"
+            @close="detailsDialog = false"
+            @change="reportWeb"
+        ></result-item-details>
     </v-card>
 </template>
 
 <script>
     import server from '@/server'
     import { mapState, mapGetters } from 'vuex'
+    import ResultItemDetails from '@/components/ResultItemDetails'
 
     export default {
+        components: {
+            ResultItemDetails,
+        },
         data() {
             return {
                 STATUSES: ['Passed', 'Failed', 'Skipped', 'Error', 'Blocked', 'Canceled'],
@@ -153,6 +172,9 @@
 
                 showHideTestIdStatus: false,
                 fileSizeRE: /(\d+)B$/,
+
+                detailsDialog: false,
+                selectedResultId: undefined,
              }
         },
         props: {
@@ -214,6 +236,10 @@
                     })
                     .finally(() => this.extraDataLoading = false)
 
+            },
+            openDetailsDialog(itemId) {
+                this.detailsDialog = true
+                this.selectedResultId = itemId
             },
             reportExcel() {
                 const url = `${this.url}?report=excel&show=${this.compareFilters[this.compareFiltering]},${this.showPassedPolicies[this.showPassedPolicy]}`

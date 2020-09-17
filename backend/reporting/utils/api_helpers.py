@@ -3,6 +3,9 @@ from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
+from rest_framework.serializers import ModelSerializer
+
+from utils.api_logging import get_user_object
 
 
 def serialiazed_to_datatable_json(serialized, exclude=None, actions=True):
@@ -122,3 +125,37 @@ def get_default_owner():
             return admin[0].pk
         return superusers[0].pk
     return 1
+
+
+def asset_serializer(model):
+    """ Returns asset serializer class with fields 'id' and 'url' """
+    from api.serializers import AssetUrlSerializer
+    return type(f'{model.__name__}Serializer', (AssetUrlSerializer,),
+                {'Meta': type('Meta', (object,),
+                              {'model': model, 'fields': ['id', 'url']})})
+
+
+def asset_full_serializer(model):
+    """ Returns asset serializer class with all asset fields """
+    return type(f'{model.__name__}FullSerializer', (ModelSerializer,),
+                {'Meta': type('Meta', (object,),
+                              {'model': model, 'fields': '__all__'})})
+
+
+def model_cut_serializer(model):
+    """ Returns serializer class with fields 'name' and 'id' """
+    return type(f'{model.__name__}CutSerializer', (ModelSerializer,),
+                {'Meta': type('Meta', (object,),
+                              {'model': model, 'fields': ['name', 'id']})})
+
+
+def asset_view(model, full_serializer, out_serializer):
+    """ Returns asset view class
+        get: List of asset objects (url and id fields)
+        post: Create new asset, obtain url field, returns url and id fields
+    """
+    from api.views import AbstractAssetView
+    return type(f'{model.__name__}View', (AbstractAssetView,),
+                {'queryset': model.objects.all(),
+                 'serializer_class': full_serializer,
+                 'serializer_output_class': out_serializer})

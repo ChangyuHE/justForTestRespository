@@ -5,6 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Tuple, List
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 
 import pandas as pd
 import numpy as np
@@ -22,6 +23,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 
 from rest_framework import generics, status, filters
+from rest_framework.exceptions import ParseError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -38,14 +40,18 @@ from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Driver, Status, Os, OsGroup, Validation, Action, \
-    Result, ResultGroupNew, Run, FeatureMappingRule, FeatureMapping
+    Result, ResultGroupNew, Run, FeatureMappingRule, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, FeatureMapping
 from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
-    EnvSerializer, OsSerializer, FeatureMappingSerializer
+    EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
+    ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, ScenarioAssetFullSerializer, \
+    SimicsSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
+    DriverFullSerializer, StatusFullSerializer, FeatureMappingSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
 from utils.api_logging import get_user_object, LoggingMixin
-from utils.api_helpers import get_datatable_json, DefaultNameOrdering
+from utils.api_helpers import get_datatable_json, DefaultNameOrdering, CreateWOutputApiView, asset_view, \
+    UpdateWOutputAPIView
 
 
 @never_cache
@@ -205,6 +211,91 @@ class CodecTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self)
+
+
+class ResultView(LoggingMixin, generics.RetrieveAPIView):
+    """ List of Result objects """
+    queryset = Result.objects.all()
+    serializer_class = ResultFullSerializer
+    filterset_fields = ['validation_id', 'item_id']
+
+
+class StatusView(LoggingMixin, generics.ListAPIView):
+    """ List of Status objects """
+    queryset = Status.objects.all()
+    serializer_class = StatusFullSerializer
+    filterset_fields = ['test_status']
+
+
+class DriverView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
+    """
+        get: List Driver objects
+        post: Create Driver object
+    """
+    queryset = Driver.objects.all()
+    serializer_class = DriverFullSerializer
+    filterset_fields = ['name']
+
+
+class AbstractAssetView(LoggingMixin, generics.ListAPIView, CreateWOutputApiView):
+    serializer_output_class = None
+    serializer_class = None
+
+    def post(self, request, *args, **kwargs):
+        url = request.data['url']
+        url_components = url.split('/')
+        if len(url_components) == 1:
+            # asset name is provided
+            data = data = {'root': '', 'path': '', 'name': url_components[0], 'version': ''}
+        else:
+            # full url is provided
+            parsed_url = urlparse(url)
+            path = parsed_url.path if not parsed_url.path.startswith('/') else parsed_url.path[1:]
+            path_components = path.split('/')
+            if not parsed_url.scheme or not parsed_url.netloc or not path_components[0]:
+                raise ParseError("Cannot parse url scheme or server")
+            if len(path_components) < 3:
+                raise ParseError("The path should contains '/artifactory/', asset name and version")
+            root = urlunparse((parsed_url.scheme, parsed_url.netloc, path_components[0], '', '', ''))
+            name, version = path_components[-2:]
+            pure_path = '/'.join(path_components[1:-2])
+            data = {'root': root, 'path': pure_path, 'name': name, 'version': version}
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer = self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return self.serializer_output_class
+        return self.serializer_class
+
+
+# generate template views for Assets
+# get: list of asset objects
+# post: create asset object
+ScenarioAssetView = asset_view(ScenarioAsset, ScenarioAssetFullSerializer, ScenarioAssetSerializer)
+LucasAssetView = asset_view(LucasAsset, LucasAssetFullSerializer, LucasAssetSerializer)
+MsdkAssetView = asset_view(MsdkAsset, MsdkAssetFullSerializer, MsdkAssetSerializer)
+FulsimAssetView = asset_view(FulsimAsset, FulsimAssetFullSerializer, FulsimAssetSerializer)
+
+
+class SimicsView(LoggingMixin, generics.ListCreateAPIView):
+    """ List of Simics objects """
+    queryset = Simics.objects.all()
+    serializer_class = SimicsSerializer
+
+
+class ResultUpdateView(LoggingMixin, generics.DestroyAPIView, UpdateWOutputAPIView):
+    """
+    put: Update existing Result object or replace it with new fields
+    patch: Update only existing Result's fields
+    delete: Delete Result by id
+    """
+    queryset = Result.objects.all()
+    serializer_class = ResultCutSerializer
+    serializer_output_class = ResultFullSerializer
 
 
 ICONS = [

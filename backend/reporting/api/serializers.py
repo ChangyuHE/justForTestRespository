@@ -9,6 +9,7 @@ from django.db import transaction
 
 import api.models as models
 from api.utils.cached_objects_find import parse_item_args, TEST_ITEM_EXTRAS
+from utils.api_helpers import model_cut_serializer, asset_serializer, asset_full_serializer
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,12 @@ class DriverSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Driver
         fields = ['name']
+
+
+class DriverFullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Driver
+        fields = ['name', 'id']
 
 
 class ComponentSerializer(serializers.ModelSerializer):
@@ -87,7 +94,7 @@ class ItemSerializer(serializers.ModelSerializer):
         relations_params = {}
 
         for field, value in validated_data.items():
-            if '__name' in field:     # non existing relation
+            if '__name' in field:  # non existing relation
                 field_name = field.split('__')[0]
                 model_class = TEST_ITEM_EXTRAS[field_name]['class']
                 relations_params[field_name], _ = model_class.objects.get_or_create(name=value)
@@ -108,6 +115,12 @@ class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Status
         fields = ['test_status', 'priority']
+
+
+class StatusFullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Status
+        fields = ['test_status', 'priority', 'id']
 
 
 class GenerationSerializer(serializers.ModelSerializer):
@@ -219,3 +232,83 @@ class FeatureMappingSimpleRuleSerializer(serializers.ModelSerializer):
                 message='Duplicate creation attempt'
             ),
         ]
+
+
+class AssetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Asset
+        fields = '__all__'
+
+
+class AssetUrlSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, obj):
+        if not any([obj.root, obj.path, obj.version, obj.name]):
+            return 'Empty path'
+        if not any([obj.root, obj.path, obj.version]):
+            return obj.name
+        return str(obj)
+
+
+# generate template serializers for assets
+# cut serializer contains url and id fields, the full one contains all fields
+ScenarioAssetSerializer = asset_serializer(models.ScenarioAsset)
+ScenarioAssetFullSerializer = asset_full_serializer(models.ScenarioAsset)
+
+LucasAssetSerializer = asset_serializer(models.LucasAsset)
+LucasAssetFullSerializer = asset_full_serializer(models.LucasAsset)
+
+MsdkAssetSerializer = asset_serializer(models.MsdkAsset)
+MsdkAssetFullSerializer = asset_full_serializer(models.MsdkAsset)
+
+FulsimAssetSerializer = asset_serializer(models.FulsimAsset)
+FulsimAssetFullSerializer = asset_full_serializer(models.FulsimAsset)
+
+
+# generate template cut serializers which contains 'id' and 'name' fields
+ValidationCutSerializer = model_cut_serializer(models.Validation)
+EnvCutSerializer = model_cut_serializer(models.Env)
+ComponentCutSerializer = model_cut_serializer(models.Component)
+OsCutSerializer = model_cut_serializer(models.Os)
+
+
+class PlatformCutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Platform
+        fields = ['short_name', 'id']
+
+
+class SimicsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Simics
+        fields = '__all__'
+
+
+class ResultFullSerializer(serializers.ModelSerializer):
+    validation = ValidationCutSerializer()
+    driver = DriverFullSerializer()
+    item = ItemSerializer()
+    component = ComponentCutSerializer()
+    env = EnvCutSerializer()
+    platform = PlatformCutSerializer()
+    os = OsCutSerializer()
+    status = StatusFullSerializer()
+    run = RunSerializer()
+
+    scenario_asset = ScenarioAssetSerializer()
+    msdk_asset = MsdkAssetSerializer()
+    os_asset = AssetSerializer()
+    lucas_asset = LucasAssetSerializer()
+    fulsim_asset = FulsimAssetSerializer()
+    simics = SimicsSerializer()
+
+    class Meta:
+        model = models.Result
+        fields = '__all__'
+
+
+class ResultCutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Result
+        fields = '__all__'

@@ -1,7 +1,9 @@
 <template>
     <v-autocomplete v-if="type == 'sync'"
         class="api-auto-complete"
-        item-text="name"
+        :item-text="descriptiveField"
+        :append-outer-icon="icon"
+        @click:append-outer="emitIconClick"
         item-value="id"
         prepend-icon="mdi-database-search"
         placeholder="Start typing to get values"
@@ -18,8 +20,10 @@
     ></v-autocomplete>
     <v-autocomplete v-else
         class="api-auto-complete"
-        :item-text="modelName == 'platform' ? 'short_name' : 'name'"
+        :item-text="descriptiveField"
         return-object hide-no-data hide-selected clearable hide-details
+        :append-outer-icon="icon"
+        @click:append-outer="emitIconClick"
         :disabled="disabled"
         :label="modelName"
         :color="color"
@@ -42,6 +46,8 @@
             modelName: { type: String, required: true },
             color: { type: String, required: false },
             disabled: { type: Boolean, required: false },
+            icon: { type: String, required: false },
+            iconAction: { type: Function, required: false },
             type: {
                 type: String,
                 required: true,
@@ -58,7 +64,7 @@
                 search: null,
                 isLoading: false,
                 uploading: false,
-                errorMessages: ''
+                errorMessages: '',
             }
         },
         computed: {
@@ -67,13 +73,36 @@
                     let name = entry.name
                     if (this.modelName == 'platform')
                         name = entry.short_name
+                    if (this.modelName == 'status')
+                        name = entry.test_status
+                    if (this.modelName.includes('asset'))
+                        name = entry.url
+                    if (this.modelName == 'simics') {
+                        entry['data'] = JSON.stringify(entry.data)
+                        name = entry.data
+                    }
                     return Object.assign({}, entry, { name })
                 })
             },
+            descriptiveField() {
+                let field = 'name'
+                if (this.modelName == 'platform')
+                    field = 'short_name'
+                if (this.modelName == 'status')
+                    field = 'test_status'
+                if (this.modelName.includes('asset'))
+                    field = 'url'
+                if (this.modelName == 'simics')
+                    field = 'data'
+                return field
+            }
         },
         methods: {
             emit(obj) {
                 this.$emit('input', obj)
+            },
+            emitIconClick(obj) {
+                this.$emit('click:append-outer', obj)
             },
             apiCall() {
                 const url = `api/${this.modelName}/`

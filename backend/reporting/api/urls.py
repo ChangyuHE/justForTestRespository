@@ -92,6 +92,17 @@ urlpatterns = [
     path('api/codec/<int:pk>/', views.CodecDetailsView.as_view()),
     path('api/codec/', views.CodecView().as_view()),
 
+    path('api/result/<int:pk>/', views.ResultView().as_view()),
+    path('api/result/update/<int:pk>/', views.ResultUpdateView.as_view()),
+
+    path('api/driver/', views.DriverView().as_view()),
+    path('api/status/', views.StatusView().as_view()),
+    path('api/scenario_asset/', views.ScenarioAssetView().as_view()),
+    path('api/lucas_asset/', views.LucasAssetView().as_view()),
+    path('api/msdk_asset/', views.MsdkAssetView().as_view()),
+    path('api/fulsim_asset/', views.FulsimAssetView().as_view()),
+    path('api/simics/', views.SimicsView().as_view()),
+
     # Test Verifier
     path('', include('test_verifier.urls')),
 

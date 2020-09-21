@@ -150,7 +150,6 @@
                 // data-table related variables
                 filteredHeaders: [],
                 filteredItems: [],
-                filtered: false,
 
                 showHideTestIdStatus: false,
                 fileSizeRE: /(\d+)B$/,
@@ -186,7 +185,6 @@
                 this.filteredItems = this._.cloneDeep(this.originalItems)
                 this.filteredItems.forEach(item => delete item.f1)
                 this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')
-                this.filtered = true
             },
             isFileSizeParam(name, value) {
                 return name == 'file_size' && this.fileSizeRE.test(value)
@@ -248,7 +246,7 @@
                         }
                     })
                     .finally(() => {
-                        if (!this.filtered) this.filterData()
+                        this.filterData()
                     })
             },
             /**

@@ -164,4 +164,7 @@
         from {background-color: rgba(255, 41, 41, 0.452)}
         to {background-color: rgba(255, 255, 255, 0)}
     }
+    .horizontal-line {
+        border-color: rgba(0, 0, 0, 0.3) !important;
+    }
 </style>

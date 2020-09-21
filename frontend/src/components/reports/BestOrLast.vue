@@ -49,7 +49,7 @@
             </label>
         </v-col>
 
-        <v-divider style="border-color: rgba(0, 0, 0, 0.3); height: 2px;"></v-divider>
+        <v-divider class="horizontal-line"></v-divider>
 
         <!-- DataTable -->
         <v-data-table class="results-table"

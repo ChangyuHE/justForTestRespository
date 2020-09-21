@@ -63,7 +63,7 @@
 
         </v-col>
 
-        <v-divider style="border-color: rgba(0, 0, 0, 0.3); height: 2px;"></v-divider>
+        <v-divider class="horizontal-line"></v-divider>
 
         <!-- DataTable -->
         <v-data-table class="results-table"
@@ -77,10 +77,10 @@
                 <tr>
                     <td v-for="(cellValue, index) in item" :key="index">
                         <div v-if="STATUSES.includes(cellValue.status)">
-                            <v-chip :color="getStatusColor(cellValue.status)" text-color="white" label>{{ cellValue.status }}</v-chip>
+                            <v-chip :color="getStatusColor(cellValue.status)" text-color="white" class="same-width" label>{{ cellValue.status }}</v-chip>
                             <v-hover v-if="cellValue.extra_data == 'yes'" v-slot:default="{ hover }">
-                                <v-icon class="ml-2" small :class="{ 'primary--text': hover }" @click="openExtraDataDialog(cellValue.ti_id)">mdi-information</v-icon>
-                            </v-hover>
+                                <v-icon class="ml-2" small :class="{ 'primary--text': hover }" @click="openExtraDataDialog(cellValue.ti_id)">mdi-information</v-icon>
+                            </v-hover>
                         </div>
                         <span v-else>{{ cellValue }}</span>
                     </td>
@@ -268,5 +268,9 @@
 </script>
 
 <style>
-
+    .same-width {
+        width: 80px;
+        display: inline-flex;
+        justify-content: center;
+    }
 </style>

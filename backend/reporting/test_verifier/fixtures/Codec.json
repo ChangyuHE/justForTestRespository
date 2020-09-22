@@ -1,9 +1,1 @@
-[
-  {
-    "model": "test_verifier.codec",
-    "pk": 1,
-    "fields": {
-      "name": "HEVCe FF"
-    }
-  }
-]
+[{"model": "test_verifier.codec", "pk": 1, "fields": {"name": "HEVCe FF"}}, {"model": "test_verifier.codec", "pk": 2, "fields": {"name": "AVC Encode"}}, {"model": "test_verifier.codec", "pk": 3, "fields": {"name": "HEVC Decode"}}, {"model": "test_verifier.codec", "pk": 4, "fields": {"name": "MPEG2 Encode"}}]

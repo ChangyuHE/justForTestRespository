@@ -1,1 +1,1 @@
-[{"pk": 1, "model": "api.component", "fields": {"name": "unknown"}}, {"pk": 2, "model": "api.component", "fields": {"name": "Media-Encode"}}, {"pk": 3, "model": "api.component", "fields": {"name": "Media SDK"}}]
+[{"model": "api.component", "pk": 1, "fields": {"name": "unknown"}}, {"model": "api.component", "pk": 2, "fields": {"name": "Media-Encode"}}, {"model": "api.component", "pk": 3, "fields": {"name": "Media SDK"}}, {"model": "api.component", "pk": 4, "fields": {"name": "Media-Decode"}}]

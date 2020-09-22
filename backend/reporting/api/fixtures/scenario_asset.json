@@ -1,0 +1,1 @@
+[{"model": "api.scenarioasset", "pk": 1, "fields": {"root": "https://gfx-assets.intel.com/artifactory", "path": "gfx-media-assets-fm/PROD/scenario", "name": "encode", "version": "73.3"}}, {"model": "api.scenarioasset", "pk": 2, "fields": {"root": "https://gfx-assets.intel.com/artifactory", "path": "gfx-media-assets-fm/PROD/scenario", "name": "encode", "version": "17.7"}}]

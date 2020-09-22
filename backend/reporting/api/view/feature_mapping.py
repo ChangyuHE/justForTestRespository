@@ -51,6 +51,20 @@ class FeatureMappingPostView(LoggingMixin, APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
+def check_mappings(ids):
+    # prevent selection of mappings with the same codec and platform
+    codecs = FeatureMapping.objects.filter(id__in=ids).values('codec', 'platform').distinct()
+    if len(ids) != codecs.count():
+        return False
+    return True
+
+
+class FeatureMappingConflictCheckView(LoggingMixin, APIView):
+    def get(self, request):
+        ids = request.query_params.get('ids', '').split(',')
+        return Response(check_mappings(ids))
+
+
 class FeatureMappingListView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     """ List of available FeatureMappings filtered by owner/platform/os/component"""
     queryset = FeatureMapping.objects.all()

@@ -24,11 +24,14 @@ urlpatterns = [
     path('api/validations/structure', views.ValidationsStructureView.as_view()),
     path('api/validations/hard_delete/<int:pk>', views.ValidationsDeleteByIdView.as_view()),
 
+    path('api/validations/mappings/', views.ValidationMappings.as_view()),
+
     # Reports
     re_path(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),     # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
+    path('api/report/indicator/', views.ReportIndicatorView.as_view()),
 
     # returns additional_parameters field for Result with given pk
     # end extra info about this result
@@ -49,6 +52,7 @@ urlpatterns = [
     path('api/feature_mapping/<int:pk>/', feature_mapping.FeatureMappingDetailsView.as_view()),
     path('api/feature_mapping/export/<int:pk>/', feature_mapping.FeatureMappingExportView.as_view()),
     path('api/feature_mapping/', feature_mapping.FeatureMappingListView.as_view()),
+    path('api/feature_mapping/conflicts/', feature_mapping.FeatureMappingConflictCheckView.as_view()),
 
     # .. rules
     path('api/feature_mapping/rules/table/', feature_mapping.FeatureMappingRuleTableView.as_view()),

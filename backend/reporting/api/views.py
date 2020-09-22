@@ -1,6 +1,7 @@
 import json
 import re
 import urllib.parse
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Tuple, List
 from datetime import datetime
@@ -37,9 +38,9 @@ from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Driver, Status, Os, OsGroup, Validation, Action, \
-    Result, ResultGroupNew, Run
+    Result, ResultGroupNew, Run, FeatureMappingRule, FeatureMapping
 from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
-    EnvSerializer, OsSerializer
+    EnvSerializer, OsSerializer, FeatureMappingSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -405,6 +406,39 @@ class ValidationsFlatView(LoggingMixin, APIView):
         return Response(d)
 
 
+def get_mappings_by_validations(serializer_class, validations):
+    """ Filter mappings according to validation's platform, os and component from validation results """
+    data = []
+    components = Result.objects.filter(validation__in=validations).values_list('component', flat=True).distinct()
+    for validation in validations:
+        mappings = FeatureMapping.objects.filter(
+            component__in=components, platform=validation.platform, os=validation.os.group, public=True
+        )
+        serializer = serializer_class(data=mappings, many=True)
+        serializer.is_valid()
+
+        for serialized_data in serializer.data:
+            if serialized_data not in data:
+                data.append(serialized_data)
+    return data
+
+
+class ValidationMappings(LoggingMixin, generics.GenericAPIView):
+    serializer_class = FeatureMappingSerializer
+
+    def get_queryset(self):
+        ids = self.request.query_params.get('ids', None)
+        if ids is not None:
+            ids = [int(x) for x in ids.split(',')]
+            return Validation.objects.filter(pk__in=ids)
+        else:
+            return Validation.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        validations = self.get_queryset()
+        return Response(get_mappings_by_validations(self.serializer_class, validations))
+
+
 class ValidationsStructureView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         d = [
@@ -647,8 +681,8 @@ def generate_dataframe(sql: Query, value: str) -> pd.DataFrame:
 
 def result_ids(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), Result.sa.item_id, \
-                Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), Result.sa.item_id,
+               Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(Validation.sa) \
@@ -673,8 +707,8 @@ def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
     ]).label('extra_data')
 
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, Result.sa.item_id, \
-                Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, Result.sa.item_id,
+               Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(Validation.sa) \
@@ -691,9 +725,9 @@ def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
 
 def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'), \
-            Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name.label('group_name'), \
-            Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'),
+               Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name.label('group_name'),
+               Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
@@ -796,6 +830,7 @@ class ExtraDataView(LoggingMixin, generics.GenericAPIView):
             'status': status,
             'extra': result.additional_parameters
         })
+
 
 @dataclass
 class Part:
@@ -1036,3 +1071,59 @@ class RequestModelCreation(APIView):
             return Response()
         except Exception:
             return Response(data='Failed to send email', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ReportIndicatorView(APIView):
+    def get(self, request, *args, **kwargs):
+        def update_status(data, status):
+            key_to_update = None
+            if status == 'Passed':
+                key_to_update = 'passed'
+            elif status == 'Failed':
+                key_to_update = 'failed'
+            elif status in ('Skipped', 'Blocked', 'Canceled'):
+                key_to_update = 'blocked'
+
+            data[key_to_update] += 1
+            total[key_to_update] += 1
+            data['executed'] += 1
+            total['executed'] += 1
+
+        validation_id = request.GET.get('validation_id')
+        mapping_ids = request.GET.get('fmt_id').split(',')
+
+        data = defaultdict(dict)
+        total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+
+        results = Result.objects.filter(validation_id=validation_id)
+        for mapping_id in mapping_ids:
+            for milestone, scenario_id, feature, ids in FeatureMappingRule.objects.filter(mapping_id=mapping_id) \
+                    .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids'):
+
+                data[milestone][feature] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0})
+
+                if ids is not None:
+                    ids = ids.split(',')
+                    for status in results.filter(item__scenario_id=scenario_id, item__test_id__in=ids) \
+                            .values_list('status__test_status', flat=True):
+                        update_status(data[milestone][feature], status)
+                else:
+                    for status in results.filter(item__scenario_id=scenario_id).values_list('status__test_status', flat=True):
+                        update_status(data[milestone][feature], status)
+
+        # Data-table formatting
+        headers, items = [], []
+        for label in ('milestone', 'feature', 'passed', 'failed', 'blocked', 'executed'):
+            headers.append({
+                'text': label.capitalize(),
+                'value': label,
+                'groupable': True if label == 'milestone' else False,
+                'width': 150 if label not in ('milestone', 'feature') else None,
+            })
+
+        for milestone, m_data in data.items():
+            for feature, f_data in m_data.items():
+                items.append({'milestone': milestone, 'feature': feature, **f_data})
+        items.append(total)
+
+        return Response({'headers': headers, 'items': items})

@@ -8,7 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0002_add_os_weight_and_shortcut'),
+        ('api', '0001_squashed_0019_auto_20200630_1100'),
     ]
 
     operations = [

@@ -86,7 +86,7 @@ def verify_file(context):
 
         # verify row content
         builder = RecordBuilder(context, row)
-        builder.verify(context.request.force_run)
+        builder.verify(context.request.force_run, context.request.force_item)
 
     log.debug('processed all rows.')
 
@@ -212,7 +212,7 @@ class RecordBuilder:
         self.__outcome = context.outcome
         self.__data = ResultData()
 
-    def verify(self, force_run=False):
+    def verify(self, force_run=False, force_item=False):
         columns = self.__columns
         record = self.__data.mandatory
 
@@ -224,32 +224,53 @@ class RecordBuilder:
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
         record.os = self._find_with_alias(Os, columns['osVersion'])
+        record.run = self.__get_and_verify_run(force_run, name=columns['testRun'], session=columns['testSession'])
 
-        # Create Run entities automatically if they was not found in database during import. If found - send warning.
-        try:
-            record.run = Run.objects.get(name=columns['testRun'], session=columns['testSession'])
-            if not force_run and not new_objects_ids.is_known(Run, record.run.id):
-                self.__outcome.add_existing_run_error(record.run)
-        except (Run.DoesNotExist, Run.MultipleObjectsReturned):
-            record.run = Run(name=columns['testRun'], session=columns['testSession'])
+        self.__verify_item(force_item)
 
         # Check if date can be parsed
-        for field_name in ['execStart', 'execEnd']:
-            date = columns[field_name]
-            # check if value is excel's date using floating point representation
-            if type(date) == str:
-                try:
-                    float(date)
-                except ValueError:
-                    self.__outcome.add_date_format_error(date)
-
-            elif type(date) not in [datetime, float, type(None)]:
-                self.__outcome.add_date_format_error(date, type(date))
+        self.__verify_date(columns['execStart'])
+        self.__verify_date(columns['execEnd'])
 
         return self.__outcome.is_success()
 
-    def build(self, force_run=False):
-        if not self.verify(force_run):
+    def __get_and_verify_run(self, force_run, **kwargs):
+        # Create Run entities automatically if they was not found
+        # in database during import. If found - send warning.
+        try:
+            run = Run.objects.get(**kwargs)
+            if not force_run and not new_objects_ids.is_known(Run, run.id):
+                self.__outcome.add_existing_run_error(run)
+        except (Run.DoesNotExist, Run.MultipleObjectsReturned):
+            run = Run(**kwargs)
+
+        return run
+
+    def __verify_date(self, date):
+        # check if value is excel's date using floating point representation
+        if type(date) == str:
+            try:
+                float(date)
+            except ValueError:
+                self.__outcome.add_date_format_error(date)
+
+        elif type(date) not in [datetime, float, type(None)]:
+            self.__outcome.add_date_format_error(date, type(date))
+
+    def __verify_item(self, force_item):
+        if not self.__data.mandatory.is_valid():
+            return
+
+        # Check if same test from test scenario name and test id combination.
+        entity = Result()
+        self.__set_model_fields(entity)
+        existing_entity = _find_existing_entity(entity)
+
+        if not (existing_entity is None or force_item):
+            self.__outcome.add_item_changed_error(existing_entity.status.test_status, entity.status.test_status)
+
+    def build(self, force_run=False, force_item=False):
+        if not self.verify(force_run, force_item):
             return None
 
         # Ensure that all mandatory fields are present.
@@ -322,18 +343,17 @@ class RecordBuilder:
             setattr(entity, attribute, date)
 
     def __update_if_exists(self, entity) -> Result :
-        # Update existing result if new status priority is greater than or equal to existing.
+        # [MDP-63316] Check if same test from test scenario name and test id combination.
+        # Update existing test result in this case.
         existing_entity = _find_existing_entity(entity)
 
-        if existing_entity is not None:
-            if entity.status.priority < existing_entity.status.priority:
-                entity = None
-            else:
-                for attribute in ['run', 'status', 'result_key', 'result_url', 'exec_start', 'exec_end', 'driver']:
-                    setattr(existing_entity, attribute, getattr(entity, attribute))
-                entity = existing_entity
+        if existing_entity is None:
+            return entity
 
-        return entity
+        for attribute in ['run', 'status', 'result_key', 'result_url', 'exec_start', 'exec_end', 'driver']:
+            setattr(existing_entity, attribute, getattr(entity, attribute))
+
+        return existing_entity
 
     def __assign_and_save_group(self, entity):
         if entity is not None:

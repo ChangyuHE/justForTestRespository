@@ -8,13 +8,15 @@ from api.models import Validation
 from api.models import Os
 from api.models import Platform
 from api.models import Env
-from .db_fixture import DbFixture
+from api.models import Item
+from api.models import Status
+from api.models import Result
+from .db_fixture import DramatiqFixture
 
 
 log = logging.getLogger(__name__)
 
-
-class ImportFileIntegrationTest(DbFixture):
+class ImportFileIntegrationTest(DramatiqFixture):
     def test_no_file(self):
         client = Client()
         response = client.post(reverse('collate:import'), self.request)
@@ -168,7 +170,57 @@ class ImportFileIntegrationTest(DbFixture):
         validation = Validation.objects.first()
         self.assertEqual(validation.owner, self.auth_user)
 
-class ImportDatetimeParserTest(DbFixture):
+    def test_same_item(self):
+        def first_id(cls):
+            return cls.objects.values('id').first()['id']
+
+        validation_id = self.request['validation_id']
+        platform_id = first_id(Platform)
+        first_item_id = first_id(Item)
+        env_id = first_id(Env)
+        os_id = first_id(Os)
+        status_id_failed = first_id(Status)
+        status_id_passed = status_id_failed + 1
+
+        self.set_file('import_same_item.json')
+        common_params = dict(validation_id=validation_id, platform_id=platform_id, env_id=env_id, os_id=os_id)
+        Result.objects.bulk_create([Result(
+            **common_params,
+            item_id = first_item_id,
+            status_id = status_id_failed,
+        ), Result(
+            **common_params,
+            item_id = first_item_id + 1,
+            status_id = status_id_passed,
+        ), Result(
+            **common_params,
+            item_id = first_item_id + 2,
+            status_id = status_id_failed,
+        ), Result(
+            **common_params,
+            item_id = first_item_id + 3,
+            status_id = status_id_passed,
+        ), Result(
+            **common_params,
+            item_id = first_item_id + 4,
+            status_id = status_id_failed,
+        )])
+
+        client = Client()
+        response = client.post(reverse('collate:import'), self.request)
+
+        self.assertContains(response, 'ERR_ITEM_CHANGED', status_code=422)
+
+        self.request['force_item'] = 'True'
+        self.request['file'].seek(0)
+        response = client.post(reverse('collate:import'), self.request)
+
+        self.assertEqual(response.status_code, 200,
+                         f'Expected HTTP 200 Ok, actual {response.status_code} {response.data}')
+        self.assertImportSuccess(response.data)
+
+
+class ImportDatetimeParserTest(DramatiqFixture):
     def test_invalid_date(self):
         self.set_file('import_err_invalid_date.json')
         client = Client()

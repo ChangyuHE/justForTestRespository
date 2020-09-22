@@ -40,7 +40,7 @@ class Changes:
 
 @dramatiq.actor
 @transaction.atomic
-def do_import(job_id: int, validation_dict: Dict, force_run: bool, site_url: str):
+def do_import(job_id: int, validation_dict: Dict):
     to_emails = []
     validation_info = '<unknown>'
 
@@ -80,7 +80,7 @@ def do_import(job_id: int, validation_dict: Dict, force_run: bool, site_url: str
         # Process file content row by row and perform queries to get additional data
         for row in non_empty_row(rows):
             builder = RecordBuilder(context, row)
-            entity = builder.build(force_run)
+            entity = builder.build(job.force_run, job.force_item)
             changes.update_from_entity(entity)
 
         outcome.changes = dataclasses.asdict(changes)
@@ -115,7 +115,7 @@ Test items:
                            'added': changes.added,
                            'updated': changes.updated,
                            'skipped': changes.skipped,
-                           'site_url': site_url,
+                           'site_url': job.site_url,
                            'validation_id': context.get_validation_id()})
         text = template.render(ctx)
         topic = f'Reporter: import of validation {validation_info}'

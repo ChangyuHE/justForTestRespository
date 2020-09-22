@@ -1100,7 +1100,7 @@ class ReportIndicatorView(APIView):
             for milestone, scenario_id, feature, ids in FeatureMappingRule.objects.filter(mapping_id=mapping_id) \
                     .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids'):
 
-                data[milestone][feature] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0})
+                data[milestone][feature] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
 
                 if ids is not None:
                     ids = ids.split(',')

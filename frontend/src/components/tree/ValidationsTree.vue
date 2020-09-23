@@ -119,12 +119,12 @@
                 <!-- Slider -->
                 <v-col cols="12" class="d-flex px-6 py-0">
                     <v-range-slider hide-details
-                        v-model="sliderValue"
                         step="1" max="11"
                         ticks tick-size="8" :tick-labels="ticksLabels"
-                        class="mb-4" @change="updateSlider"
-                        color="teal" track-color="teal lighten-4"
+                        class="mb-4" color="teal" track-color="teal lighten-4"
                         :disabled="!enableDates"
+                        v-model="sliderValue"
+                        @change="this.sliderButtonValue = undefined"
                     ></v-range-slider>
                 </v-col>
             </v-row>
@@ -140,49 +140,51 @@
     </div>
 </template>
 <script>
-    import VJstree from 'vue-jstree';
-    import server from '@/server.js';
-    import { mapState } from 'vuex';
-    import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js';
+    import qs from 'query-string'
+    import VJstree from 'vue-jstree'
+    import server from '@/server.js'
+    import { mapState } from 'vuex'
+    import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
+    import { replaceState, pushState } from '@/utils/history-management.js'
 
     // Get text for branch from list of components
     function selectedValidationsText(branches) {
         return branches.map(function(branch) {
-                let texted = branch.reverse().map((node) => (node.model.text_flat));
-                return `${texted[5]} (${texted[1]}, ${texted[3]}, ${texted[4]})`;
+                let texted = branch.reverse().map((node) => (node.model.text_flat))
+                return `${texted[5]} (${texted[1]}, ${texted[3]}, ${texted[4]})`
             }
-        );
+        )
     }
 
     // get branch as list of nodes for clicked node
     function getBranchForLeaf(node) {
-        let branch = [node];
+        let branch = [node]
         if (node.$children.length == 0) {   // is leaf
             while (node.$parent.model !== undefined) {      // is root
-                node = node.$parent;
-                branch.push(node);
+                node = node.$parent
+                branch.push(node)
             }
         }
-        return branch;
+        return branch
     }
 
     function getAvailableNodes(tree) {
-        let nodes = [];
+        let nodes = []
         tree.handleRecursionNodeChilds(tree,
             node => {
                 if (typeof node.model !='undefined' && node.$children.length == 0)
                     nodes.push(node)
             }
         )
-        return nodes;
+        return nodes
     }
     // update tree data with selected validations data
     function setSelectedInData(searchObj, validations) {
         for (let prop in searchObj) {
             if (prop === 'id' && validations.includes(searchObj[prop])) {
-                searchObj['selected'] = true;
+                searchObj['selected'] = true
             } else if (typeof searchObj[prop] === 'object') {
-                setSelectedInData(searchObj[prop], validations);
+                setSelectedInData(searchObj[prop], validations)
             }
         }
     }
@@ -190,9 +192,9 @@
     function highlightSearchData(searchObj, toSearch) {
         for (let prop in searchObj) {
             if (prop === 'level' && searchObj['level'] == 5) {
-                searchObj['text'] = searchObj['text'].replace(new RegExp(toSearch, "gi"), (match) => `<span class="highlighted-text">${match}</span>`);
+                searchObj['text'] = searchObj['text'].replace(new RegExp(toSearch, "gi"), (match) => `<span class="highlighted-text">${match}</span>`)
             } else if(typeof searchObj[prop] === 'object') {
-                highlightSearchData(searchObj[prop], toSearch);
+                highlightSearchData(searchObj[prop], toSearch)
             }
         }
     }
@@ -227,7 +229,8 @@
                     {'months': 5, 'text': '6 m'},
                     {'months': 11, 'text': '1 y'},
                 ],
-                sliderButtonValue: null
+                sliderButtonValue: null,
+                initiallyLoaded: false,
             }
         },
         computed: {
@@ -242,7 +245,7 @@
         watch: {
             valToSearch() {
                 if (!this.valToSearch && this.badgeFilterCount > 0) {
-                    this.badgeFilterCount--;
+                    this.badgeFilterCount--
                     this.doFilter()
                 }
             },
@@ -251,24 +254,24 @@
             },
             enableDates() {
                 this.doFilter()
+            },
+            validations(value) {
+                if (!value.length)
+                    this.clear()
             }
         },
         methods: {
             // set range according to clicked group button
             sliderButtonClick() {
                 if (this.sliderButtonValue !== undefined) {
-                    let rangeL = this.sliderButtons[this.sliderButtonValue]['months'];
-                    let start = maxMonthsShown-1-rangeL;
-                    start = start > 0 ? start: 0;
-                    this.sliderValue = [start, maxMonthsShown-1];
+                    let rangeL = this.sliderButtons[this.sliderButtonValue]['months']
+                    let start = maxMonthsShown-1-rangeL
+                    start = start > 0 ? start: 0
+                    this.sliderValue = [start, maxMonthsShown-1]
                 }
             },
-            // flush button group value on slider manual update
-            updateSlider() {
-                this.sliderButtonValue = undefined;
-            },
             doSelection(selected, level) {
-                this.selectedData[level] = selected;
+                this.selectedData[level] = selected
                 if (!selected.length)
                     delete this.selectedData[level]
                 this.doFilter()
@@ -278,17 +281,17 @@
              * then update tree data, set checked status for validations in tree, highlight if needed
              */
             doFilter() {
-                let data = [];
-                this.badgeFilterCount = 0;
+                let data = []
+                this.badgeFilterCount = 0
                 if (this.valToSearch)
-                    this.badgeFilterCount++;
+                    this.badgeFilterCount++
 
-                this.treeFilterLoading = true;
+                this.treeFilterLoading = true
 
                 for (let [k, v] of Object.entries(this.selectedData)) {
                     data.push({'level': +k, 'text': v})
                     this.badgeFilterCount += v.length
-                };
+                }
                 if (this.valToSearch) {
                     data.push({'level': 5, 'text': this.valToSearch})
                 }
@@ -300,15 +303,15 @@
                 server
                     .get(url)
                     .then(response => {
-                        this.data = response.data;
+                        this.data = response.data
 
                         // set checked status for already selected validations in tree
                         if (this.validations.length)
-                            setSelectedInData(this.data, this.validations);
+                            setSelectedInData(this.data, this.validations)
 
                         // highlight matched part in validation names
                         if (this.valToSearch)
-                            highlightSearchData(this.data, this.valToSearch);
+                            highlightSearchData(this.data, this.valToSearch)
                     })
                     .catch(error => {
                         if (error.handleGlobally) {
@@ -323,59 +326,112 @@
              * On tree item click fill "validations" and "branches" store variables
              */
             itemClick(node) {
-                let branches = [];
-                let validations = [];
+                let branches = []
+                let validations = []
 
                 // if filter is active then select available nodes ..
                 if (this.badgeFilterCount > 0 || this.enableDates) {
                     if (node.model.selected == false) {
-                        let branches = [];
-                        let validations = [];
+                        let branches = []
+                        let validations = []
 
                         getAvailableNodes(this.$refs.tree).forEach(node => {
-                            branches.push(getBranchForLeaf(node));
-                            validations.push(node.model.id);
+                            branches.push(getBranchForLeaf(node))
+                            validations.push(node.model.id)
                         })
                         // .. and delete them from selection
-                        this.$store.dispatch('tree/removeFiltered', { validations, branches: selectedValidationsText(branches) });
+                        this.$store.dispatch('tree/removeFiltered', { validations, branches: selectedValidationsText(branches) })
                     }
                 }
                 // select all checked nodes
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                     node => {
                         if (typeof node.model !='undefined' && node.model.selected && node.$children.length == 0) {
-                            branches.push(getBranchForLeaf(node));
-                            validations.push(node.model.id);
+                            branches.push(getBranchForLeaf(node))
+                            validations.push(node.model.id)
                         }
                     }
                 )
 
                 // if filter is active add selected
                 if (this.badgeFilterCount > 0 || this.enableDates) {
-                    this.$store.dispatch('tree/addSelected', { validations, branches: selectedValidationsText(branches) });
+                    this.$store.dispatch('tree/addSelected', { validations, branches: selectedValidationsText(branches) })
                 // if not just set selected
                 } else {
-                    this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) });
+                    this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) })
+                }
+
+                // add selected validations to url query
+                pushState({selected: this.validations})
+            },
+            /**
+             * Uncheck all validations and clear url query
+             */
+            clear() {
+                if (this.$refs.tree !== undefined) {
+                    this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                        node => {
+                            if (typeof node.model != 'undefined' && node.model.selected)
+                                node.model.selected = false
+                        }
+                    )
+                    // delete all query params
+                    history.replaceState(null, null, this.$route.path)
                 }
             },
-            clearValidations() {
-                this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
-                    node => {
-                        if (typeof node.model!='undefined' && node.model.selected)
-                            node.model.selected = false;
-                    }
-                )
-                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] });
-            },
+            IDsToSelection() {
+                let branches = []
+                let validations = []
+                if (this.$refs.tree !== undefined) {
+                    this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                        node => {
+                            if (typeof node.model != 'undefined' && node.model.selected) {
+                                branches.push(getBranchForLeaf(node))
+                                validations.push(node.model.id)
+                            }
+                        }
+                    )
+                    this.$store
+                        .dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) })
+                }
+            }
         },
         beforeCreate() {
             // Initial tree data
-            let url = 'api/validations/';
-            this.$store.dispatch('tree/setTreeLoading', true);
+            let url = 'api/validations/'
+            this.$store.dispatch('tree/setTreeLoading', true)
             server
                 .get(url)
                 .then(response => {
-                    this.data = response.data;
+                    this.data = response.data
+
+                    // parse router query for selected validations or get from store ..
+                    if (this.$route.query.selected || this.validations.length) {
+                        let selectedIds = []
+                        if (this.validations.length) {      // went form other views (already have values in store)
+                            selectedIds = this.validations
+                        } else {                            // or following direct link
+                            selectedIds = this.$route.query.selected.split(',')
+                        }
+
+                        function getObject(array, key, value) {
+                            let obj
+                            array.some(function iter(child) {
+                                if (child[key] == value && child.klass == 'Validation') {
+                                    obj = child
+                                    return true
+                                }
+                                return Array.isArray(child.children) && child.children.some(iter)
+                            })
+                            return obj
+                        }
+                        // .. and update tree data with selected ids
+                        selectedIds.forEach(id => {
+                            let nodeData = getObject(this.data, 'id', id)
+                            nodeData.selected = true
+                        })
+                    }
+                    this.initiallyLoaded = true
                 })
                 .catch(error => {
                     if (error.handleGlobally) {
@@ -386,11 +442,11 @@
                 })
 
             // Variants of nodes values for filters
-            url = 'api/validations/structure';
+            url = 'api/validations/structure'
             server
                 .get(url)
                 .then(response => {
-                    this.treeStructure = response.data;
+                    this.treeStructure = response.data
                 })
                 .catch(error => {
                     if (error.handleGlobally) {
@@ -400,6 +456,9 @@
                     }
                 })
                 .finally(() => this.$store.dispatch('tree/setTreeLoading', false))
+        },
+        updated() {
+            this.initiallyLoaded && this.IDsToSelection()
         }
     }
 </script>

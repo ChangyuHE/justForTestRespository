@@ -8,6 +8,7 @@ export default {
         showReport: false,
         originalHeaders: [],
         originalItems: [],
+        reportType: undefined,
     },
     getters: {
     },

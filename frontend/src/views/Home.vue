@@ -64,7 +64,7 @@
 
                                 <!-- Comparison report -->
                                 <v-btn small class="outlined"
-                                    :disabled="!validations.length || (validations.length < 2)"
+                                    :disabled="!validations.length || validations.length < 2"
                                     :loading="reportTypeLoading('compare')"
                                     value="comparison"
                                 >
@@ -83,7 +83,7 @@
                         </v-toolbar>
 
                         <!-- Report card -->
-                        <component v-if="reportType" :is="reportName" :type="reportType" />
+                        <component v-if="reportIsReadyToBeRendered" :is="reportName" :type="reportType" />
 
                         <!-- Selected validations -->
                         <template v-if="!showReport && validations.length">
@@ -114,6 +114,8 @@
     import 'splitpanes/dist/splitpanes.css'
 
     import { mapState } from 'vuex'
+    import qs from 'query-string'
+    import { replaceState, pushState } from '@/utils/history-management.js'
 
     export default {
         components: {
@@ -126,10 +128,7 @@
         },
         data() {
             return {
-                showExpand: false,      // ">" button
-
-                reportType: null,
-
+                showExpand: false,      // ">" fab button on left pane collapsing
                 reportGrouping: 0,
                 reportGroups: ['feature', 'component'],
                 compareFiltering: 0,
@@ -139,17 +138,29 @@
             }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches']),
-            ...mapState('reports', ['showReport', 'reportLoading']),
+            ...mapState('tree', ['validations', 'branches', 'treeLoading']),
+            ...mapState('reports', ['showReport', 'reportLoading', 'reportType']),
             reportName() {
                 return `${this.reportType}-report`
+            },
+            reportType: {
+                get() {
+                    return this.$store.state.reports.reportType
+                },
+                set(value) {
+                    this.$store.commit('reports/SET_STATE', {reportType: value})
+                }
+            },
+            reportIsReadyToBeRendered() {
+                return this.reportType && !this.treeLoading && this.validations.length
             }
-
         },
         watch: {
-            validations() {
-                this.$store.commit('reports/SET_STATE', {'showReport': false})
-                this.reportType = undefined
+            validations(current, previous) {
+                if (previous.length != 0 && !this._.isEqual(current, previous)) {
+                    this.$store.commit('reports/SET_STATE', {'showReport': false})
+                    this.reportType = undefined
+                }
             }
         },
         methods: {
@@ -161,14 +172,18 @@
                 this.showExpand = false
             },
             clearSelected() {
-                // direct call method from referenced component
-                this.$refs['validations-tree'].clearValidations()
+                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] })
             },
             reportClick() {
                 if (this.reportType == undefined) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                 }
+                pushState({rtype: this.reportType})
             },
+        },
+        created() {
+            if (this.$route.query.rtype)
+                this.reportType = this.$route.query.rtype
         }
     }
 </script>

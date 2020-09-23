@@ -12,7 +12,7 @@ Vue.use(VueRouter)
 const routes = [
     {
         path: '/',
-        alias: '/Validations',
+        alias: '/validations',
         name: 'home',
         component: Home
     },

@@ -76,54 +76,73 @@
             <template v-slot:item="{ item }">
                 <tr>
                     <td v-for="(cellValue, index) in item" :key="index">
-                        <div v-if="STATUSES.includes(cellValue.status)">
+                        <span v-if="index=='f0'"><a class="local-link" @click="openExtraDataDialog(item)">{{ cellValue }}</a></span>
+                        <span v-else-if="typeof cellValue === 'object' && cellValue !== null">
                             <v-chip
+                                v-if="'status' in cellValue"
                                 :color="getStatusColor(cellValue.status)"
                                 text-color="white"
                                 class="same-width"
                                 label
                                 @click="openDetailsDialog(cellValue.ti_id)"
                             >{{ cellValue.status }}</v-chip>
-                            <v-hover v-if="cellValue.extra_data == 'yes'" v-slot:default="{ hover }">
-                                <v-icon class="ml-2" small :class="{ 'primary--text': hover }" @click="openExtraDataDialog(cellValue.ti_id)">mdi-information</v-icon>
-                            </v-hover>
-                        </div>
+                        </span>
                         <span v-else>{{ cellValue }}</span>
                     </td>
                 </tr>
             </template>
         </v-data-table>
 
-        <!-- Result item's extra data -->
-        <v-dialog v-model="extraDataDialog" max-width="800">
+        <v-dialog v-model="extraDataDialog" max-width="90%">
             <v-card>
-                <v-card-title class="headline">
-                    {{ this.extraData.validation }}
-                        <br>
-                    ({{ this.extraData.platform }}, {{ this.extraData.env }}, {{ this.extraData.os }})
-                </v-card-title>
+                <v-card-title>{{ extraData.item }}</v-card-title>
+                <v-card-subtitle class="text-subtitle-1 mt-2">Assets</v-card-subtitle>
                 <v-divider></v-divider>
-                <v-card-subtitle class="text-subtitle-1 mt-2">
-                    <v-chip :color="getStatusColor(this.extraData.status)" text-color="white" small label>{{ this.extraData.status }}</v-chip>&nbsp;&nbsp;&nbsp;{{ this.extraData.item }}
-                </v-card-subtitle>
                 <v-card-text>
-                    <v-simple-table>
+                     <v-simple-table dense>
                         <template v-slot:default>
-                        <thead>
-                            <tr>
-                                <th class="text-left">Parameter</th>
-                                <th class="text-left">Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(value, name) in extraData.extra" :key="name">
-                                <td>{{ name }}</td>
-                                <td>
-                                    <template v-if="isFileSizeParam(name, value)">{{ formatFileSize(value) }}</template>
-                                    <template v-else>{{ value }}</template>
-                                </td>
-                            </tr>
-                        </tbody>
+                            <colgroup>
+                                <col class="first-column">
+                                <col v-for="datum in extraData.extra" :style="{width: 90 / extraData.extra.length + '%'}" :key="datum.vinfo.validation">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Asset</th>
+                                    <th v-for="datum in extraData.extra" class="text-left" v-html="formatValidation(datum.vinfo)" :key="datum.vinfo.validation"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="asset in ['msdk', 'lucas', 'scenario', 'fullsim', 'os']" :key="asset">
+                                    <td>{{ asset }}</td>
+                                    <td v-for="datum in extraData.extra" class="text-left" :key="datum.vinfo.validation">
+                                        <span v-if="'assets' in datum">{{ datum.assets[asset] }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </template>
+                    </v-simple-table>
+                </v-card-text>
+                <v-card-subtitle class="text-subtitle-1">Additional parameters</v-card-subtitle>
+                <v-divider></v-divider>
+                <v-card-text>
+                    <v-simple-table dense>
+                        <template v-slot:default>
+                            <colgroup>
+                                <col class="first-column">
+                                <col v-for="datum in extraData.extra" :style="{width: 90 / extraData.extra.length + '%'}" :key="datum.vinfo.validation">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Parameter</th>
+                                    <th v-for="datum in extraData.extra" class="text-left" v-html="formatValidation(datum.vinfo)" :key="datum.vinfo.validation"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="param in allKeys" :key="param">
+                                    <td>{{ param }}</td>
+                                    <td v-for="datum in extraData.extra" class="text-left" v-text="formatAdditionalParameter(datum, param)" :key="datum.vinfo.validation"></td>
+                                </tr>
+                            </tbody>
                         </template>
                     </v-simple-table>
                 </v-card-text>
@@ -165,6 +184,7 @@
                 extraDataLoading: false,
                 extraDataDialog: false,
                 extraData: {},
+                allKeys: [],
 
                 // data-table related variables
                 filteredHeaders: [],
@@ -195,8 +215,7 @@
             },
             items() {
                 return this.showHideTestIdStatus ? this.originalItems : this.filteredItems
-            }
-
+            },
         },
         methods: {
             toggleTestId() {
@@ -217,8 +236,43 @@
                 fileSize = fileSize.toLocaleString()
                 return `${fileSize}\u202FB`
             },
-            openExtraDataDialog(itemId) {
-                const url = `api/report/extra-data/${itemId}`
+            formatAdditionalParameter(data, parameter) {
+                if ('additional_parameters' in data) {
+                    const value = data.additional_parameters[parameter]
+                    if (this.isFileSizeParam(parameter, value)) {
+                        return this.formatFileSize(value)
+                    } else {
+                        return value
+                    }
+                }
+                return ''
+            },
+            formatValidation(vinfo) {
+                return `${vinfo.validation}<br><small>(${vinfo.platform}, ${vinfo.env}, ${vinfo.os})</small>`
+            },
+            openExtraDataDialog(item) {
+                let testItemIds = []
+                let values = Object.values(item)
+                const error = "There no validation or test result ids for this test item"
+
+                for (let i = 3; i <= values.length; i++) {
+                    let key = `f${i}`
+                    let value = item[key]
+                    if (typeof value === 'object' && value !== null) {
+                        if ('tiId' in value) {
+                            testItemIds.push(value['tiId'])
+                        } else if ('valId' in value){
+                            testItemIds.push(`v${value.valId}`)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                            return
+                        }
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                        return
+                    }
+                }
+                const url = `api/report/extra-data/${testItemIds.join(',')}/`
                 this.extraDataLoading = true
 
                 server
@@ -226,6 +280,12 @@
                     .then(response => {
                         this.extraData = response.data
                         this.extraDataDialog = true
+                        this.allKeys = []
+                        this.extraData.extra.forEach(data => {
+                            if ('additional_parameters' in data) {
+                                this.allKeys = this._.union(this.allKeys, Object.keys(data['additional_parameters']))
+                            }
+                        })
                     })
                     .catch(error => {
                         if (error.handleGlobally) {
@@ -298,5 +358,14 @@
         width: 80px;
         display: inline-flex;
         justify-content: center;
+    }
+    .local-link {
+        color: #00f;
+        text-decoration: none;
+        border-bottom: 1px dashed;
+        border-color: rgba(0, 0, 255, 0.3);
+    }
+    .first-column {
+        width: 10%;
     }
 </style>

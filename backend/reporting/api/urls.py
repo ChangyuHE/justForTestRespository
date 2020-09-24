@@ -1,4 +1,4 @@
-from django.urls import path, include, re_path
+from django.urls import path, include, re_path, register_converter
 from django.conf import settings
 from django.contrib import admin
 from django.conf.urls.static import static
@@ -7,6 +7,10 @@ from rest_framework_swagger.views import get_swagger_view
 
 from api import views
 from api.view import feature_mapping
+
+from . import converters
+
+register_converter(converters.CommaSeparatedOptionalPathConverter, 'list')
 
 schema_view = get_swagger_view(title='Reporting API')
 
@@ -33,9 +37,7 @@ urlpatterns = [
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
     path('api/report/indicator/', views.ReportIndicatorView.as_view()),
 
-    # returns additional_parameters field for Result with given pk
-    # end extra info about this result
-    path('api/report/extra-data/<int:pk>', views.ExtraDataView.as_view(), name='api-extra-data'),
+    path('api/report/extra-data/<list:ti_ids>/', views.ExtraDataView.as_view(), name='api-extra-data'),
 
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester

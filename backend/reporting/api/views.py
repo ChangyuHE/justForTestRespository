@@ -15,7 +15,7 @@ from django.db import transaction
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
@@ -330,7 +330,14 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
 def create_json_for_datatables(
     statuses: pd.DataFrame,
     result_ids: pd.DataFrame,
-    extra_data: pd.DataFrame):
+    id_to_name: Dict[int, str]
+    ):
+    reverse_map = {v: k for k, v in id_to_name.items()}
+    items_dict = dict(
+        Result.objects
+              .filter(validation_id__in=id_to_name.keys())
+              .values_list('item_id', 'item__name')
+    )
 
     d = json.loads(statuses.to_json(orient='table'))
     headers = []
@@ -340,10 +347,9 @@ def create_json_for_datatables(
         headers.append({'text': text, 'value': value})
 
     result_ids = json.loads(result_ids.to_json(orient='table'))
-    extra_data = json.loads(extra_data.to_json(orient='table'))
 
     items = []
-    for statuses, results, extras in zip(d['data'], result_ids['data'], extra_data['data']):
+    for statuses, results in zip(d['data'], result_ids['data']):
         item = {}
         for header in headers:
             # value is something like f<N>
@@ -351,24 +357,22 @@ def create_json_for_datatables(
             key, value = header['value'], header['text']
             # handle pre-defined columns
             if value in ('Item name', 'Test ID', 'Group'):
-                item[key] = statuses[value]
+                if value == 'Item name':
+                    item[key] = items_dict[statuses[value]]
+                else:
+                    item[key] = statuses[value]
             else:
                 # validation columns
-                status = statuses[header['text']]
-                if status == '':
-                    item[key] = ''
-                else:
-                    result_id = results.get(header['text'])
-                    extra_data = extras.get(header['text'])
-
-                    status_dict = {'status': status}
+                status_dict = {'valId': reverse_map[value]}
+                status = statuses[value]
+                if status != '':
+                    status_dict['status'] = status
+                    result_id = results.get(value)
                     if result_id is not None:
                         if result_id != 0:
-                            status_dict['ti_id'] = result_id
-                        if extra_data == 'yes':
-                            status_dict['extra_data'] = 'yes'
-
-                    item[key] = status_dict
+                            status_dict['tiId'] = result_id
+                            del status_dict['valId']
+                item[key] = status_dict
 
         items.append(item)
 
@@ -756,28 +760,27 @@ def validation_id_to_name(validation_ids: List[int]) -> Dict[int, str]:
 
 def generate_dataframe(sql: Query, value: str) -> pd.DataFrame:
     df = pd.read_sql(sql.statement, sql.session.bind)
-    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df[value], aggfunc='max')
-    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
-    ct.index.names = ['Item name']
+    ct = pd.crosstab(index=df.item_id, columns=df.validation_id, values=df[value], aggfunc='max')
+    ct = pd.merge(ct, df, on='item_id', how='outer', right_index=True)
+    ct.index.names = ['Item ID']
 
     del ct[value]
     del ct['status_id']
     del ct['validation_id']
     ct = ct.drop_duplicates()
-    del ct['test_id']
-    del ct['item_id']
+    del ct['id']
 
     return ct
 
 
 def result_ids(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'), Result.sa.item_id,
-               Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'),
+               Result.sa.item_id, Item.sa.id, Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(Validation.sa) \
-        .group_by(Result.sa.id, Result.sa.item_id, Item.sa.name, Item.sa.test_id, Validation.sa.id)
+        .group_by(Result.sa.id, Result.sa.item_id, Item.sa.id, Validation.sa.id)
 
     ct = generate_dataframe(q, 'result_id')
     ct = ct.replace(np.nan, 0, regex=False)
@@ -790,48 +793,23 @@ def result_ids(validation_ids: List[int]) -> pd.DataFrame:
 
     return ct
 
-
-def validation_extra_data(validation_ids: List[int]) -> pd.DataFrame:
-    extra_data = case([
-        (Result.sa.additional_parameters == None, literal_column("'no'")),
-        (Result.sa.additional_parameters != None, literal_column("'yes'"))
-    ]).label('extra_data')
-
-    q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), extra_data, Result.sa.item_id,
-               Item.sa.name.label('item_name'), Item.sa.test_id, Validation.sa.id.label('validation_id')) \
-        .select_from(Result.sa) \
-        .filter(Result.sa.validation_id.in_(validation_ids)) \
-        .join(Item.sa).join(Validation.sa) \
-        .group_by(Item.sa.name, Item.sa.test_id, Validation.sa.id, extra_data, Result.sa.item_id)
-
-    ct = generate_dataframe(q, 'extra_data')
-    ct = ct.replace(np.nan, 'no', regex=False)
-
-    # renaming columns
-    id_to_name = validation_id_to_name(validation_ids)
-    ct = ct.rename(columns=id_to_name)
-    return ct
-
-
 def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.name.label('item_name'),
-               Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name.label('group_name'),
-               Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.test_id, Result.sa.item_id, Item.sa.id,
+               ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
         .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
-        .group_by(Item.sa.name, Item.sa.test_id, Result.sa.item_id, ResultGroupNew.sa.name, Validation.sa.id)
+        .group_by(ResultGroupNew.sa.name, Item.sa.test_id, Result.sa.item_id, Item.sa.id, Validation.sa.id)
 
     df = pd.read_sql(q.statement, q.session.bind)
-    ct = pd.crosstab(index=df.item_name, columns=df.validation_id, values=df.status_id, aggfunc='max')
-    ct = pd.merge(ct, df, on='item_name', how='outer', right_index=True)
+    ct = pd.crosstab(index=df.item_id, columns=df.validation_id, values=df.status_id, aggfunc='max')
+    ct = pd.merge(ct, df, on='item_id', how='outer', right_index=True)
     ct.index.names = ['Item name']  # rename group_name index name
     del ct['status_id']
     del ct['validation_id']
     ct = ct.drop_duplicates()
-    del ct['item_id']
+    del ct['id']
 
     # replace status_id with test_status values
     status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
@@ -870,26 +848,23 @@ class ReportCompareView(LoggingMixin, APIView):
 
         statuses = validation_statuses(validation_ids)
         result_ids_ = result_ids(validation_ids)
-        extra_data = validation_extra_data(validation_ids)
 
         if show_diff:
             # drop rows where all statuses are equal
             mask = statuses.apply(lambda row: len(row.loc[validation_ids].unique()) > 1, axis=1)
             statuses = statuses[mask]
             result_ids_ = result_ids_[mask]
-            extra_data = extra_data[mask]
         elif hide_passed:
             # drop rows with only passed statuses
             mask = statuses.apply(lambda row: (len(row.loc[validation_ids].unique()) > 1 or 'Passed' not in row.loc[validation_ids].unique()), axis=1)
             statuses = statuses[mask]
             result_ids_ = result_ids_[mask]
-            extra_data = extra_data[mask]
 
         id_to_name = validation_id_to_name(validation_ids)
         statuses.rename(columns=id_to_name, inplace=True)
         # If no excel report needed just finish here with json return
         if not do_excel:
-            return Response(create_json_for_datatables(statuses, result_ids_, extra_data))
+            return Response(create_json_for_datatables(statuses, result_ids_, id_to_name))
 
         # Excel part
         workbook = excel.do_comparison_report(data=statuses)
@@ -900,26 +875,55 @@ class ReportCompareView(LoggingMixin, APIView):
         return response
 
 
-class ExtraDataView(LoggingMixin, generics.GenericAPIView):
-    queryset = Result.objects.filter(additional_parameters__isnull=False)
+class ExtraDataView(LoggingMixin, APIView):
+    def get(self, request, ti_ids, *args, **kwargs):
+        extra_data = []
+        item_name = None
+        for res_id in ti_ids:
+            datum = {}
+            if res_id.startswith('v'):
+                val = get_object_or_404(Validation, pk=int(res_id[1:]))
+                datum['vinfo'] = {
+                    'validation': val.name,
+                    'platform': val.platform.short_name,
+                    'os':  val.os.name,
+                    'env':  val.env.name
+                }
+            else:
+                res = get_object_or_404(Result, pk=int(res_id))
+                item_name = res.item.name
+                val = res.validation
+                datum['vinfo'] = {
+                    'validation': val.name,
+                    'platform': val.platform.short_name,
+                    'os':  val.os.name,
+                    'env':  val.env.name
+                }
+                datum['status'] = res.status.test_status
+                additional_parameters = {
+                    'avg_psnr': '',
+                    'avg_ssim': '',
+                    'extreme_psnr': '',
+                    'extreme_ssim': '',
+                    'file_size': '',
+                    'error_features': ''
+                }
+                if res.additional_parameters:
+                    additional_parameters.update(res.additional_parameters)
+                datum['additional_parameters'] = additional_parameters
 
-    def get(self, request, *args, **kwargs):
-        result = self.get_object()
-        item = result.item.name
-        validation = result.validation.name
-        platform = result.platform.short_name
-        os = result.os.name
-        env = result.env.name
-        status = result.status.test_status
+                datum['assets'] = {
+                    'msdk': str(res.msdk_asset),
+                    'lucas': str(res.lucas_asset),
+                    'scenario': str(res.scenario_asset),
+                    'fullsim': str(res.fulsim_asset),
+                    'os': str(res.os_asset),
+                }
+            extra_data.append(datum)
 
         return Response({
-            'item': item,
-            'validation': validation,
-            'platform': platform,
-            'os': os,
-            'env': env,
-            'status': status,
-            'extra': result.additional_parameters
+            'item': item_name,
+            'extra': extra_data
         })
 
 

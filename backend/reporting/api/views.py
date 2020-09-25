@@ -28,8 +28,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from anytree import Node, AnyNode
-from anytree.search import find_by_attr
+import anytree.search
+from anytree import Node
 from anytree.exporter import JsonExporter
 
 from sqlalchemy import and_, case, literal_column
@@ -298,16 +298,6 @@ class ResultUpdateView(LoggingMixin, generics.DestroyAPIView, UpdateWOutputAPIVi
     serializer_output_class = ResultFullSerializer
 
 
-ICONS = [
-    'i-gen',
-    'i-platform',
-    (('windows', 'i-windows'), ('linux', 'i-linux')),
-    (('windows', 'i-windows'), ('linux', 'i-linux')),
-    'i-simulation',
-    'i-validation'
-]
-
-
 def convert_to_datatable_json(dataframe: pd.DataFrame):
     d = json.loads(dataframe.to_json(orient='table'))
 
@@ -379,6 +369,16 @@ def create_json_for_datatables(
     return {'headers': headers, 'items': items}
 
 
+ICONS = [
+    'i-gen',
+    'i-platform',
+    (('windows', 'i-windows'), ('linux', 'i-linux')),
+    (('windows', 'i-windows'), ('linux', 'i-linux')),
+    'i-simulation',
+    'i-validation'
+]
+
+
 class ValidationsView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         filters_data = request.GET.get('data', {})
@@ -448,21 +448,21 @@ class ValidationsView(LoggingMixin, APIView):
                     icon = icon_map
                 name = node_data['name']
 
-                # find node, if not create new one
-                node = find_by_attr(parent, name='text', value=name)
+                # find node by name and level, if not create new one
+                node = anytree.search.find(parent, lambda n: n.name == name and n.level == node_data['level'])
                 if not node:
-                    node = AnyNode(
-                        parent=parent, icon=icon, text=name, text_flat=name, selected=False, level=node_data['level'],
-                        opened=True,  # if node_data['level'] < 2 else False,
-                        id=node_data['obj'].id,
-                        klass=type(node_data['obj']).__name__
+                    node = Node(
+                        parent=parent, name=name, text=name, text_flat=name,
+                        selected=False, opened=True,
+                        level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
+                        icon=icon
                     )
                 parent = node
 
         exporter = JsonExporter()
         d = exporter.export(tree)
 
-        # cut off first level, frontend requirement
+        # cut off root level to have Generation as first one on frontend
         d = json.loads(d).get('children', [])
         return Response(d)
 

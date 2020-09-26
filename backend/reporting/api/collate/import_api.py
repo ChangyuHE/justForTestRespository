@@ -8,7 +8,7 @@ from api.collate.services import verify_file
 from api.collate.services import get_temp_name
 from api.serializers import create_serializer
 from api.models import ImportJob
-from api.collate.tasks import do_import
+from api.collate.tasks.task_import import do_import
 
 log = logging.getLogger(__name__)
 

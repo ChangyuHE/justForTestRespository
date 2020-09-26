@@ -1,0 +1,13 @@
+Import of validation <a href="{{ site_url }}validation/{{ validation_id }}">{{ validation_info }}</a> is done.<br>
+Test items:
+<ul>
+    {% if added %}
+        <li>added: {{ added }}</li>
+    {% endif %}
+    {% if updated %}
+        <li>updated: {{ updated }}</li>
+    {% endif %}
+    {% if skipped %}
+        <li>skipped: {{ skipped }}</li>
+    {% endif %}
+</ul>

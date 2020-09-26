@@ -141,6 +141,8 @@ DATABASES = {
 
 # Use sqlite in-memory database for testing
 if 'test' in sys.argv:
+    FIXTURE_DIRS = ['api/collate/tests/fixtures']
+
     DATABASES['default'] = {
         'ENGINE': 'django.db.backends.sqlite3',
         'TEST_CHARSET': 'UTF8',

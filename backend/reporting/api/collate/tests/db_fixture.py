@@ -5,11 +5,9 @@ from unittest.mock import patch
 
 from django_dramatiq.test import DramatiqTestCase
 from django.test import TransactionTestCase
-from django.contrib.auth.models import User
 
-from api.models import Component, Driver, Env, ImportJob, Item, Os, Platform, Plugin, Run, Status, TestScenario, \
-    Validation
-
+from api.models import ImportJob
+from api.models import JobStatus
 from api.collate.gta_field_parser import GTAFieldParser
 from api.utils.caches import queryset_cache
 
@@ -20,6 +18,8 @@ log = logging.getLogger(__name__)
 
 
 class DbFixture(TransactionTestCase):
+    fixtures = ['collate/db_fixture.json']
+
     def setUp(self):
         queryset_cache.clear()
 
@@ -28,44 +28,6 @@ class DbFixture(TransactionTestCase):
             validation_name='Test model',
             notes='Notes',
         )
-
-        env = Env.objects.create(name='Silicon')
-        platform = Platform.objects.create(name='DG1')
-        os = Os.objects.create(name='Windows 19H1 x64', aliases='Windows')
-        Os.objects.create(name='Linux')
-        Run.objects.create(name='Test run', session='Test session')
-        self.auth_user = User.objects.create_user(username='debug', password='12345')
-
-        Validation.objects.create(pk=42, name='Test model', env=env, platform=platform, os=os, owner=self.auth_user)
-
-        Driver.objects.create(name='gfx-driver-ci-master-3172')
-        Component.objects.create(name='Media-Encode')
-
-        plugin = Plugin.objects.create(name='test_media_lucas')
-        scenario = TestScenario.objects.create(name='KBL_VDEnc_TEDDI_ISPFormats_CQP.csv')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_135',
-                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 135',
-                            plugin=plugin, scenario=scenario, test_id='135')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_123',
-                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 123',
-                            plugin=plugin, scenario=scenario, test_id='123')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI ISPFormats CQP_112',
-                            args='test_media_lucas -s KBL_VDEnc_TEDDI_ISPFormats_CQP.csv -t 112',
-                            plugin=plugin, scenario=scenario, test_id='112')
-        scenario = TestScenario.objects.create(name='KBL_AVC_VDEnc_TEDDI_MultiRef_CQP_Unified.csv')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef CQP -KBL_115',
-                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_MultiRef_CQP_Unified.csv -t 115',
-                            plugin=plugin, scenario=scenario, test_id='115')
-        scenario = TestScenario.objects.create(name='KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_105',
-                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv -t 105',
-                            plugin=plugin, scenario=scenario, test_id='105')
-        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_142',
-                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_foobar.csv -t 142',
-                            plugin=plugin, scenario=scenario, test_id='105')
-
-        Status.objects.create(test_status='Failed', priority=100)
-        Status.objects.create(test_status='Passed', priority=100)
 
         gta_patcher = patch.object(GTAFieldParser, 'fetch_from')
         gta_patcher.start()
@@ -92,6 +54,8 @@ class DbFixture(TransactionTestCase):
 
 
 class DramatiqFixture(DramatiqTestCase, DbFixture):
+    job_model = ImportJob
+
     def setUp(self):
         DramatiqTestCase.setUp(self)
         DbFixture.setUp(self)
@@ -111,5 +75,5 @@ class DramatiqFixture(DramatiqTestCase, DbFixture):
         job_id = response_data.get('job_id', None)
         self.assertIsNotNone(job_id)
 
-        job = ImportJob.objects.get(pk=job_id)
-        self.assertEqual(job.status, ImportJob.Status.DONE)
+        job = self.job_model.objects.get(pk=job_id)
+        self.assertEqual(job.status, JobStatus.DONE)

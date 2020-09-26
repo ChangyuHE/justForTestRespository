@@ -6,4 +6,5 @@ urlpatterns = [
     path('', views.ImportFileView.as_view(), name='import'),
     path('create/', views.CreateEntitiesView.as_view(), name='create'),
     path('form/', views.index, name='index'),
+    path('merge/', views.MergeValidationsView.as_view(), name='merge'),
 ]

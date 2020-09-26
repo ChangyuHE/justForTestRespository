@@ -2,11 +2,14 @@ import logging
 
 from django.shortcuts import render
 
-from .business_entities import RequestDTO
+from .business_entities import ImportRequestDTO
+from .business_entities import MergeRequestDTO
 from .forms import SelectFileForm
 from .import_api import EntityException
 from .import_api import import_results
 from .import_api import create_entities
+from .merge_api import merge_validations
+from .merge_api import MergeException
 
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
@@ -17,6 +20,10 @@ from rest_framework import status
 from api.views import LoggingMixin
 
 log = logging.getLogger(__name__)
+
+
+def _get_status_code(outcome):
+        return status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 def index(request):
@@ -31,12 +38,12 @@ class ImportFileView(LoggingMixin, APIView):
         log.debug('Processing POST request in ImportFileView')
         self.__validate_request(request)
 
-        request_dto = RequestDTO.build(request)
+        request_dto = ImportRequestDTO.build(request)
         outcome = import_results(request_dto)
         log.debug('Request was processed without exceptions.')
 
         data = outcome.build()
-        code = self.__get_status_code(outcome)
+        code = _get_status_code(outcome)
         log.debug(f"Returning '{code}' status code.")
 
         return Response(data=data, status=code)
@@ -46,9 +53,6 @@ class ImportFileView(LoggingMixin, APIView):
 
         if 'file' not in request.data:
             raise ParseError("'file' parameter is missing in form data.")
-
-    def __get_status_code(self, outcome):
-        return status.HTTP_200_OK if outcome.is_success() else status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 class CreateEntitiesView(LoggingMixin, APIView):
@@ -65,3 +69,14 @@ class CreateEntitiesView(LoggingMixin, APIView):
             raise ParseError(e)
 
         return Response(status=status.HTTP_201_CREATED)
+
+
+class MergeValidationsView(LoggingMixin, APIView):
+    def post(self, request):
+        log.debug(f'request data: {request.data}')
+
+        dto = MergeRequestDTO.build(request)
+        outcome = merge_validations(dto)
+        code = _get_status_code(outcome)
+
+        return Response(data=outcome.build(), status=code)

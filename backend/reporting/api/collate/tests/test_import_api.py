@@ -3,14 +3,13 @@ import logging
 from io import BytesIO
 from django.urls import reverse
 from django.test import Client
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
 
 from api.models import Validation
 from api.models import Os
 from api.models import Platform
 from api.models import Env
-from api.models import Item
-from api.models import Status
-from api.models import Result
 from .db_fixture import DramatiqFixture
 
 
@@ -160,6 +159,8 @@ class ImportFileIntegrationTest(DramatiqFixture):
         for entity in Validation.objects.all():
             entity.delete()
 
+        auth_user = get_user_model().objects.get(username='debug')
+
         client = Client()
         response = client.post(reverse('collate:import'), self.request)
 
@@ -168,63 +169,11 @@ class ImportFileIntegrationTest(DramatiqFixture):
         self.assertImportSuccess(response.data)
 
         validation = Validation.objects.first()
-        self.assertEqual(validation.owner, self.auth_user)
+        self.assertEqual(validation.owner, auth_user)
 
     def test_same_item(self):
-        def first_id(cls):
-            return cls.objects.values('id').first()['id']
-
-        validation_id = self.request['validation_id']
-        platform_id = first_id(Platform)
-        first_item_id = first_id(Item)
-        env_id = first_id(Env)
-        os_id = first_id(Os)
-        status_id_failed = first_id(Status)
-        status_id_passed = status_id_failed + 1
-
+        call_command('loaddata', 'collate/test_same_item.json', verbosity=0)
         self.set_file('import_same_item.json')
-        common_params = dict(validation_id=validation_id, platform_id=platform_id, env_id=env_id, os_id=os_id, component_id=1)
-        Result.objects.bulk_create([Result(
-            **common_params,
-            item_id = first_item_id,
-            status_id = status_id_failed,
-            result_key = 'gtax_GTAX_RIL_FM_57128_tests_10',
-            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57128#task_tests_10',
-            result_reason = 'Not found.',
-        ), Result(
-            **common_params,
-            item_id = first_item_id + 1,
-            status_id = status_id_passed,
-            result_key = 'gtax_GTAX_RIL_FM_57128_tests_8',
-            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57128#task_tests_8',
-            result_reason = 'Not found.',
-        ), Result(
-            **common_params,
-            item_id = first_item_id + 2,
-            status_id = status_id_failed,
-            result_key = 'gtax_GTAX_RIL_FM_57113_tests_9',
-            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57113#task_tests_9',
-            result_reason = 'Not found.',
-        ), Result(
-            **common_params,
-            item_id = first_item_id + 3,
-            status_id = status_id_passed,
-            result_key = 'gtax_GTAX_RIL_FM_57109_tests_0',
-            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57109#task_tests_0',
-            result_reason = 'Not found.',
-        ), Result(
-            **common_params,
-            item_id = first_item_id + 4,
-            status_id = status_id_failed,
-            result_key = 'gtax_GTAX_RIL_FM_57115_tests_4',
-            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57115#task_tests_4',
-        ), Result(
-            **common_params,
-            item_id = first_item_id + 5,
-            status_id = status_id_passed,
-            result_key = '',
-            result_url = '',
-        )])
 
         client = Client()
         response = client.post(reverse('collate:import'), self.request)

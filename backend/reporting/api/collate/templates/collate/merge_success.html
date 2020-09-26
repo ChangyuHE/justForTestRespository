@@ -1,0 +1,10 @@
+Validations merge job {{ job_id }} is done.<br>
+New validation is created:
+<a href="{{ site_url }}validation/{{ validation_id }}">{{ validation_name }}</a><br>
+
+Merged validations:<br>
+<ul>
+{% for id, name in merged_validations %}
+    <li><a href="{{ site_url }}validation/{{ id }}">{{ name }}</a></li>
+{% endfor %}
+</ul>

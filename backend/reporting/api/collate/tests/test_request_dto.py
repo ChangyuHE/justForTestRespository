@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from django.test import TestCase
 from django.utils import timezone
 
-from api.collate.business_entities import RequestDTO
+from api.collate.business_entities import ImportRequestDTO as RequestDTO
 
 class RequestDtoTest(TestCase):
     def setUp(self):

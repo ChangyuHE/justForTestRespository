@@ -28,17 +28,17 @@
                                                 "text": "Validation 2020ww04",
                                                 "123123123": true,
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             },
                                             {
                                                 "text": "Validation 2020ww05",
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             },
                                             {
                                                 "text": "Validation 2020ww06",
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             }
                                         ]
                                     }
@@ -65,17 +65,17 @@
                                                 "text": "Validation 2019ww48",
                                                 "123123123": true,
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             },
                                             {
                                                 "text": "Validation  2019ww49",
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             },
                                             {
                                                 "text": "Validation  2019ww50",
                                                 "opened": true,
-                                                "icon": "i-validation icon-custom",
+                                                "icon": "i-validation icon-custom"
                                             }
                                         ]
                                     }
@@ -89,6 +89,6 @@
     },
     {
         "text": "Gen13",
-        "disabled": true,
+        "disabled": true
     }
 ]

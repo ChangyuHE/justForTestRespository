@@ -1,16 +1,17 @@
 import dataclasses
 import logging
+
 from pathlib import Path
 from typing import Dict
-import dramatiq
-from django.template import Template
-from django.template import Context as django_context
+from dramatiq import actor
 
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db import transaction
+from django.template.loader import get_template
 
 from api.models import ImportJob
+from api.models import JobStatus
 from api.collate.business_entities import Context
 from api.collate.business_entities import ValidationDTO
 from api.collate.excel_utils import open_excel_file
@@ -38,7 +39,7 @@ class Changes:
             self.updated += 1
 
 
-@dramatiq.actor
+@actor
 @transaction.atomic
 def do_import(job_id: int, validation_dict: Dict):
     to_emails = []
@@ -94,32 +95,18 @@ def do_import(job_id: int, validation_dict: Dict):
         to_emails += get_user_model().staff_emails()
         text = f'Import of validation <b>{validation_info}</b> failed.'
         topic = f'Reporter: import of validation {validation_info} failed'
-        job.status = ImportJob.Status.FAILED
+        job.status = JobStatus.FAILED
     else:
-        template = Template("""
-Import of validation <a href="{{ site_url }}validation/{{ validation_id }}">{{ validation_info }}</a> is done.<br>
-Test items:
-<ul>
-    {% if added %}
-        <li>added: {{ added }}</li>
-    {% endif %}
-    {% if updated %}
-        <li>updated: {{ updated }}</li>
-    {% endif %}
-    {% if skipped %}
-        <li>skipped: {{ skipped }}</li>
-    {% endif %}
-</ul>
-""")
-        ctx = django_context({'validation_info': validation_info,
+        template = get_template('collate/import_message.html')
+        ctx = {'validation_info': validation_info,
                            'added': changes.added,
                            'updated': changes.updated,
                            'skipped': changes.skipped,
                            'site_url': job.site_url,
-                           'validation_id': context.get_validation_id()})
+                           'validation_id': context.get_validation_id()}
         text = template.render(ctx)
         topic = f'Reporter: import of validation {validation_info}'
-        job.status = ImportJob.Status.DONE
+        job.status = JobStatus.DONE
     finally:
         if production:
             log.info("Sending an e-mail...")

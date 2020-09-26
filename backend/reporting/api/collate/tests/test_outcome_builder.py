@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from django.test import TestCase
 
-from api.collate.business_entities import OutcomeBuilder
+from api.collate.business_entities import ImportOutcomeBuilder as OutcomeBuilder
 
 
 class OutcomeBuilderTest(TestCase):

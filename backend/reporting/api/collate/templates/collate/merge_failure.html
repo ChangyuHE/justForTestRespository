@@ -1,0 +1,8 @@
+Validations merge job {{ job_id }} is failed.<br>
+Failed to create new validation with name "{{ validation_name }}" as merge of following validations:<br>
+
+<ul>
+{% for id, name in merged_validations %}
+    <li><a href="{{ site_url }}validation/{{ id }}">{{ name }}</a></li>
+{% endfor %}
+</ul>

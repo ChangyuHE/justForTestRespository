@@ -1,0 +1,460 @@
+[
+{
+    "model": "api.resultgroupnew",
+    "pk": 3,
+    "fields": {
+        "name": "AVC VME Basic CQP",
+        "alt_name": "AVC VME",
+        "category": "PreSi"
+    }
+},
+{
+    "model": "api.item",
+    "pk": 12,
+    "fields": {
+        "name": "035.AVC.ENC.CQP.PRG.1920x1080",
+        "args": "test_media_lucas -s PreSi_AVC.csv -t 035.AVC.ENC.CQP.PRG.1920x1080",
+        "group": 3,
+        "plugin": null,
+        "scenario": null,
+        "test_id": null
+    }
+},
+{
+    "model": "api.driver",
+    "pk": 53,
+    "fields": {
+        "name": "gfx-driver-ci-master-2590",
+        "build_id": null
+    }
+},
+{
+    "model": "api.driver",
+    "pk": 54,
+    "fields": {
+        "name": "gfx-driver-ci-master-2644",
+        "build_id": null
+    }
+},
+{
+    "model": "api.driver",
+    "pk": 57,
+    "fields": {
+        "name": "gfx-driver-user-comp_media-25232",
+        "build_id": null
+    }
+},
+{
+    "model": "api.driver",
+    "pk": 93,
+    "fields": {
+        "name": "gfx-driver-ci-master-3225",
+        "build_id": null
+    }
+},
+{
+    "model": "api.component",
+    "pk": 3,
+    "fields": {
+        "name": "Media SDK"
+    }
+},
+{
+    "model": "api.env",
+    "pk": 2,
+    "fields": {
+        "name": "Simulation",
+        "short_name": "Sim"
+    }
+},
+{
+    "model": "api.generation",
+    "pk": 4,
+    "fields": {
+        "name": "Gen12",
+        "parent": null,
+        "weight": 200
+    }
+},
+{
+    "model": "api.generation",
+    "pk": 5,
+    "fields": {
+        "name": "Gen12.5",
+        "parent": 4,
+        "weight": 250
+    }
+},
+{
+    "model": "api.platform",
+    "pk": 1,
+    "fields": {
+        "name": "Arctic_Sound",
+        "generation": 5,
+        "aliases": "Arctic Sound;ArcticSound;",
+        "short_name": "ATS",
+        "weight": 200,
+        "planning": true
+    }
+},
+{
+    "model": "api.os",
+    "pk": 2,
+    "fields": {
+        "name": "Linux",
+        "group": 23,
+        "aliases": null,
+        "planning": true,
+        "weight": null,
+        "shortcut": null
+    }
+},
+{
+    "model": "api.os",
+    "pk": 8,
+    "fields": {
+        "name": "Ubuntu 16.04",
+        "group": 2,
+        "aliases": "linux.ubuntu_16_04.x64;Linux Ubuntu 16.04 x64;",
+        "planning": false,
+        "weight": 1604,
+        "shortcut": "16.04"
+    }
+},
+{
+    "model": "api.os",
+    "pk": 9,
+    "fields": {
+        "name": "Ubuntu 18.04",
+        "group": 2,
+        "aliases": "linux.ubuntu_18_04.x64;Linux Ubuntu 18.04 x64;",
+        "planning": false,
+        "weight": 1804,
+        "shortcut": "18.04"
+    }
+},
+{
+    "model": "api.os",
+    "pk": 23,
+    "fields": {
+        "name": "Agnostic",
+        "group": null,
+        "aliases": "none;",
+        "planning": false,
+        "weight": null,
+        "shortcut": null
+    }
+},
+{
+    "model": "api.status",
+    "pk": 1,
+    "fields": {
+        "test_status": "Blocked",
+        "priority": 0
+    }
+},
+{
+    "model": "api.status",
+    "pk": 2,
+    "fields": {
+        "test_status": "Failed",
+        "priority": 30
+    }
+},
+{
+    "model": "api.status",
+    "pk": 3,
+    "fields": {
+        "test_status": "Passed",
+        "priority": 50
+    }
+},
+{
+    "model": "api.status",
+    "pk": 4,
+    "fields": {
+        "test_status": "Error",
+        "priority": 20
+    }
+},
+{
+    "model": "api.status",
+    "pk": 5,
+    "fields": {
+        "test_status": "Skipped",
+        "priority": 10
+    }
+},
+{
+    "model": "api.status",
+    "pk": 6,
+    "fields": {
+        "test_status": "Canceled",
+        "priority": 5
+    }
+},
+{
+    "model": "api.run",
+    "pk": 53,
+    "fields": {
+        "name": "2412419",
+        "session": "2477684",
+        "validation_cycle": null
+    }
+},
+{
+    "model": "api.run",
+    "pk": 61,
+    "fields": {
+        "name": "2418176",
+        "session": "2483921",
+        "validation_cycle": null
+    }
+},
+{
+    "model": "api.run",
+    "pk": 68,
+    "fields": {
+        "name": "2445107",
+        "session": "2514354",
+        "validation_cycle": null
+    }
+},
+{
+    "model": "api.run",
+    "pk": 226,
+    "fields": {
+        "name": "2479537",
+        "session": "2553939",
+        "validation_cycle": null
+    }
+},
+{
+    "model": "api.result",
+    "pk": 4590,
+    "fields": {
+        "validation": 27,
+        "driver": 53,
+        "item": 12,
+        "component": 3,
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "status": 2,
+        "run": 53,
+        "scenario_asset": null,
+        "msdk_asset": null,
+        "os_asset": null,
+        "lucas_asset": null,
+        "fulsim_asset": null,
+        "simics": null,
+        "additional_parameters": null,
+        "exec_start": "2019-07-13T00:00:00Z",
+        "exec_end": "2019-07-13T00:00:00Z",
+        "result_key": "gtax_GTAX_GCMXD_FM_22288937_tests_0",
+        "result_url": "http://gtax-gcmxd-fm.intel.com/#/jobs/22288937#task_tests_0",
+        "is_best": false,
+        "is_first": false,
+        "is_last": false,
+        "is_worst": false,
+        "result_reason": "Reason is unavailable: HTTP Code 404"
+    }
+},
+{
+    "model": "api.result",
+    "pk": 4969,
+    "fields": {
+        "validation": 30,
+        "driver": 54,
+        "item": 12,
+        "component": 3,
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "status": 3,
+        "run": 61,
+        "scenario_asset": null,
+        "msdk_asset": null,
+        "os_asset": null,
+        "lucas_asset": null,
+        "fulsim_asset": null,
+        "simics": null,
+        "additional_parameters": null,
+        "exec_start": "2019-07-19T00:00:00Z",
+        "exec_end": "2019-07-20T00:00:00Z",
+        "result_key": "gtax_GTAX_GCMXD_FM_22540798_tests_0",
+        "result_url": "http://gtax-gcmxd-fm.intel.com/#/jobs/22540798#task_tests_0",
+        "is_best": false,
+        "is_first": false,
+        "is_last": false,
+        "is_worst": false,
+        "result_reason": null
+    }
+},
+{
+    "model": "api.result",
+    "pk": 9235,
+    "fields": {
+        "validation": 34,
+        "driver": 57,
+        "item": 12,
+        "component": 3,
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "status": 4,
+        "run": 68,
+        "scenario_asset": null,
+        "msdk_asset": null,
+        "os_asset": null,
+        "lucas_asset": null,
+        "fulsim_asset": null,
+        "simics": null,
+        "additional_parameters": null,
+        "exec_start": "2019-08-27T00:00:00Z",
+        "exec_end": "2019-08-27T00:00:00Z",
+        "result_key": "gtax_GTAX_GCMXD_FM_23744461_tests_1",
+        "result_url": "http://gtax-gcmxd-fm.intel.com/#/jobs/23744461#task_tests_1",
+        "is_best": false,
+        "is_first": false,
+        "is_last": false,
+        "is_worst": false,
+        "result_reason": "<section id=\"errors\">\n  <h1>Errors</h1>\n        <h2>GTAX errors</h2>\n  <table>\n    <thead>\n      <tr><th>Timestamp</th><th>Source</th><th>Message</th></tr>\n    </thead>\n    <tbody>\n            <tr><td>2019-08-27 18:11:31 +0000</td><td>runner.result_mixin</td><td>gtax/runner/job_task_runner.py:886: Task exceeded timeout of &#34;9600s&#34; during execute sub-task. Timeout during function &#39;proc = runner.rexecute(lucas_cmd.get(&#39;Lucas&#39;, &#39;lucas cmd not found&#39;), cwd=dir_lucas)&#39; in plugin test_media_lucas.py line 1084</td></tr>\n            </tbody>\n  </table>\n      \n"
+    }
+},
+{
+    "model": "api.result",
+    "pk": 35285,
+    "fields": {
+        "validation": 136,
+        "driver": 93,
+        "item": 12,
+        "component": 3,
+        "env": 2,
+        "platform": 1,
+        "os": 9,
+        "status": 3,
+        "run": 226,
+        "scenario_asset": null,
+        "msdk_asset": null,
+        "os_asset": null,
+        "lucas_asset": null,
+        "fulsim_asset": null,
+        "simics": null,
+        "additional_parameters": null,
+        "exec_start": "2019-10-11T00:00:00Z",
+        "exec_end": "2019-10-12T00:00:00Z",
+        "result_key": "gtax_GTAX_GCMXD_FM_25225911_tests_0",
+        "result_url": "http://gtax-gcmxd-fm.intel.com/#/jobs/25225911#task_tests_0",
+        "is_best": false,
+        "is_first": false,
+        "is_last": false,
+        "is_worst": false,
+        "result_reason": null
+    }
+},
+{
+    "model": "auth.user",
+    "pk": 4,
+    "fields": {
+        "password": "pbkdf2_sha256$180000$x3YkRp7CVAQ8$kGIdR7LGH5s36FvHMrSIMiBQLMmXJ9dELrvQ7uYP+i4=",
+        "last_login": "2020-09-04T13:27:42.710Z",
+        "is_superuser": true,
+        "username": "admin",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2020-09-04T13:27:42.710Z",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "auth.user",
+    "pk": 5,
+    "fields": {
+        "password": "pbkdf2_sha256$180000$aWb8miLjGm0Q$6nvF2wfjc4TFvBoyNypeMJn0qbiXDmNLEBqIjSGaueI=",
+        "last_login": "2020-09-04T13:27:42.710Z",
+        "is_superuser": false,
+        "username": "debug",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2020-09-04T13:29:43.155Z",
+        "groups": [],
+        "user_permissions": []
+    }
+},
+{
+    "model": "api.validation",
+    "pk": 27,
+    "fields": {
+        "name": "Validation 2019ww29",
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "notes": null,
+        "source_file": "\\\\nnlmdpfls02\\lab_msdk\\_AVCLegacyEncode\\ATS\\2019WW29_ATS_VME_Status-LIN-Sim.xlsx",
+        "date": "2019-07-17T00:00:00Z",
+        "ignore": false,
+        "hash_last": "422b6d97fc9d83221b6ae48653b5757ca6e7755c",
+        "owner": 4,
+        "subsystem": null
+    }
+},
+{
+    "model": "api.validation",
+    "pk": 30,
+    "fields": {
+        "name": "Validation 2019ww30",
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "notes": null,
+        "source_file": "\\\\nnlmdpfls02\\lab_msdk\\_AVCLegacyEncode\\ATS\\2019WW30_ATS_VME_Status-LIN-Sim.xlsx",
+        "date": "2019-07-21T00:00:00Z",
+        "ignore": false,
+        "hash_last": "e9cdb98a7b64eb8030ad0d8abf5cbfa786abfc29",
+        "owner": 4,
+        "subsystem": null
+    }
+},
+{
+    "model": "api.validation",
+    "pk": 34,
+    "fields": {
+        "name": "Validation 2019ww35",
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "notes": null,
+        "source_file": "\\\\nnlmdpfls02\\lab_msdk\\_AVCLegacyEncode\\ATS\\2019WW35_ATS_VME_Status-LIN-Sim_user-comp_media-25232.xlsx",
+        "date": "2019-08-28T00:00:00Z",
+        "ignore": false,
+        "hash_last": "596ebf1e6cbd4bba86bda1c0edf7de4b48c40af5",
+        "owner": 4,
+        "subsystem": null
+    }
+},
+{
+    "model": "api.validation",
+    "pk": 136,
+    "fields": {
+        "name": "Validation 2019ww42",
+        "env": 2,
+        "platform": 1,
+        "os": 8,
+        "notes": null,
+        "source_file": "\\\\nnlmdpfls02\\lab_msdk\\_AVCLegacyEncode\\ATS\\2019WW42_ATS_VME_Status-LIN-Sim_ci-master-3225.xlsx",
+        "date": "2019-10-11T00:00:00Z",
+        "ignore": false,
+        "hash_last": "4bf4c7a2b9d5444947c63bdd60ecc5f6d70cf45f",
+        "owner": 4,
+        "subsystem": null
+    }
+}
+]

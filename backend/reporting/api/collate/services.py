@@ -266,12 +266,24 @@ class RecordBuilder:
         self.__set_model_fields(entity)
         existing_entity = _find_existing_entity(entity)
 
-        if not (existing_entity is None or force_item):
+        if not (existing_entity is None
+                or force_item
+                or self.__is_same_entity(entity, existing_entity)):
             self.__outcome.add_item_changed_error(
                 existing_entity.item,
                 existing_entity.status.test_status,
                 entity.status.test_status,
             )
+
+    def __is_same_entity(self, transient_entity, existing_entity):
+        for key in existing_entity.__dict__.keys():
+            if key.startswith('_') or key == 'id':
+                continue
+
+            if getattr(transient_entity, key) != getattr(existing_entity, key):
+                return False
+
+        return True
 
     def build(self, force_run=False, force_item=False):
         if not self.verify(force_run, force_item):

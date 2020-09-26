@@ -383,15 +383,17 @@ def xlsx() -> str:
     return str(root / 'xlsx')
 
 
+class JobStatus(models.TextChoices):
+    PENDING = 'pending'
+    FAILED = 'failed'
+    DONE = 'done'
+
+
 class ImportJob(models.Model):
-    class Status(models.TextChoices):
-        PENDING = 'pending'
-        FAILED = 'failed'
-        DONE = 'done'
     status = models.CharField(
         max_length=7,
-        choices=Status.choices,
-        default=Status.PENDING
+        choices=JobStatus.choices,
+        default=JobStatus.PENDING
     )
 
     created_at = models.DateTimeField(
@@ -402,6 +404,24 @@ class ImportJob(models.Model):
     force_run = models.BooleanField(default=False)
     force_item = models.BooleanField(default=False)
     site_url = models.CharField(max_length=255)
+
+
+class MergeJob(models.Model):
+    status = models.CharField(
+        max_length=7,
+        choices=JobStatus.choices,
+        default=JobStatus.PENDING
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
+    validation_name = models.CharField(max_length=255)
+    notes = models.TextField(null=True, blank=True)
+    site_url = models.CharField(max_length=255)
+    strategy = models.CharField(max_length=255)
 
 
 class Issues(models.Model):

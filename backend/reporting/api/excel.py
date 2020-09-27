@@ -1,3 +1,5 @@
+import re
+
 from utils import intel_calendar
 
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -116,7 +118,6 @@ def do_comparison_report(data=None):
             if r_id == table_row_start:
                 ws.cell(row=c_row, column=c_id).alignment = Alignment(wrap_text=True)
 
-
             font = Font()
             # coloring statuses
             if value in statuses:
@@ -159,3 +160,111 @@ def do_comparison_report(data=None):
     ws.delete_rows(table_row_start + 1, 1)
 
     return wb
+
+
+def do_indicator_report(data, validation, mappings, mode):
+    statuses = ['passed', 'failed', 'blocked', 'executed']
+    medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
+    wb = Workbook()
+
+    def report_sheet(data, validation, mappings, mode):
+        # create or select current sheet, rename it
+        if mode == 'combined':
+            ws = wb.active
+            ws.title = 'Combined'
+        else:
+            ws = wb.create_sheet(compose_sheet_name(mappings[0].codec))
+
+        # Caption
+        year, work_week, weekday = intel_calendar.ww_date()
+        rdate = f'Indicator report: {year} ww{work_week}.{weekday}'
+        ws['A2'] = rdate
+        ws['A2'].font = Font(bold=True, size=12)
+        ws.merge_cells('A2:E2')
+        ws['A3'] = f'Report generated for validation: {validation.name}'
+        ws['A3'].font = Font(bold=True, size=12)
+        ws.merge_cells('A3:E3')
+        ws['A4'] = 'Feature Mapping Tables used:'
+        ws['A5'], ws['B5'] = 'Name', 'Author'
+        c_row = 6
+
+        for mapping in mappings:
+            ws.cell(row=c_row, column=1, value=mapping.name)
+            ws.cell(row=c_row, column=2, value=mapping.owner.username)
+            c_row += 1
+        c_row += 1
+
+        # Calculate table dimensions
+        features_tuples = []
+        for milestone_data in data['items'].values():
+            features_tuples.extend(milestone_data.items())
+
+        table_row_start = c_row
+        table_row_end = len(features_tuples) + len(data['items'].keys())
+        col_width = {}
+
+        # Header row
+        headers = ['Feature', 'Passed', 'Failed', 'Blocked', 'Executed']
+        for c_id, header in enumerate(headers, 1):
+            # set width for columns except features
+            if c_id > 1:
+                col_width[c_id] = len(header)
+
+            ws.cell(row=c_row, column=c_id, value=header).font = BOLD_FONT
+        c_row += 1
+
+        # Items rows
+        for milestone, features_data in data['items'].items():
+            ws.cell(row=c_row, column=1, value=milestone)
+
+            c_row += 1
+            for feature, f_dict in features_data.items():
+                ws.cell(row=c_row, column=1, value=feature)
+
+                col_width.setdefault(1, 0)
+                if len(feature) > col_width[1]:
+                    col_width[1] = len(feature)
+
+                for c_id, key in enumerate(statuses, 2):
+                    ws.cell(row=c_row, column=c_id, value=f_dict[key])
+                c_row += 1
+
+        # Total row
+        ws.cell(row=c_row, column=1, value='Total').font = BOLD_FONT
+        for c_id, key in enumerate(statuses, 2):
+            ws.cell(row=c_row, column=c_id, value=data['total'][key])
+
+        # set column width
+        for col_ind in col_width:
+            ws.column_dimensions[to_letter(col_ind)].width = col_width[col_ind] + 4     # + padding for filter button
+
+        # Apply table style (zebra + color + header sort/filters)
+        if mode == 'combined':
+            display_name = 'Combined'
+        else:
+            display_name = f'Single_{mappings[0].id}'
+        table = Table(
+            ref=f'A{table_row_start}:E{table_row_start + table_row_end + 1}',
+            displayName=display_name, tableStyleInfo=medium_style)
+        ws.add_table(table)
+
+    if mode == 'combined':
+        report_sheet(data, validation, mappings, 'combined')
+    else:
+        for mapping in mappings:
+            report_sheet(data[mapping.id], validation, [mapping], 'single')
+        # delete default empty sheet
+        del wb[wb.sheetnames[0]]
+    return wb
+
+
+def compose_sheet_name(codec):
+    """
+    Return mapping codec name, formatted for Excel sheet name limitations:
+    Banned symbols: "\", "/", "*", "[", "]", ":", "?"
+    Length limit: 31
+    """
+    name = re.sub(r'[\\/*\[\]:?]', '_', codec.name)
+    if len(name) > 31:
+        name = f'{name[:27]}#{codec.id}'
+    return name

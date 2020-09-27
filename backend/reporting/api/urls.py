@@ -35,7 +35,7 @@ urlpatterns = [
     re_path(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),     # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
-    path('api/report/indicator/', views.ReportIndicatorView.as_view()),
+    path('api/report/indicator/<int:id>/', views.ReportIndicatorView.as_view()),
 
     path('api/report/extra-data/<list:ti_ids>/', views.ExtraDataView.as_view(), name='api-extra-data'),
 

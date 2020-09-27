@@ -1,5 +1,6 @@
 import json
 import re
+import copy
 import urllib.parse
 from collections import defaultdict
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ import numpy as np
 import dateutil.parser
 
 from django.db import transaction
+from django.db.models import Case, When, Q
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
@@ -501,13 +503,14 @@ class ValidationsFlatView(LoggingMixin, APIView):
         return Response(d)
 
 
-def get_mappings_by_validations(serializer_class, validations):
+def get_mappings_by_validations(serializer_class, validations, user):
     """ Filter mappings according to validation's platform, os and component from validation results """
     data = []
     components = Result.objects.filter(validation__in=validations).values_list('component', flat=True).distinct()
     for validation in validations:
         mappings = FeatureMapping.objects.filter(
-            component__in=components, platform=validation.platform, os=validation.os.group, public=True
+            Q(component__in=components, platform=validation.platform, os=validation.os.group),
+            Q(public=True) | Q(owner=user)
         )
         serializer = serializer_class(data=mappings, many=True)
         serializer.is_valid()
@@ -531,7 +534,9 @@ class ValidationMappings(LoggingMixin, generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         validations = self.get_queryset()
-        return Response(get_mappings_by_validations(self.serializer_class, validations))
+        return Response(
+            get_mappings_by_validations(self.serializer_class, validations, get_user_object(request))
+        )
 
 
 class ValidationsStructureView(LoggingMixin, APIView):
@@ -1169,8 +1174,8 @@ class RequestModelCreation(APIView):
 
 
 class ReportIndicatorView(APIView):
-    def get(self, request, *args, **kwargs):
-        def update_status(data, status):
+    def get(self, request, id, *args, **kwargs):
+        def update_status(data, total, status):
             key_to_update = None
             if status == 'Passed':
                 key_to_update = 'passed'
@@ -1180,45 +1185,89 @@ class ReportIndicatorView(APIView):
                 key_to_update = 'blocked'
 
             data[key_to_update] += 1
-            total[key_to_update] += 1
             data['executed'] += 1
+            total[key_to_update] += 1
             total['executed'] += 1
 
-        validation_id = request.GET.get('validation_id')
         mapping_ids = request.GET.get('fmt_id').split(',')
+        mode = request.GET.get('mode')
+        do_excel = False
+        if 'report' in request.GET and request.GET['report'] == 'excel':
+            do_excel = True
 
         data = defaultdict(dict)
         total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
 
-        results = Result.objects.filter(validation_id=validation_id)
-        for mapping_id in mapping_ids:
-            for milestone, scenario_id, feature, ids in FeatureMappingRule.objects.filter(mapping_id=mapping_id) \
-                    .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids'):
+        results = Result.objects.filter(validation_id=id)
+        # get mappings with preserved ids order from request
+        original_order = Case(*[When(pk=pk, then=position) for position, pk in enumerate(mapping_ids)])
+        mappings = FeatureMapping.objects.filter(pk__in=mapping_ids).order_by(original_order)
 
-                data[milestone][feature] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+        for mapping in mappings:
+            mapping_data = defaultdict(dict)
+            mapping_total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+
+            for milestone, scenario_id, feature, ids in FeatureMappingRule.objects.filter(mapping_id=mapping.id) \
+                    .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids'):
+                if mode == 'combined':
+                    feature_name = f'{feature} ({mapping.codec.name})'
+                else:
+                    feature_name = feature
+
+                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
 
                 if ids is not None:
                     ids = ids.split(',')
                     for status in results.filter(item__scenario_id=scenario_id, item__test_id__in=ids) \
                             .values_list('status__test_status', flat=True):
-                        update_status(data[milestone][feature], status)
+                        update_status(mapping_data[milestone][feature_name], mapping_total, status)
                 else:
                     for status in results.filter(item__scenario_id=scenario_id).values_list('status__test_status', flat=True):
-                        update_status(data[milestone][feature], status)
+                        update_status(mapping_data[milestone][feature_name], mapping_total, status)
 
-        # Data-table formatting
-        headers, items = [], []
-        for label in ('milestone', 'feature', 'passed', 'failed', 'blocked', 'executed'):
-            headers.append({
-                'text': label.capitalize(),
-                'value': label,
-                'groupable': True if label == 'milestone' else False,
-                'width': 150 if label not in ('milestone', 'feature') else None,
-            })
+            if mode == 'single' and do_excel:
+                # split data by mappings
+                data[mapping.id]['items'] = copy.deepcopy(mapping_data)
+                data[mapping.id]['total'] = copy.deepcopy(mapping_total)
+            else:
+                # merge to one dict
+                for key, value in mapping_data.items():
+                    for subkey, subvalue in value.items():
+                        data[key][subkey] = subvalue
+                for key in ['passed', 'failed', 'blocked', 'executed']:
+                    total[key] += mapping_total[key]
 
-        for milestone, m_data in data.items():
-            for feature, f_data in m_data.items():
-                items.append({'milestone': milestone, 'feature': feature, **f_data})
-        items.append(total)
+        if not data:
+            if do_excel:
+                return Response()
+            return Response({'headers': [], 'items': []})
 
-        return Response({'headers': headers, 'items': items})
+        if not do_excel:
+            # Data-table formatting
+            headers, items = [], []
+            for label in ('milestone', 'feature', 'passed', 'failed', 'blocked', 'executed'):
+                headers.append({
+                    'text': label.capitalize(),
+                    'value': label,
+                    'groupable': True if label == 'milestone' else False,
+                    'width': 150 if label not in ('milestone', 'feature') else None,
+                })
+
+            for milestone, m_data in data.items():
+                for feature, f_data in m_data.items():
+                    items.append({'milestone': milestone, 'feature': feature, **f_data})
+            items.append(total)
+            return Response({'headers': headers, 'items': items})
+        else:
+            # Excel part
+            validation = Validation.objects.get(id=id)
+
+            if mode == 'combined':
+                excel_data = {'items': data, 'total': total}
+            else:
+                excel_data = data
+            workbook = excel.do_indicator_report(excel_data, validation, mappings, mode)
+            filename = f'indicator_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
+            response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response

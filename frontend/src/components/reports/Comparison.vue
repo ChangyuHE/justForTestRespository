@@ -84,7 +84,7 @@
                                 text-color="white"
                                 class="same-width"
                                 label
-                                @click="openDetailsDialog(cellValue.ti_id)"
+                                @click="!!cellValue.tiId ? openDetailsDialog(cellValue.tiId) : () => null"
                             >{{ cellValue.status }}</v-chip>
                         </span>
                         <span v-else>{{ cellValue }}</span>

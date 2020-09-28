@@ -4,6 +4,8 @@ from django.conf import settings
 
 from django.db import models
 from django.db.models import UniqueConstraint, Q
+from simple_history.models import HistoricalRecords
+
 from reporting.settings import AUTH_USER_MODEL
 
 
@@ -48,6 +50,9 @@ class FulsimAsset(Asset):
 class Simics(models.Model):
     data = models.JSONField()
 
+    def __str__(self):
+        return str(self.data)
+
 
 class Generation(models.Model):
     name = models.CharField(max_length=255)
@@ -88,6 +93,9 @@ class Component(models.Model):
 class Driver(models.Model):
     name = models.CharField(max_length=255)
     build_id = models.CharField(max_length=16, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Plugin(models.Model):
@@ -235,6 +243,7 @@ class Result(models.Model):
     is_worst = models.BooleanField(default=False)
 
     result_reason = models.TextField(null=True, blank=True)
+    history = HistoricalRecords()
 
 
 class ResultGroup(models.Model):
@@ -293,6 +302,9 @@ class Validation(models.Model):
                 name='unique_%(class)s_composite_constraint'
             ),
         ]
+
+    def __str__(self):
+        return self.name
 
 
 class Action(models.Model):  # working functional, example: best, last, compare reports

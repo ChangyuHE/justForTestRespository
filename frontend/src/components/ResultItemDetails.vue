@@ -5,8 +5,9 @@
             <v-card>
                 <v-card-title>
                     Result item details
+                    <v-icon class="ml-3" title="Update history" @click="openHistoryDialog">mdi-clock-outline</v-icon>
                     <v-spacer></v-spacer>
-                    <v-switch v-model="enableEditing" disabled label="Editing" color="teal darken-1"></v-switch>
+                    <v-switch v-model="enableEditing" label="Editing" color="teal darken-1"></v-switch>
                 </v-card-title>
 
                 <v-row class="mx-3">
@@ -18,7 +19,7 @@
                             @click:append="openEditDialog(field)"
                             class="px-2 py-0"
                             :label="field"
-                            :value="fieldValue(field)"
+                            :value="fieldValue(field, resultItem)"
                         >
                         </v-text-field>
                     </v-col>
@@ -38,26 +39,55 @@
                     </v-col>
                 </v-row>
 
-                <v-row v-for="field in fields.oneOnRow" :key="field" class="mx-5 d-flex">
-                    <v-text-field
-                        color="blue-grey"
-                        readonly
-                        :append-icon="showEditIcon(field)"
-                        @click:append="openEditDialog(field)"
-                        class="px-2 py-0"
-                        :label="field"
-                        :value="resultItem[field]"
-                    ></v-text-field>
+                <!-- Result reason -->
+                <v-row class="mx-3">
+                    <v-col cols="6">
+                        <v-text-field
+                            color="blue-grey"
+                            readonly
+                            append-icon="mdi-information-outline"
+                            @click:append="showResultReasonDialog = true"
+                            class="px-2 py-0"
+                            label="result_reason"
+                            :value="resultItem.result_reason"
+                        ></v-text-field>
+                    </v-col>
+                </v-row>
+
+                <!-- Additional parameters -->
+                <div class="ml-9 text-subtitle-1 font-weight-light">
+                    Additional parameters
+                    <v-icon class="ml-2" @click="openEditDialog('additional_parameters')">{{ showEditIcon('additional_parameters') }} </v-icon>
+                </div>
+                <v-row class="mx-5">
+                    <v-simple-table class="px-3 py-0">
+                        <template v-slot:default>
+                            <thead>
+                                <tr>
+                                    <th v-for="(_, key) in additional_parameters(resultItem.additional_parameters)" :key="key">
+                                        {{ key }}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td v-for="(_, key) in additional_parameters(resultItem.additional_parameters)" :key="key">
+                                        {{ additional_parameter(key, resultItem.additional_parameters) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </template>
+                    </v-simple-table>
                     <v-spacer></v-spacer>
                 </v-row>
 
                 <v-card-actions class="pt-0">
                     <v-spacer></v-spacer>
-                    <v-btn color="cyan darken-2" text @click="saveResultItem" :disabled="disableResultSaving">
-                        Save
-                    </v-btn>
                     <v-btn color="cyan darken-2" text @click="closeResultDetails">
                         Close
+                    </v-btn>
+                    <v-btn color="cyan darken-2" text @click="showConfirmationWindow = true" :disabled="disableResultSaving">
+                        Save
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -94,11 +124,11 @@
 
                 <v-card-actions class="pt-0">
                     <v-spacer></v-spacer>
-                    <v-btn color="cyan darken-2" text @click="saveChange">
-                        Save
-                    </v-btn>
                     <v-btn color="cyan darken-2" text @click="closeEditDialog">
                         Close
+                    </v-btn>
+                    <v-btn color="cyan darken-2" text @click="saveChange">
+                        Save
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -114,7 +144,7 @@
             <v-card>
                 <v-card-title>New {{ selectedField }}</v-card-title>
                 <v-text-field
-                    v-for="field in Object.keys(nestedEditableFields(selectedField))" :key="field"
+                    v-for="(_, field) in nestedEditableFields(selectedField)" :key="field"
                     color="blue-grey"
                     class="my-3 mx-7"
                     :rules="[rules.required(nestedEditableFields(selectedField)[field]),
@@ -124,10 +154,210 @@
                 ></v-text-field>
                 <v-card-actions class="pt-0">
                     <v-spacer></v-spacer>
+                    <v-btn color="cyan darken-2" text @click="showCreationDialog = false">
+                        Close
+                    </v-btn>
                     <v-btn color="cyan darken-2" text :disabled="disableCreation(selectedField)" @click="createParameterInstance">
                         Create
                     </v-btn>
-                    <v-btn color="cyan darken-2" text @click="showCreationDialog = false">
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- Confirmaton window -->
+        <v-dialog
+            v-if="showConfirmationWindow"
+            :value="showConfirmationWindow"
+            persistent no-click-animation
+            max-width="50%"
+        >
+            <v-card>
+                <v-card-title>Reason of update</v-card-title>
+
+                <!-- Table with changes -->
+                <v-simple-table class="my-3 mx-7">
+                    <template v-slot:default>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Old value:</th>
+                                <th>New value:</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(_, key) in difference(resultItem, resultItemCopy)" :key="key">
+                                <td>{{ key }}</td>
+                                <template v-if="key != 'additional_parameters'">
+                                    <td>{{ descriptiveField(key, resultItemCopy) }}</td>
+                                    <td>{{ descriptiveField(key, resultItem) }}</td>
+                                </template>
+                                <template v-else>
+                                    <td v-for="value of [resultItemCopy, resultItem]"
+                                        :key="JSON.stringify(value.additional_parameters)"
+                                        class="py-0 my-0 align-start"
+                                    >
+                                        <v-simple-table>
+                                            <template v-slot:default>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Parameter:</th>
+                                                        <th>Value:</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="(_, key) in additional_parameters(value.additional_parameters)" :key="key">
+                                                        <td>
+                                                            {{ key }}
+                                                        </td>
+                                                        <td>
+                                                            {{ additional_parameter(key, value.additional_parameters) }}
+                                                        </td>
+                                                    </tr>
+
+                                                    <!-- Add some empty rows to make tables the same dimention -->
+                                                    <template v-if="needToAddRows(value.additional_parameters,
+                                                                                  resultItemCopy.additional_parameters,
+                                                                                  resultItem.additional_parameters)"
+                                                    >
+                                                            <tr v-for="i in rowsToInsert(value.additional_parameters,
+                                                                                         resultItemCopy.additional_parameters,
+                                                                                         resultItem.additional_parameters)"
+                                                                :key="i"
+                                                            >
+                                                                <td></td><td></td>
+                                                            </tr>
+                                                    </template>
+                                                </tbody>
+                                            </template>
+                                        </v-simple-table>
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
+                    </template>
+                </v-simple-table>
+
+                <!-- Reason of update -->
+                <v-text-field
+                    color="blue-grey"
+                    class="my-3 mx-7"
+                    label="please provide reason of update"
+                    :rules="[rules.required(reason), rules.isLongEnough(reason)]"
+                    v-model="reason"
+                ></v-text-field>
+
+                <v-card-actions class="pt-0">
+                    <v-spacer></v-spacer>
+                    <v-btn color="cyan darken-2" text @click="closeConfirmationWindow">
+                        Close
+                    </v-btn>
+                    <v-btn color="cyan darken-2" text
+                        @click="saveResultItem"
+                        :disabled="rules.required(reason) != true || rules.isLongEnough(reason) != true"
+                    >
+                        Update
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- History -->
+        <v-dialog
+            v-if="showHistory"
+            :value="showHistory"
+            persistent no-click-animation
+            max-width="50%"
+        >
+            <v-card>
+                <v-card-title>History of result item</v-card-title>
+                <v-data-table
+                    :expanded.sync="expanded"
+                    show-expand
+                    single-expand
+                    :headers="historyHeaders"
+                    :items="history"
+                    item-key="date"
+                    class="elevation-1"
+                >
+                    <template v-slot:expanded-item="{ headers, item }">
+                        <td :colspan="headers.length" class="px-0">
+                        <v-simple-table :colspan="headers.length" dense light>
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Old value:</th>
+                                    <th>New value:</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="change of item.changes" :key="change.field">
+                                    <td>{{ change.field }}</td>
+                                    <template v-if="change.field != 'additional_parameters'">
+                                        <td>{{ change.old }}</td>
+                                        <td>{{ change.new }}</td>
+                                    </template>
+                                    <template v-else>
+                                        <td v-for="value of [change.old, change.new]" :key="value" class="py-0 my-0">
+                                            <v-simple-table>
+                                                <template v-slot:default>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Parameter:</th>
+                                                            <th>Value:</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="(_, key) in additional_parameters(value)"
+                                                            :key="key"
+                                                        >
+                                                            <td>
+                                                                {{ key }}
+                                                            </td>
+                                                            <td>
+                                                                {{ additional_parameter(key, value) }}
+                                                            </td>
+                                                        </tr>
+                                                        <template v-if="needToAddRows(value, change.old, change.new)">
+                                                            <tr v-for="i in rowsToInsert(value, change.old, change.new)"
+                                                                :key="i"
+                                                            >
+                                                                <td></td><td></td>
+                                                            </tr>
+                                                        </template>
+                                                    </tbody>
+                                                </template>
+                                            </v-simple-table>
+                                        </td>
+                                    </template>
+                                </tr>
+                            </tbody>
+                        </v-simple-table>
+                        </td>
+                    </template>
+                </v-data-table>
+
+                <v-card-actions class="pt-0">
+                    <v-spacer></v-spacer>
+                    <v-btn color="cyan darken-2" text @click="showHistory = false">
+                        Close
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <!-- Result reason html -->
+        <v-dialog
+            v-if="showResultReasonDialog"
+            :value="showResultReasonDialog"
+            persistent no-click-animation
+            max-width="50%"
+        >
+            <v-card>
+                <v-card-title>Result reason</v-card-title>
+                <div class="mx-10" v-html="resultItem.result_reason"></div>
+                <v-card-actions class="pt-0">
+                    <v-spacer></v-spacer>
+                    <v-btn color="cyan darken-2" text @click="showResultReasonDialog = false">
                         Close
                     </v-btn>
                 </v-card-actions>
@@ -147,9 +377,15 @@
         data() {
             return {
                 showDetails: false,
+                showHistory: false,
                 showEditDialog: false,
                 showCreationDialog: false,
+                showConfirmationWindow: false,
+                showResultReasonDialog: false,
 
+                reason: '',
+                history: [],
+                expanded: [],
                 changes: false,
                 resultItem: null,
                 resultItemCopy: null,
@@ -170,6 +406,11 @@
                                 return exception.message
                             }
                         }
+                        return true
+                    },
+                    isLongEnough(value) {
+                        if (value.length < 5)
+                            return 'At least 5 symbols'
                         return true
                     }
                 },
@@ -193,7 +434,20 @@
                 canBeCreated: ['scenario_asset', 'simics', 'msdk_asset', 'lucas_asset', 'fulsim_asset', 'driver'],
                 editable: ['driver', 'status', 'scenario_asset', 'msdk_asset',
                           'lucas_asset', 'fulsim_asset', 'simics', 'additional_parameters'],
-
+                changeHeaders: ['Field', 'Old value', 'New value'],
+                historyHeaders: [
+                    { text: 'User', value: 'user' },
+                    { text:'Date', value: 'date' },
+                    { text:'Reason', value: 'reason' }
+                ],
+                required_additional_parameters: {
+                    avg_psnr: '',
+                    avg_ssim: '',
+                    extreme_psnr: '',
+                    extreme_ssim: '',
+                    file_size: '',
+                    error_features: ''
+                },
                 // to rerender api-autocomplete
                 autocompleteKey: 0,
             }
@@ -203,11 +457,12 @@
         },
         computed: {
             fieldValue() {
-                return field => {
-                    if (!this._.isObject(this.resultItem[field])) {
-                        return this.resultItem[field]
+                return (field, resultItem)  => {
+                    if (!this._.isObject(resultItem[field])) {
+                        return resultItem[field]
                     }
-                    return this.resultItem[field][Object.keys(this.resultItem[field])[0]]
+                    // return first field
+                    return resultItem[field][Object.keys(resultItem[field])[0]]
                 }
             },
             showEditIcon() {
@@ -245,6 +500,61 @@
             },
             isAsset() {
                 return this.selectedField.includes('asset')
+            },
+            descriptiveField() {
+                return (field, resultItem) => {
+                    if (field.includes('asset'))
+                        return this.assetValue(resultItem[field])
+                    if (field == 'simics')
+                        return this.resultItem[field] ? this.resultItem[field]['data'] : ''
+                    return this.fieldValue(field, resultItem)
+                }
+            },
+            difference() {
+                return (object, base) => {
+                    function changes(object, base) {
+                        return _.transform(object, function(result, value, key) {
+                            if (!_.isEqual(value, base[key])) {
+                                result[key] = (_.isObject(value) && _.isObject(base[key])) ? changes(value, base[key]) : value
+                            }
+                        })
+                    }
+                    return changes(object, base)
+                }
+            },
+            additional_parameters() {
+                return params_string => {
+                    if (!params_string) {
+                        return this.required_additional_parameters
+                    }
+                    // add required params to params from result item if some of them are missing
+                    return this._.assign({}, this.required_additional_parameters, JSON.parse(params_string))
+                }
+            },
+            additional_parameter() {
+                return (key, params_string) => {
+                    if (!params_string) {
+                        return ''
+                    }
+                    const additional_params = JSON.parse(params_string)
+                    return !!additional_params[key] ? additional_params[key] : ''
+                }
+            },
+
+            // return if we need to insert extra rows into table with additional parameters
+            needToAddRows() {
+                return (current, old, changed) => {
+                    return Object.keys(this.additional_parameters(current)).length == 
+                                Math.min(Object.keys(this.additional_parameters(old)).length,
+                                         Object.keys(this.additional_parameters(changed)).length)
+                }
+            },
+            rowsToInsert() {
+                return (current, old, changed) => {
+                    return Math.max(Object.keys(this.additional_parameters(old)).length,
+                                    Object.keys(this.additional_parameters(changed)).length) -
+                                Object.keys(this.additional_parameters(current)).length
+                }
             }
         },
         methods: {
@@ -253,6 +563,36 @@
                 this.selectedField = field
                 this.showEditDialog = true
                 this.selectedFieldValue = this.resultItem[this.selectedField]
+            },
+            openHistoryDialog() {
+                const url = `api/result/history/${this.resultItemId}/`
+                server
+                    .get(url)
+                    .then(response => {
+                        this.history = response.data
+                        for (let change of this.history) {
+                            change['date'] = this.$options.filters.formatDate(change['date'])
+                            for (let diff of change['changes']) {
+                                if (diff.field == 'additional_parameters') {
+                                    // replace all Nones and single quotes
+                                    diff.old = diff.old.replaceAll('\'', '\"')
+                                    diff.old = diff.old == 'None' ? null : diff.old
+                                    diff.new = diff.new.replaceAll('\'', '\"')
+                                    diff.new = diff.new == 'None' ? null : diff.new
+                                }
+                            }
+                        }
+                        this.showHistory = true
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during retrieving result update history', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    })
+                    .finally()
+
             },
 
             // close
@@ -269,6 +609,10 @@
                 for (let key in this.nestedEditableFields(this.selectedField)) {
                     this.nestedEditableFields(this.selectedField)[key] = ''
                 }
+            },
+            closeConfirmationWindow() {
+                this.showConfirmationWindow = false
+                this.reason = ''
             },
 
             // return appropriate object with fields for assets, simics and driver (used to create a new object)
@@ -317,13 +661,15 @@
                     })
             },
             showResultDetails() {
+                const url = `api/result/${this.resultItemId}/`
                 server
-                    .get(`api/result/${this.resultItemId}/`)
+                    .get(url)
                     .then(response => {
                         this.resultItem = response.data
 
                         // make string from additional_parameters and simics.data fields (it is JSON fields in db so object is returned)
-                        this.resultItem['additional_parameters'] = JSON.stringify(this.resultItem.additional_parameters)
+                        if (!!this.resultItem['additional_parameters'])
+                            this.resultItem['additional_parameters'] = JSON.stringify(this.resultItem.additional_parameters)
                         if (this.resultItem.simics && this.resultItem.simics.data) {
                             this.resultItem['simics']['data'] = JSON.stringify(this.resultItem.simics.data)
                         }
@@ -376,7 +722,7 @@
                 } else {
                     resItemEdited['additional_parameters'] = null
                 }
-
+                resItemEdited['change_reason'] = this.reason
                 const url = `api/result/update/${resItemEdited.id}/`
                 server
                     .put(url, resItemEdited)
@@ -390,6 +736,7 @@
                         }
                         this.$toasted.success('Result has been edited')
                         this.showEditDialog = false
+                        this.reason = ''
                         this.closeResultDetails()
                     })
                     .catch(error => {

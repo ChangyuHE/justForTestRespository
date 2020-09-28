@@ -265,6 +265,8 @@ MsdkAssetFullSerializer = asset_full_serializer(models.MsdkAsset)
 FulsimAssetSerializer = asset_serializer(models.FulsimAsset)
 FulsimAssetFullSerializer = asset_full_serializer(models.FulsimAsset)
 
+OsAssetSerializer = asset_serializer(models.OsAsset)
+
 
 # generate template cut serializers which contains 'id' and 'name' fields
 ValidationCutSerializer = model_cut_serializer(models.Validation)
@@ -298,7 +300,7 @@ class ResultFullSerializer(serializers.ModelSerializer):
 
     scenario_asset = ScenarioAssetSerializer()
     msdk_asset = MsdkAssetSerializer()
-    os_asset = AssetSerializer()
+    os_asset = OsAssetSerializer()
     lucas_asset = LucasAssetSerializer()
     fulsim_asset = FulsimAssetSerializer()
     simics = SimicsSerializer()

@@ -71,7 +71,8 @@ INSTALLED_APPS = [
     'webpack_loader',
     'corsheaders',
     'aldjemy',
-    'django_filters'
+    'django_filters',
+    'simple_history'
 ]
 CORS_ORIGIN_ALLOW_ALL = True
 

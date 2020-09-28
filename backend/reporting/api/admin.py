@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
+from simple_history.admin import SimpleHistoryAdmin
+
 from api.models import *
 
 
@@ -15,6 +17,13 @@ admin.site.register(User, CustomUserAdmin)
 
 admin.site.register(Component)
 admin.site.register(Milestone)
+
+
+@admin.register(Result)
+class ResultAdmin(SimpleHistoryAdmin):
+    list_display = ('id', 'validation')
+    ordering = ('id', 'validation')
+    search_fields = ('id',)
 
 
 @admin.register(Env)

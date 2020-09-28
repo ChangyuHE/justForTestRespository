@@ -75,16 +75,19 @@ class UpdateWOutputAPIView(generics.UpdateAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        serializer = self.perform_update(serializer)
+        user = get_user_object(request)
+        change_reason = request.data.get('change_reason')
+        serializer = self.perform_update(serializer, user=user, reason=change_reason)
         if getattr(instance, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
         return Response(serializer.data)
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer, **kwargs):
         try:
-            return self.__class__.serializer_output_class(serializer.save())
+            return self.__class__.serializer_output_class(serializer.save(_history_user=kwargs.get('user'),
+                                                                          _change_reason=kwargs.get('reason')))
         except IntegrityError:
             raise ValidationError({"integrity error": 'Duplicate creation attempt'})
         except Exception as e:

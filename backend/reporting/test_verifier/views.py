@@ -91,7 +91,7 @@ class SubFeatureUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.Up
     serializer_class = SubFeatureIDSerializer
     serializer_output_class = SubFeatureFullSerializer
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer, **kwargs):
         serializer.save(updated_by=get_user_object(self.request))
         return super().perform_update(serializer)
 
@@ -143,6 +143,6 @@ class RuleGroupsUpdateView(LoggingMixin, generics.DestroyAPIView, api_helpers.Up
     serializer_class = RuleGroupIDSerializer
     serializer_output_class = RuleGroupFullSerializer
 
-    def perform_update(self, serializer):
+    def perform_update(self, serializer, **kwargs):
         serializer.save(updated_by=get_user_object(self.request))
         return super().perform_update(serializer)

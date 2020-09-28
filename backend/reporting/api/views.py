@@ -1271,3 +1271,33 @@ class ReportIndicatorView(APIView):
             response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
             return response
+
+
+class ResultHistoryView(LoggingMixin, APIView):
+    def get(self, request, pk, *args, **kwargs):
+        result = get_object_or_404(Result, pk=pk)
+        history_records = list(result.history.all())
+        if len(history_records) < 2:
+            return Response([])
+        old_record = history_records[-1]
+        changes = []
+        for new_record in history_records[-2::-1]:
+            delta = new_record.diff_against(old_record)
+            diff = {'user': new_record.history_user.username if new_record.history_user else None,
+                    'date': new_record.history_date,
+                    'reason': new_record.history_change_reason,
+                    'changes': []}
+            for change in delta.changes:
+                field = change.field
+                try:
+                    old_value = str(getattr(delta.old_record, field))
+                except Exception:
+                    old_value = None
+                try:
+                    new_value = str(getattr(delta.new_record, field))
+                except Exception:
+                    new_value = None
+                diff['changes'].append({'field': change.field, 'old': old_value, 'new': new_value})
+            changes.insert(0, diff)
+            old_record = new_record
+        return Response(changes)

@@ -28,8 +28,13 @@
             <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
             <v-toolbar-title class="mr-2 pl-1">Reporter</v-toolbar-title>
             <!-- Navigation buttons -->
-            <v-btn v-for="rItem in routeMap" :key="rItem.name" :to="{name: rItem.name}" text exact>
-                {{ rItem.show }}
+            <v-btn v-for="routeData in routeDataMap" :key="routeData.name"
+                :to="{name: routeData.name}"
+                :class="$route.name == routeData.name && 'v-btn--active'"
+                text exact
+                @click="passParamsToURL"
+            >
+                {{ routeData.show }}
             </v-btn>
             <v-spacer></v-spacer>
 
@@ -87,6 +92,7 @@
     import server from './server.js'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
+    import { replaceState } from '@/utils/history-management.js'
 
     import { mapState, mapGetters } from 'vuex'
 
@@ -96,7 +102,7 @@
                 drawer: false,
                 userDialog: false,
                 showScroll: false,
-                routeMap: [
+                routeDataMap: [
                     { name: 'home', show: 'Validations' },
                     { name: 'import', show: 'Import' },
                     { name: 'search', show: 'Search' },
@@ -107,25 +113,42 @@
         },
         computed: {
             ...mapState({rawUserData: 'userData'}),
+            ...mapState('tree', ['validations']),
+            ...mapState('reports', ['reportType']),
             ...mapGetters(['userName']),
             userData() {
-                let data = {};
+                let data = {}
                 for (let key in this.rawUserData) {
                     if (key != 'id')
                         data[key] = this.rawUserData[key]
                 }
-                return data;
+                return data
             }
         },
         methods: {
+            passParamsToURL() {
+                // only for click on Validations button
+                if (this.$route.name == 'home')
+                    replaceState({selected: this.validations, rtype: this.reportType})
+            },
             onScroll(e) {
-                if (typeof window === 'undefined') return;
-                const top = window.pageYOffset || e.target.scrollTop || 0;
-                this.showScroll = top > 20;
+                if (typeof window === 'undefined') return
+                const top = window.pageYOffset || e.target.scrollTop || 0
+                this.showScroll = top > 20
             },
             toTop() {
-                this.$vuetify.goTo(0);
+                this.$vuetify.goTo(0)
             },
+        },
+        created() {
+            // "back" and "front" buttons in browser
+            window.onpopstate = event => {
+                let url = new URL(window.location)
+                let currentPath = url.pathname
+
+                if (currentPath == this.$route.path)
+                    location.reload()
+            }
         }
     }
 </script>

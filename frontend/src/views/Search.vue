@@ -47,7 +47,7 @@
     import server from '@/server.js'
     import comparisonReport from '@/components/reports/Comparison.vue'
     import bestOrLastReport from '@/components/reports/BestOrLast.vue'
-    import { mapState } from 'vuex'
+    import { mapState, mapGetters } from 'vuex'
 
     export default {
         components: {
@@ -61,11 +61,12 @@
                 queryLoading: false,
                 recognizedAction: '',
                 recognizedQuery: '',
-                errorMessage: '',
+                errorMessage: ''
             }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches']),
+            ...mapState('tree', ['validations']),
+            ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading']),
             reportName() {
                 return `${this.recognizedAction}-report`
@@ -74,46 +75,41 @@
         },
         methods: {
             search(query) {
-                if (!query) return
-                // The query is already being processed by the server
-                if (this.queryLoading) return
+                // Nothing to search or already processing
+                if (!query || this.queryLoading)
+                    return
 
-                this.queryLoading = true;
+                this.queryLoading = true
 
                 // load action to be performed, list of validations and their names
-                let url = `api/report/search/?query=${query}`;
+                let url = `api/report/search/?query=${query}`
                 server
                     .get(url)
                     .then(res => {
-                        this.recognizedAction = res.data.action;
-                        this.recognizedQuery = res.data.description;
+                        this.recognizedAction = res.data.action
+                        this.recognizedQuery = res.data.description
 
-                        // get valnames and validation ids from headers
-                        let validationIds = res.data.validation_ids;
-                        let valnames = res.data.valnames;
-                        this.$store.dispatch('tree/setSelected', { validations: validationIds, branches: valnames });
-                        this.errorMessage = '';
+                        // get branches data and validation ids from headers
+                        let validationIds = res.data.validations_ids
+                        this.$store.dispatch('tree/setSelected', { validations: validationIds, branches: res.data.validations_data })
+                        this.errorMessage = ''
                     })
                     .catch(error => {
-                        if (error.response){
-                            if(error.response.status == 400 || error.response.status == 404) {
-                                this.errorMessage = error.response.data;
-                                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] });
-                                this.recognizedQuery = '';
-                                this.recognizedAction = '';
-                            } else {
-                                console.log(error);
-                                this.$toasted.global.alert_error_detailed({
-                                    'header': `Error during searching`,
-                                    'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${error.response.data}`
-                                })
-                            }
+                        if (error.response && [400, 404].includes(error.response.status)) {
+                                this.errorMessage = error.response.data
+                                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] })
+                                this.recognizedQuery = ''
+                                this.recognizedAction = ''
                         } else {
-                            console.log(error);
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Error during searching', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
                         }
                     })
                     .finally(() => (this.queryLoading = false))
-            },
+            }
         }
     }
 </script>

@@ -202,7 +202,8 @@
             title: { type: String, required: false }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches']),
+            ...mapState('tree', ['validations']),
+            ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalHeaders', 'originalItems']),
             url() {
                 return `api/report/compare/${this.validations}`

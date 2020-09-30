@@ -66,18 +66,19 @@
                 </v-col>
                 <!-- Selectors -->
                 <v-col cols="6" class="py-0 mx-0 px-0" v-for="i in treeStructure" :key="i.name">
-                    <v-select class="mx-3 my-2 px-4 pt-1 filter-select"
+                    <v-autocomplete class="mx-3 my-2 px-4 pt-1 filter-select"
                         color="blue-grey"
                         item-color="blue-grey"
                         clear-icon="mdi-close"
                         return-object multiple clearable small-chips deletable-chips hide-details
+                        :menu-props="{closeOnContentClick: true}"
                         :items="i.items"
                         @change="doSelection($event, i.level)"
                     >
                         <template v-slot:label>
                             <span class="blue-grey--text text--darken-2" v-text="i.label"></span>
                         </template>
-                    </v-select>
+                    </v-autocomplete>
                 </v-col>
             </v-row>
         </v-card>
@@ -326,39 +327,44 @@
              * On tree item click fill "validations" and "branches" store variables
              */
             itemClick(node) {
+                let getBranchLeafs = node => {
+                    let validations = []
+                    let branches = []
+
+                    function isLeafOfBranch(branchRoot, node) {
+                        while (node.$parent.model !== undefined) {
+                            if (node.$parent._uid == branchRoot._uid)
+                                return true
+                            node = node.$parent
+                        }
+                        return false
+                    }
+                    this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                        n => {
+                            if (typeof n.model && n.$children.length == 0 && isLeafOfBranch(node, n)) {
+                                branches.push(getBranchForLeaf(n))
+                                validations.push(n.model.id)
+                            }
+                        }
+                    )
+                    return [validations, branches]
+                }
                 let branches = []
                 let validations = []
 
-                // if filter is active then select available nodes ..
-                if (this.badgeFilterCount > 0 || this.enableDates) {
-                    if (node.model.selected == false) {
-                        let branches = []
-                        let validations = []
-
-                        getAvailableNodes(this.$refs.tree).forEach(node => {
-                            branches.push(getBranchForLeaf(node))
-                            validations.push(node.model.id)
-                        })
-                        // .. and delete them from selection
-                        this.$store.dispatch('tree/removeFiltered', { validations, branches: selectedValidationsText(branches) })
-                    }
-                }
-                // select all checked nodes
-                this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
-                    node => {
-                        if (typeof node.model !='undefined' && node.model.selected && node.$children.length == 0) {
-                            branches.push(getBranchForLeaf(node))
-                            validations.push(node.model.id)
-                        }
-                    }
-                )
-
-                // if filter is active add selected
-                if (this.badgeFilterCount > 0 || this.enableDates) {
-                    this.$store.dispatch('tree/addSelected', { validations, branches: selectedValidationsText(branches) })
-                // if not just set selected
+                // Fill selected validations ids and branches with preserved order
+                if (node.$children.length) {
+                    // branch
+                    [validations, branches] = getBranchLeafs(node)
                 } else {
-                    this.$store.dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) })
+                    validations = [node.model.id]
+                    branches = [getBranchForLeaf(node)]
+                }
+
+                if (node.model.selected) {
+                    this.$store.dispatch('tree/addSelected', { validations, branches: this.prepareBranches(branches) })
+                } else {
+                    this.$store.dispatch('tree/removeSelected', { validations, branches: this.prepareBranches(branches) })
                 }
 
                 // add selected validations to url query
@@ -379,21 +385,35 @@
                     history.replaceState(null, null, this.$route.path)
                 }
             },
-            IDsToSelection() {
-                let branches = []
-                let validations = []
-                if (this.$refs.tree !== undefined) {
+            urlParamsToStore() {
+                let parsed = qs.parse(location.search, {arrayFormat: 'comma'})
+                if (this._.isEmpty(parsed))
+                    return
+                let validations
+                // let validations = parsed.selected
+                if (typeof parsed.selected == 'object')
+                    validations = this._.map(parsed.selected, this._.toNumber)
+                else
+                    validations = [+parsed.selected]
+
+                let branches = Array(validations.length)
+
+                // if it's not castrated tree
+                if (this.$refs.tree !== undefined && !(this.badgeFilterCount > 0 || this.enableDates)) {
                     this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                         node => {
-                            if (typeof node.model != 'undefined' && node.model.selected) {
-                                branches.push(getBranchForLeaf(node))
-                                validations.push(node.model.id)
+                            if (typeof node.model != 'undefined' && node.model.selected  && node.$children.length == 0 && validations.includes(node.model.id)) {
+                                let index = validations.indexOf(node.model.id)
+                                if (index !== -1)
+                                    branches.splice(index, 1, getBranchForLeaf(node))
                             }
                         }
                     )
-                    this.$store
-                        .dispatch('tree/setSelected', { validations, branches: selectedValidationsText(branches) })
+                    this.$store.dispatch('tree/setSelected', { validations, branches: this.prepareBranches(branches) })
                 }
+            },
+            prepareBranches(branches) {
+                return this._.map(branches, b => { return this._.map(b, n => n.model.text_flat ).reverse() })
             }
         },
         beforeCreate() {
@@ -458,35 +478,45 @@
                 .finally(() => this.$store.dispatch('tree/setTreeLoading', false))
         },
         updated() {
-            this.initiallyLoaded && this.IDsToSelection()
+            this.initiallyLoaded && this.urlParamsToStore()
         }
     }
 </script>
 <style>
-    /* Tree icons */
-    .i-windows {
-        background: url(../../assets/icons/windows.svg) !important;
+    /* move checked checkbox 1px upper */
+    .tree-default.tree-checkbox-selection .tree-selected>.tree-checkbox, .tree-default .tree-checked>.tree-checkbox {
+        background-position: -228px -5px !important;
     }
-    .i-linux {
-        background: url(../../assets/icons/linux.svg) !important;
+    /* move empty checkbox 1px upper */
+    .tree-default .tree-checkbox {
+        background-position: -164px -5px !important;
     }
-    .i-platform {
-        background: url(../../assets/icons/chip.svg) !important;
+    /* rippple animation for tree row */
+    .tree-anchor {
+        background-position: center !important;
+        transition: background 0.5s !important;
     }
-    .i-gen {
-        background: url(../../assets/icons/cpu.svg) !important;
+    .tree-anchor:hover {
+        background: #c6e6e3 radial-gradient(circle, transparent 1%, #c6e6e3 1%) center/15000% !important;
     }
-    .i-validation {
-        background: url(../../assets/icons/list.svg) !important;
+    .tree-anchor:active {
+        background-color: #72c9c0 !important;
+        background-size: 100% !important;
+        transition: background 0s !important;
     }
-    .i-simulation {
-        background: url(../../assets/icons/simulation.svg) !important;
+    /* background of selected tree node */
+    .tree-selected {
+        background-color: #bfd4dd75 !important;
     }
-    .icon-custom {
-        width: 20px !important;
-        height: 20px !important;
-        margin: 2px !important;
-        padding: 2px !important;
+    /* custom tree-icon customization */
+    .tree-icon {
+        font-size: 24px;
+        color: #234c61;
+    }
+    /* shrink tree row for 1 px */
+    .tree-default .tree-anchor {
+        line-height: 23px !important;
+        height: 23px !important;
     }
     /* dense tree */
     .v-application ul, .v-application ol {

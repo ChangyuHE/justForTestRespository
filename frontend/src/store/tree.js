@@ -1,40 +1,37 @@
+import _ from 'lodash'
+
 export default {
     namespaced: true,
     state: {
         validations: [],
-        branches: [],
-        branchesIds: {},
+        limbs: [],
         treeLoading: true,
     },
     getters: {
+        branches: state => state.limbs.map(texted => `${texted[5]} (${texted[1]}, ${texted[3]}, ${texted[4]})`)
     },
     mutations: {
         SET_SELECTED(state, { validations, branches }) {
-            state.branches = branches
+            state.limbs = branches
             state.validations = validations
         },
-        REMOVE_FILTERED(state, { validations, branches }) {
-            branches.forEach(e => {
-                let i = state.branches.indexOf(e)
-                if (i !== -1)
-                    state.branches.splice(i, 1)
-            })
+        ADD_SELECTED(state, { validations, branches }) {
             validations.forEach(e => {
-                let i = state.validations.indexOf(e)
-                if (i !== -1)
-                    state.validations.splice(i, 1)
+                if (state.validations.indexOf(e) == -1)
+                    state.validations.push(e)
+            })
+            branches.forEach(b => {
+                if (_.findIndex(state.limbs, limb => _.isMatch(limb, b)) == -1)
+                    state.limbs.push(b)
             })
         },
-        ADD_SELECTED(state, { validations, branches }) {
-            branches.forEach(e => {
-                let i = state.branches.indexOf(e)
-                if (i == -1)
-                    state.branches.push(e)
-            })
-            validations.forEach(e => {
-                let i = state.validations.indexOf(e)
-                if (i == -1)
-                    state.validations.push(e)
+        REMOVE_SELECTED(state, { validations, branches }) {
+            state.validations = _.differenceWith(state.validations, validations, _.isEqual)
+
+            branches.forEach(b => {
+                let index = _.findIndex(state.limbs, limb => _.isMatch(limb, b))
+                if (index !== -1)
+                    state.limbs.splice(index, 1)
             })
         },
         SET_TREE_LOADING: (state, status) =>  state.treeLoading = status,
@@ -46,11 +43,11 @@ export default {
         addSelected: ({ commit }, payload) => {
             commit('ADD_SELECTED', payload)
         },
-        removeFiltered: ({ commit }, payload) => {
-            commit('REMOVE_FILTERED', payload)
+        removeSelected: ({ commit }, payload) => {
+            commit('REMOVE_SELECTED', payload)
         },
         setTreeLoading: ({ commit }, payload) => {
             commit('SET_TREE_LOADING', payload)
-        },
+        }
     }
 }

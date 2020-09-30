@@ -133,7 +133,8 @@
             }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches']),
+            ...mapState('tree', ['validations']),
+            ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalItems', 'originalHeaders']),
             url() {
                 return `api/report/indicator/${this.validations[0]}/?fmt_id=${this._.map(this.mappings, 'id').join(',')}&mode=${this.mode}`

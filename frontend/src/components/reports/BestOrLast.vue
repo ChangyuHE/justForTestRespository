@@ -81,7 +81,8 @@
             type: { type: String, required: true }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches']),
+            ...mapState('tree', ['validations']),
+            ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading']),
             ...mapState('reports', {'headers': 'originalHeaders', 'items':'originalItems'}),
             url() {

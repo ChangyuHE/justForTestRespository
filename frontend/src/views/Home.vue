@@ -113,7 +113,7 @@
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
-    import { mapState } from 'vuex'
+    import { mapState, mapGetters } from 'vuex'
     import qs from 'query-string'
     import { replaceState, pushState } from '@/utils/history-management.js'
 
@@ -138,8 +138,9 @@
             }
         },
         computed: {
-            ...mapState('tree', ['validations', 'branches', 'treeLoading']),
+            ...mapState('tree', ['validations', 'treeLoading']),
             ...mapState('reports', ['showReport', 'reportLoading', 'reportType']),
+            ...mapGetters('tree', ['branches']),
             reportName() {
                 return `${this.reportType}-report`
             },

@@ -213,7 +213,6 @@
             }
         },
         computed: {
-            ...mapState(['branches']),
             ...mapGetters(['importErrors']),
             uploadDisabled() {
                 if (this.importType == 'existing') {

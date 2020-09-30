@@ -372,12 +372,12 @@ def create_json_for_datatables(
 
 
 ICONS = [
-    'i-gen',
-    'i-platform',
-    (('windows', 'i-windows'), ('linux', 'i-linux')),
-    (('windows', 'i-windows'), ('linux', 'i-linux')),
-    'i-simulation',
-    'i-validation'
+    'mdi-expansion-card',                                               # gen
+    'mdi-chip',                                                         # platform
+    (('windows', 'mdi-microsoft-windows'), ('linux', 'mdi-linux')),     # os group
+    (('windows', 'mdi-microsoft-windows'), ('linux', 'mdi-linux')),     # os
+    'mdi-memory',                                                       # env
+    'mdi-format-list-bulleted-type'                                     # validation
 ]
 
 
@@ -457,7 +457,7 @@ class ValidationsView(LoggingMixin, APIView):
                         parent=parent, name=name, text=name, text_flat=name,
                         selected=False, opened=True,
                         level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
-                        icon=icon
+                        icon=f'{icon} mdi tree-icon'
                     )
                 parent = node
 
@@ -1044,11 +1044,11 @@ class ReportFromSearchView(LoggingMixin, APIView):
                 part.platform = last_found_platform
             recognized_parts.append(f" {part.number} {part.env.lower()} {part.os.lower()} "
                                     f"{platform_reverse_map[part.platform]}")
-            part.validation_ids = Validation.objects \
-                                      .filter(env__name__in=[part.env],
-                                              platform__short_name__in=[part.platform],
-                                              os__name__in=[part.os]) \
-                                      .order_by('-date').values_list('id', flat=True)[:part.number]
+            part.validation_ids = \
+                Validation.objects.filter(
+                    env__name__in=[part.env], platform__short_name__in=[part.platform], os__name__in=[part.os]
+                ).order_by('-date').values_list('id', flat=True)[:part.number]
+
             if not part.validation_ids:
                 hint = f"no validations found for query: {part.env.lower()} " \
                        f"{platform_reverse_map[part.platform]} {part.os.lower()}"
@@ -1058,17 +1058,18 @@ class ReportFromSearchView(LoggingMixin, APIView):
         if not validation_ids:
             hint = 'no validations found for query: ' + recognized_query
             return Response(data=hint, status=status.HTTP_404_NOT_FOUND)
-        validation_details = []
+
+        original_order = Case(*[When(pk=pk, then=position) for position, pk in enumerate(validation_ids)])
         validation_data = Validation.objects.filter(pk__in=validation_ids) \
-            .values_list('name', 'platform__short_name', 'env__name', 'os__name')
-        for d in validation_data:
-            validation_details.append('{}\n({}, {}, {})'.format(*d))
+            .values_list(
+                'platform__generation__name', 'platform__short_name', 'os__group__name', 'os__name', 'env__name', 'name'
+            ).order_by(original_order)
 
         return Response({
             'action': action,
             'description': recognized_query,
-            'valnames': validation_details,
-            'validation_ids': validation_ids
+            'validations_data': validation_data,
+            'validations_ids': validation_ids
         })
 
     @staticmethod

@@ -1,7 +1,7 @@
 import re
+from typing import List, Dict
 
-from utils import intel_calendar
-
+import pandas as pd
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -9,12 +9,16 @@ from openpyxl.styles import Font, Alignment
 from openpyxl.styles.colors import WHITE
 from openpyxl.utils import get_column_letter as to_letter
 
-from .models import *
+from .models import Status
+from utils import intel_calendar
 
 BOLD_FONT = Font(bold=True)
 
+# Default table style (zebra + color + header sort/filters)
+MEDIUM_STYLE = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
 
-def do_report(data=None, extra=None, report_name=''):
+
+def do_report(data: pd.DataFrame=None, extra=None, report_name=''):
     validations = extra or []
     ct = data
 
@@ -74,12 +78,9 @@ def do_report(data=None, extra=None, report_name=''):
         else:
             ws.column_dimensions[to_letter(c_id)].width = max_groups_len
 
-    # Apply table style (zebra + color + header sort/filters)
-    medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
-
     table = Table(
         ref=f'{to_letter(1)}{table_row_start}:{to_letter(table_columns)}{table_row_end - 1}',
-        displayName='Results', tableStyleInfo=medium_style)
+        displayName='Results', tableStyleInfo=MEDIUM_STYLE)
     ws.add_table(table)
 
     # Remove empty row where DataFrame index name should be located
@@ -88,8 +89,7 @@ def do_report(data=None, extra=None, report_name=''):
     return wb
 
 
-def do_comparison_report(data=None):
-    ct = data
+def do_comparison_report(ct: pd.DataFrame) -> Workbook:
     statuses = Status.objects.all().values_list('test_status', flat=True)
 
     wb = Workbook()
@@ -138,7 +138,7 @@ def do_comparison_report(data=None):
             ws.cell(row=c_row, column=c_id).font = font
 
     # Insert first column header name
-    ws.cell(row=table_row_start, column=1, value='Case name')
+    ws.cell(row=table_row_start, column=1, value='Item name')
 
     # First column
     max_first_column_len = max(map(len, list(ct.index)))
@@ -148,12 +148,9 @@ def do_comparison_report(data=None):
         ws.cell(row=table_row_start, column=c_id).font = Font(color=WHITE)
         ws.column_dimensions[to_letter(c_id)].width = max_first_column_len
 
-    # Apply table style (zebra + color + header sort/filters)
-    medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
-
     table = Table(
         ref=f'{to_letter(1)}{table_row_start}:{to_letter(table_columns)}{table_row_end - 1}',
-        displayName='Results', tableStyleInfo=medium_style)
+        displayName='Results', tableStyleInfo=MEDIUM_STYLE)
     ws.add_table(table)
 
     # Remove empty row where DataFrame index name should be located
@@ -164,7 +161,6 @@ def do_comparison_report(data=None):
 
 def do_indicator_report(data, validation, mappings, mode):
     statuses = ['passed', 'failed', 'blocked', 'executed']
-    medium_style = TableStyleInfo(name='TableStyleMedium6', showRowStripes=True)
     wb = Workbook()
 
     def report_sheet(data, validation, mappings, mode):
@@ -245,7 +241,7 @@ def do_indicator_report(data, validation, mappings, mode):
             display_name = f'Single_{mappings[0].id}'
         table = Table(
             ref=f'A{table_row_start}:E{table_row_start + table_row_end + 1}',
-            displayName=display_name, tableStyleInfo=medium_style)
+            displayName=display_name, tableStyleInfo=MEDIUM_STYLE)
         ws.add_table(table)
 
     if mode == 'combined':

@@ -65,6 +65,17 @@
 
         <v-divider class="horizontal-line"></v-divider>
 
+        <!-- Mappings selector -->
+        <v-col cols="12" class="pb-0">
+            <mapping-selector
+                :items="mappingItems"
+                v-model="mappings"
+                @change="onMappingsChange"
+                @validation-passed="reportWeb"
+            ></mapping-selector>
+        </v-col>
+        <v-divider class="horizontal-line"></v-divider>
+
         <!-- DataTable -->
         <v-data-table class="results-table"
             :headers="headers"
@@ -165,12 +176,15 @@
 
 <script>
     import server from '@/server'
-    import { mapState, mapGetters } from 'vuex'
     import ResultItemDetails from '@/components/ResultItemDetails'
+    import mappingSelector from '@/components/MappingSelector.vue'
+
+    import { mapState, mapGetters } from 'vuex'
 
     export default {
         components: {
             ResultItemDetails,
+            mappingSelector
         },
         data() {
             return {
@@ -185,6 +199,12 @@
                 extraDataDialog: false,
                 extraData: {},
                 allKeys: [],
+
+                showTooltip: false,
+                validationErrors: [],
+                mappingItems: [],
+                mappings: [],
+                loading: false,
 
                 // data-table related variables
                 filteredHeaders: [],
@@ -206,7 +226,7 @@
             ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalHeaders', 'originalItems']),
             url() {
-                return `api/report/compare/${this.validations}`
+                return `api/report/compare/${this.validations}/${this._.map(this.mappings, 'id').join(',')}/`
             },
             reportHeader() {
                 return this.title !== undefined ? this.title: 'Validations comparison'
@@ -224,6 +244,10 @@
                 this.reportWeb()
             },
             filterData() {
+                if (this._.isUndefined(this.originalHeaders)) {
+                    this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
+                }
+
                 this.filteredItems = this._.cloneDeep(this.originalItems)
                 this.filteredItems.forEach(item => delete item.f1)
                 this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')
@@ -256,7 +280,8 @@
                 let values = Object.values(item)
                 const error = "There no validation or test result ids for this test item"
 
-                for (let i = 3; i <= values.length; i++) {
+                let lastColumn = this.showHideTestIdStatus ? values.length - 1 : values.length
+                for (let i = 4; i <= lastColumn; i++) {
                     let key = `f${i}`
                     let value = item[key]
                     if (typeof value === 'object' && value !== null) {
@@ -347,9 +372,26 @@
                 else if (s == 'Skipped') return 'cyan darken-3'
                 else if (s == 'Canceled') return 'brown darken-3'
             },
+            onMappingsChange() {
+                this.reportWeb()
+            },
         },
         mounted() {
-            this.reportWeb()
+            // find appropriate available mappings for our validation
+            let url = `api/validations/mappings/?ids=${this.validations[0]}`
+            server
+                .get(url)
+                .then(response => {
+                    this.mappingItems = response.data
+                    this.reportWeb()
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get available mappings for selected validations', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
         }
     }
 </script>

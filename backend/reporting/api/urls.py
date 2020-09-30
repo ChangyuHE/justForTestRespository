@@ -11,6 +11,8 @@ from api.view import feature_mapping
 from . import converters
 
 register_converter(converters.CommaSeparatedOptionalPathConverter, 'list')
+register_converter(converters.CommaSeparatedIntegersPathConverter, 'int_list')
+
 
 schema_view = get_swagger_view(title='Reporting API')
 
@@ -33,11 +35,11 @@ urlpatterns = [
     # Reports
     re_path(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # optional param "report=excel"
     re_path(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # optional param "report=excel"
-    re_path(r'^api/report/compare/(?P<id>.+)$', views.ReportCompareView.as_view()),     # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
     path('api/report/indicator/<int:id>/', views.ReportIndicatorView.as_view()),
-
-    path('api/report/extra-data/<list:ti_ids>/', views.ExtraDataView.as_view(), name='api-extra-data'),
+    path('api/report/compare/<int_list:val_pks>//', views.ReportCompareView.as_view(), name="cmp-view-special"),     # optional param "report=excel"
+    path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportCompareView.as_view(), name="cmp-view"),     # optional param "report=excel"
+    path('api/report/extra-data/<list:ti_pks>/', views.ExtraDataView.as_view(), name='api-extra-data'),
 
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester

@@ -4,7 +4,7 @@ import copy
 import urllib.parse
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
@@ -16,7 +16,7 @@ from django.db import transaction
 from django.db.models import Case, When, Q
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
@@ -34,15 +34,17 @@ import anytree.search
 from anytree import Node
 from anytree.exporter import JsonExporter
 
-from sqlalchemy import and_, case, literal_column
+from sqlalchemy import and_
+from sqlalchemy.orm import query, Query
 from sqlalchemy.sql import func
-from sqlalchemy.orm import Query
+
 
 from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Driver, Status, Os, OsGroup, Validation, Action, \
-    Result, ResultGroupNew, Run, FeatureMappingRule, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, FeatureMapping
+    Result, ResultGroupNew, Run, FeatureMappingRule, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, FeatureMapping, \
+    Feature
 from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, ScenarioAssetFullSerializer, \
@@ -325,11 +327,6 @@ def create_json_for_datatables(
     id_to_name: Dict[int, str]
     ):
     reverse_map = {v: k for k, v in id_to_name.items()}
-    items_dict = dict(
-        Result.objects
-              .filter(validation_id__in=id_to_name.keys())
-              .values_list('item_id', 'item__name')
-    )
 
     d = json.loads(statuses.to_json(orient='table'))
     headers = []
@@ -348,11 +345,8 @@ def create_json_for_datatables(
             # text is real header title
             key, value = header['value'], header['text']
             # handle pre-defined columns
-            if value in ('Item name', 'Test ID', 'Group'):
-                if value == 'Item name':
-                    item[key] = items_dict[statuses[value]]
-                else:
-                    item[key] = statuses[value]
+            if value in ('Item name', 'Test ID', 'Codec', 'Feature'):
+                item[key] = statuses[value]
             else:
                 # validation columns
                 status_dict = {'valId': reverse_map[value]}
@@ -778,7 +772,7 @@ def generate_dataframe(sql: Query, value: str) -> pd.DataFrame:
     return ct
 
 
-def result_ids(validation_ids: List[int]) -> pd.DataFrame:
+def get_result_ids(validation_ids: List[int]) -> pd.DataFrame:
     q = Result.sa \
         .query(func.max(Result.sa.status_id).label('status_id'), Result.sa.id.label('result_id'),
                Result.sa.item_id, Item.sa.id, Validation.sa.id.label('validation_id')) \
@@ -798,14 +792,31 @@ def result_ids(validation_ids: List[int]) -> pd.DataFrame:
 
     return ct
 
-def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
+
+def update_feature_and_codec(row: pd.Series, df: pd.DataFrame) -> None:
+    feature_and_codec =  df.loc[df['scenario_id'] == row.scenario_id]
+    if not feature_and_codec.empty:
+        # to prevent strange effect with list of single
+        # element inside...
+        row['Feature'] = feature_and_codec['Feature'].values[0]
+        row['Codec'] = feature_and_codec['Codec'].values[0]
+
+    return row
+
+
+def replace_item_id(row: pd.Series, items_dict: Dict[int, str]) -> pd.Series:
+    row["Item name"] = items_dict[row["Item name"]]
+    return row
+
+
+def validation_statuses(validation_ids: List[int], fmt_pks: List[int]) -> pd.DataFrame:
     q = Result.sa \
-        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.test_id, Result.sa.item_id, Item.sa.id,
-               ResultGroupNew.sa.name.label('group_name'), Validation.sa.id.label('validation_id')) \
+        .query(func.max(Result.sa.status_id).label('status_id'), Item.sa.test_id, Item.sa.scenario_id,
+               Result.sa.item_id, Item.sa.id, Validation.sa.id.label('validation_id')) \
         .select_from(Result.sa) \
         .filter(Result.sa.validation_id.in_(validation_ids)) \
-        .join(Item.sa).join(ResultGroupNew.sa).join(Validation.sa) \
-        .group_by(ResultGroupNew.sa.name, Item.sa.test_id, Result.sa.item_id, Item.sa.id, Validation.sa.id)
+        .join(Item.sa).join(Validation.sa) \
+        .group_by(Item.sa.test_id, Result.sa.item_id, Item.sa.id, Validation.sa.id)
 
     df = pd.read_sql(q.statement, q.session.bind)
     ct = pd.crosstab(index=df.item_id, columns=df.validation_id, values=df.status_id, aggfunc='max')
@@ -815,6 +826,22 @@ def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     del ct['validation_id']
     ct = ct.drop_duplicates()
     del ct['id']
+
+    q = FeatureMappingRule.sa \
+        .query(FeatureMappingRule.sa.scenario_id, Feature.sa.name.label('Feature'),
+               Codec.sa.name.label('Codec')) \
+        .select_from(FeatureMappingRule.sa) \
+        .filter(FeatureMappingRule.sa.mapping_id.in_(fmt_pks)) \
+        .join(FeatureMapping.sa) \
+        .join(Feature.sa) \
+        .join(Codec.sa)
+
+    df = pd.read_sql(q.statement, q.session.bind)
+    ct['Codec'] = 'n/a'
+    ct['Feature'] = 'n/a'
+    # could be very non-optimal solution for big validations...
+    ct = ct.apply(lambda x: update_feature_and_codec(x, df), axis=1)
+    del ct['scenario_id']
 
     # replace status_id with test_status values
     status_mapping = dict(Status.objects.all().values_list('id', 'test_status'))
@@ -826,17 +853,21 @@ def validation_statuses(validation_ids: List[int]) -> pd.DataFrame:
     # replace NaNs which appeared as result of all previous actions with empty strings
     ct = ct.replace(np.nan, '', regex=False)
 
-    # move item_id and group_id columns to front
+    # move Item name, Feature, and Codec columns to front
     cols = ct.columns.tolist()
-    cols = cols[-2:] + list(map(lambda x: int(x), validation_ids))
+    cols = cols[-3:] + list(map(lambda x: int(x), validation_ids))
     ct = ct.reindex(columns=cols)
-    ct.rename(columns={'test_id': 'Test ID', 'group_name': 'Group'}, inplace=True)
+
+    ct.rename(columns={'test_id': 'Test ID'}, inplace=True)
 
     return ct
 
 
 class ReportCompareView(LoggingMixin, APIView):
-    def get(self, request, *args, **kwargs):
+    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]]=None, *args, **kwargs) -> Response:
+        if fmt_pks is None:
+            fmt_pks = []
+
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
@@ -848,31 +879,38 @@ class ReportCompareView(LoggingMixin, APIView):
         show_diff = (show_diff == 'diff')
         hide_passed = (hide_passed == 'hide_passed')
 
-        validation_ids = Validation.objects.filter(id__in=kwargs.get('id', '').split(',')) \
-            .order_by('-date').values_list('id', flat=True)
-
-        statuses = validation_statuses(validation_ids)
-        result_ids_ = result_ids(validation_ids)
+        statuses = validation_statuses(val_pks, fmt_pks)
+        result_ids = get_result_ids(val_pks)
 
         if show_diff:
             # drop rows where all statuses are equal
-            mask = statuses.apply(lambda row: len(row.loc[validation_ids].unique()) > 1, axis=1)
+            mask = statuses.apply(lambda row: len(row.loc[val_pks].unique()) > 1, axis=1)
             statuses = statuses[mask]
-            result_ids_ = result_ids_[mask]
+            result_ids = result_ids[mask]
         elif hide_passed:
             # drop rows with only passed statuses
-            mask = statuses.apply(lambda row: (len(row.loc[validation_ids].unique()) > 1 or 'Passed' not in row.loc[validation_ids].unique()), axis=1)
+            mask = statuses.apply(lambda row: (len(row.loc[val_pks].unique()) > 1 or 'Passed' not in row.loc[val_pks].unique()), axis=1)
             statuses = statuses[mask]
-            result_ids_ = result_ids_[mask]
+            result_ids = result_ids[mask]
 
-        id_to_name = validation_id_to_name(validation_ids)
+        id_to_name = validation_id_to_name(val_pks)
         statuses.rename(columns=id_to_name, inplace=True)
+
+        items_dict = dict(
+            Result.objects
+                .filter(validation_id__in=val_pks)
+                .values_list('item_id', 'item__name')
+        )
+        statuses.reset_index(inplace=True)
+        statuses = statuses.apply(lambda row: replace_item_id(row, items_dict), axis=1)
+        statuses.set_index("Item name", inplace=True)
+
         # If no excel report needed just finish here with json return
         if not do_excel:
-            return Response(create_json_for_datatables(statuses, result_ids_, id_to_name))
+            return Response(create_json_for_datatables(statuses, result_ids, id_to_name))
 
         # Excel part
-        workbook = excel.do_comparison_report(data=statuses)
+        workbook = excel.do_comparison_report(statuses)
 
         filename = f'comparison_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
         response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
@@ -881,13 +919,13 @@ class ReportCompareView(LoggingMixin, APIView):
 
 
 class ExtraDataView(LoggingMixin, APIView):
-    def get(self, request, ti_ids, *args, **kwargs):
+    def get(self, request: HttpRequest, ti_pks: List[str], *args, **kwargs) -> Response:
         extra_data = []
         item_name = None
-        for res_id in ti_ids:
+        for res_pk in ti_pks:
             datum = {}
-            if res_id.startswith('v'):
-                val = get_object_or_404(Validation, pk=int(res_id[1:]))
+            if res_pk.startswith('v'):
+                val = get_object_or_404(Validation, pk=int(res_pk[1:]))
                 datum['vinfo'] = {
                     'validation': val.name,
                     'platform': val.platform.short_name,
@@ -895,7 +933,7 @@ class ExtraDataView(LoggingMixin, APIView):
                     'env':  val.env.name
                 }
             else:
-                res = get_object_or_404(Result, pk=int(res_id))
+                res = get_object_or_404(Result, pk=int(res_pk))
                 item_name = res.item.name
                 val = res.validation
                 datum['vinfo'] = {

@@ -64,16 +64,16 @@
 
                                 <!-- Comparison report -->
                                 <v-btn small class="outlined"
-                                    :disabled="!validations.length || validations.length < 2"
+                                    :disabled="!validations.length"
                                     :loading="reportTypeLoading('compare')"
                                     value="comparison"
                                 >
-                                    Compare selected
+                                    {{ compareButtonName }}
                                 </v-btn>
 
                                 <!-- Indicator report -->
                                 <v-btn small class="outlined"
-                                    :disabled="!validations.length || (validations.length != 1)"
+                                    :disabled="!validations.length || (validations.length !== 1)"
                                     :loading="reportTypeLoading('indicator')"
                                     value="indicator"
                                 >
@@ -83,7 +83,8 @@
                         </v-toolbar>
 
                         <!-- Report card -->
-                        <component v-if="reportIsReadyToBeRendered" :is="reportName" :type="reportType" />
+                        <component v-if="reportIsReadyToBeRendered" :is="reportName" :type="reportType"
+                            :title="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"/>
 
                         <!-- Selected validations -->
                         <template v-if="!showReport && validations.length">
@@ -114,8 +115,7 @@
     import 'splitpanes/dist/splitpanes.css'
 
     import { mapState, mapGetters } from 'vuex'
-    import qs from 'query-string'
-    import { replaceState, pushState } from '@/utils/history-management.js'
+    import { pushState } from '@/utils/history-management.js'
 
     export default {
         components: {
@@ -154,11 +154,14 @@
             },
             reportIsReadyToBeRendered() {
                 return this.reportType && !this.treeLoading && this.validations.length
+            },
+            compareButtonName() {
+                return (this.validations.length > 1) ? 'Compare Selected' : 'Overview'
             }
         },
         watch: {
             validations(current, previous) {
-                if (previous.length != 0 && !this._.isEqual(current, previous)) {
+                if (previous.length !== 0 && !this._.isEqual(current, previous)) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                     this.reportType = undefined
                 }

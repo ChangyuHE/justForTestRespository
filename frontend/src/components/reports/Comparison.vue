@@ -17,16 +17,18 @@
             </v-btn>
         </v-card-title>
 
-        <!-- Validations list -->
-        <v-col class="d-flex">
-            <v-list dense flat class="ml-4">
-                <v-list-item v-for="(item, i) in branches" :key="i">
-                    <v-list-item-content class="py-0 my-1">
-                        <v-list-item-title v-text="item"></v-list-item-title>
-                    </v-list-item-content>
-                </v-list-item>
-            </v-list>
+        <!-- Mappings selector -->
+        <v-col cols="12" class="pb-0">
+            <mapping-selector
+                :items="mappingItems"
+                v-model="mappings"
+                @change="onMappingsChange"
+                @validation-passed="reportWeb"
+            ></mapping-selector>
+        </v-col>
+        <v-divider class="horizontal-line"></v-divider>
 
+        <v-col class="d-flex mb-1">
             <v-spacer></v-spacer>
 
             <!-- Filtering type buttons -->
@@ -63,21 +65,18 @@
 
         </v-col>
 
-        <v-divider class="horizontal-line"></v-divider>
-
-        <!-- Mappings selector -->
-        <v-col cols="12" class="pb-0">
-            <mapping-selector
-                :items="mappingItems"
-                v-model="mappings"
-                @change="onMappingsChange"
-                @validation-passed="reportWeb"
-            ></mapping-selector>
+        <v-col class="d-flex mt-n5">
+            <v-spacer></v-spacer>
+            <v-card :disabled="reportLoading" flat>
+                <v-card-text class="text-body-2 pa-0 ma-0 mr-1">{{ current }} of {{ total }} items shown</v-card-text>
+            </v-card>
         </v-col>
+
         <v-divider class="horizontal-line"></v-divider>
 
         <!-- DataTable -->
         <v-data-table class="results-table"
+            @current-items="onItemFilter"
             :headers="headers"
             :items="items"
             :search="search"
@@ -204,18 +203,18 @@
                 validationErrors: [],
                 mappingItems: [],
                 mappings: [],
-                loading: false,
 
                 // data-table related variables
                 filteredHeaders: [],
                 filteredItems: [],
+                current: 0,
 
                 showHideTestIdStatus: false,
                 fileSizeRE: /(\d+)B$/,
 
                 detailsDialog: false,
                 selectedResultId: undefined,
-             }
+            }
         },
         props: {
             type: { type: String, required: true },
@@ -224,7 +223,7 @@
         computed: {
             ...mapState('tree', ['validations']),
             ...mapGetters('tree', ['branches']),
-            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalHeaders', 'originalItems']),
+            ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading', 'originalHeaders', 'originalItems', 'total']),
             url() {
                 return `api/report/compare/${this.validations}/${this._.map(this.mappings, 'id').join(',')}/`
             },
@@ -236,9 +235,12 @@
             },
             items() {
                 return this.showHideTestIdStatus ? this.originalItems : this.filteredItems
-            },
-        },
+            }
+         },
         methods: {
+            onItemFilter(items) {
+                this.current = items.length
+            },
             toggleTestId() {
                 this.showHideTestIdStatus = !this.showHideTestIdStatus
                 this.reportWeb()
@@ -247,7 +249,7 @@
                 if (this._.isUndefined(this.originalHeaders)) {
                     this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
                 }
-
+                this.current = this.total
                 this.filteredItems = this._.cloneDeep(this.originalItems)
                 this.filteredItems.forEach(item => delete item.f1)
                 this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')

@@ -324,7 +324,8 @@ def convert_to_datatable_json(dataframe: pd.DataFrame):
 def create_json_for_datatables(
     statuses: pd.DataFrame,
     result_ids: pd.DataFrame,
-    id_to_name: Dict[int, str]
+    id_to_name: Dict[int, str],
+    total: int
     ):
     reverse_map = {v: k for k, v in id_to_name.items()}
 
@@ -362,7 +363,7 @@ def create_json_for_datatables(
 
         items.append(item)
 
-    return {'headers': headers, 'items': items}
+    return {'headers': headers, 'items': items, 'total': total}
 
 
 ICONS = [
@@ -882,6 +883,7 @@ class ReportCompareView(LoggingMixin, APIView):
         statuses = validation_statuses(val_pks, fmt_pks)
         result_ids = get_result_ids(val_pks)
 
+        total = len(statuses)
         if show_diff:
             # drop rows where all statuses are equal
             mask = statuses.apply(lambda row: len(row.loc[val_pks].unique()) > 1, axis=1)
@@ -907,7 +909,7 @@ class ReportCompareView(LoggingMixin, APIView):
 
         # If no excel report needed just finish here with json return
         if not do_excel:
-            return Response(create_json_for_datatables(statuses, result_ids, id_to_name))
+            return Response(create_json_for_datatables(statuses, result_ids, id_to_name, total))
 
         # Excel part
         workbook = excel.do_comparison_report(statuses)

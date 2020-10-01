@@ -9,6 +9,7 @@ export default {
         originalHeaders: [],
         originalItems: [],
         reportType: undefined,
+        total: 0,
     },
     getters: {
     },
@@ -27,6 +28,7 @@ export default {
                 .then(response => {
                     commit('SET_STATE', {'originalHeaders': response.data.headers})
                     commit('SET_STATE', {'originalItems': response.data.items})
+                    commit('SET_STATE', {'total': response.data.total})
                 })
                 .catch(error => {
                     throw error

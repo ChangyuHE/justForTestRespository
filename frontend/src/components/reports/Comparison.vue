@@ -125,7 +125,7 @@
                                 <tr v-for="asset in ['msdk', 'lucas', 'scenario', 'fullsim', 'os']" :key="asset">
                                     <td>{{ asset }}</td>
                                     <td v-for="datum in extraData.extra" class="text-left" :key="datum.vinfo.validation">
-                                        <span v-if="'assets' in datum">{{ datum.assets[asset] }}</span>
+                                        <span v-if="'assets' in datum" v-html="formatAssetAsLink(datum.assets[asset])"></span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -256,6 +256,12 @@
             },
             isFileSizeParam(name, value) {
                 return name == 'file_size' && this.fileSizeRE.test(value)
+            },
+            formatAssetAsLink(asset) {
+                if (typeof asset === 'string' && asset.startsWith("http") && !asset.endsWith("///")) {
+                    return `<a href='${asset}' target='_blank'>${asset}</a>`
+                }
+                return asset
             },
             formatFileSize(value) {
                 value.match(this.fileSizeRE)

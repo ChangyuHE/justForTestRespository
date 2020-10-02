@@ -1,4 +1,6 @@
 import logging
+from itertools import combinations
+from collections import defaultdict
 
 from django.db import transaction
 from django.db.utils import IntegrityError
@@ -33,6 +35,10 @@ from utils import api_helpers
 log = logging.getLogger(__name__)
 
 
+class ValidationException(Exception):
+    pass
+
+
 class FeatureMappingPostView(LoggingMixin, APIView):
     """ Excel file import view """
     parser_class = (FileUploadParser,)
@@ -60,9 +66,58 @@ def check_mappings(ids):
 
 
 class FeatureMappingConflictCheckView(LoggingMixin, APIView):
+    """ Check for conflicts through selected mappings """
     def get(self, request):
         ids = request.query_params.get('ids', '').split(',')
         return Response(check_mappings(ids))
+
+
+def check_rules_conflicts(ids_list, scenario_name, issues):
+    # ids_list example: [[1,2,3], None, [4,5]]
+    # first check - None with other ids in rules for one scenario
+    for ids_tuple in combinations(ids_list, 2):
+        if None in ids_tuple and any(e is not None for e in ids_tuple):
+            issues[scenario_name].append('No empty Ids allowed if there are other rules with specified Ids exist')
+            break
+
+    # second check - same ids in rules for one scenario
+    ids_wo_none = [ids.split(',') for ids in ids_list if ids is not None]
+    for ids_tuple in combinations(ids_wo_none, 2):
+        if set(ids_tuple[0]) & set(ids_tuple[1]):
+            issues[scenario_name].append('There must be no same ids in different rules for the same scenario')
+            break
+    return issues
+
+
+class FeatureMappingRulesConflictCheckView(LoggingMixin, APIView):
+    """ Check for conflicts through mapping rules """
+    def get(self, request, pk, *args, **kwargs):
+        issues = defaultdict(list)
+        rule_to_exclude = None
+
+        # prepare data for edited/created rule
+        new_ids = request.query_params.get('new_ids')
+        if new_ids == 'none':
+            new_ids = None
+        scenario_id = request.query_params.get('scenario_id')
+
+        # rule.id for edit or 'none' for new rule creation
+        rule_id = request.query_params.get('rule_id')
+        if rule_id != 'none':
+            rule_to_exclude = rule_id
+
+        scenario_name = TestScenario.objects.get(id=scenario_id).name
+        rules = FeatureMappingRule.objects.filter(scenario_id=scenario_id, mapping_id=pk)
+        # exclude ids for edited rule, because we passed new ones
+        if rule_to_exclude:
+            rules = rules.exclude(id=rule_to_exclude)
+
+        # add new items to examine list
+        ids_list = list(rules.values_list('ids', flat=True))
+        ids_list.append(new_ids)
+
+        issues = check_rules_conflicts(ids_list, scenario_name, issues)
+        return Response(issues)
 
 
 class FeatureMappingListView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
@@ -324,7 +379,23 @@ def import_feature_mapping(file, serializer):
                 else:
                     errors.append({f'workbook error (row {i + 2})': 'Empty cell'})
             FeatureMappingRule.objects.bulk_create(fm_rules)
+
+            # check rules for conflicts
+            issues = defaultdict(list)
+            scenario_names = FeatureMappingRule.objects.filter(mapping=mapping) \
+                .values_list('scenario__name', flat=True).distinct()
+
+            for name in scenario_names:
+                rules = FeatureMappingRule.objects.filter(mapping_id=mapping, scenario__name=name)
+                ids_list = list(rules.values_list('ids', flat=True))
+
+                issues = check_rules_conflicts(ids_list, name, issues)
+            if issues:
+                raise ValidationException(dict(issues))
     except IntegrityError as e:
-        errors.append({'import error': f'Integrity error: {e.__cause__}'})
+        if 'duplicate key' in str(e):
+            errors.append({'Import error': 'Rule duplicate creation attempt'})
+    except ValidationException as e:
+        errors.append(e.args[0])
 
     return errors

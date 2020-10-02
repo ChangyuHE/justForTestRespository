@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/feature_mapping/export/<int:pk>/', feature_mapping.FeatureMappingExportView.as_view()),
     path('api/feature_mapping/', feature_mapping.FeatureMappingListView.as_view()),
     path('api/feature_mapping/conflicts/', feature_mapping.FeatureMappingConflictCheckView.as_view()),
+    path('api/feature_mapping/<int:pk>/rules_conflicts/', feature_mapping.FeatureMappingRulesConflictCheckView.as_view()),
 
     # .. rules
     path('api/feature_mapping/rules/table/', feature_mapping.FeatureMappingRuleTableView.as_view()),

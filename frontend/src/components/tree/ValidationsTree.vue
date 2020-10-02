@@ -146,7 +146,7 @@
     import server from '@/server.js'
     import { mapState } from 'vuex'
     import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
-    import { replaceState, pushState } from '@/utils/history-management.js'
+    import { alterHistory } from '@/utils/history-management.js'
 
     // Get text for branch from list of components
     function selectedValidationsText(branches) {
@@ -368,7 +368,7 @@
                 }
 
                 // add selected validations to url query
-                pushState({selected: this.validations})
+                alterHistory('push', {selected: this.validations})
             },
             /**
              * Uncheck all validations and clear url query

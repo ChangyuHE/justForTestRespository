@@ -115,7 +115,7 @@
     import 'splitpanes/dist/splitpanes.css'
 
     import { mapState, mapGetters } from 'vuex'
-    import { pushState } from '@/utils/history-management.js'
+    import { alterHistory } from '@/utils/history-management.js'
 
     export default {
         components: {
@@ -164,6 +164,7 @@
                 if (previous.length !== 0 && !this._.isEqual(current, previous)) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                     this.reportType = undefined
+                    alterHistory('push', {}, ['rtype'])
                 }
             }
         },
@@ -182,7 +183,7 @@
                 if (this.reportType == undefined) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                 }
-                pushState({rtype: this.reportType})
+                alterHistory('push', {rtype: this.reportType})
             },
         },
         created() {

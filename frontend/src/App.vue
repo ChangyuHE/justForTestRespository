@@ -92,7 +92,7 @@
     import server from './server.js'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
-    import { replaceState } from '@/utils/history-management.js'
+    import { alterHistory } from '@/utils/history-management.js'
 
     import { mapState, mapGetters } from 'vuex'
 
@@ -129,7 +129,7 @@
             passParamsToURL() {
                 // only for click on Validations button
                 if (this.$route.name == 'home')
-                    replaceState({selected: this.validations, rtype: this.reportType})
+                    alterHistory('replace', {selected: this.validations, rtype: this.reportType})
             },
             onScroll(e) {
                 if (typeof window === 'undefined') return

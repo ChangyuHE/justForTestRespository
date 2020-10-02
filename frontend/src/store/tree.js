@@ -16,10 +16,7 @@ export default {
             state.validations = validations
         },
         ADD_SELECTED(state, { validations, branches }) {
-            validations.forEach(e => {
-                if (state.validations.indexOf(e) == -1)
-                    state.validations.push(e)
-            })
+            state.validations = _.union(state.validations, validations)
             branches.forEach(b => {
                 if (_.findIndex(state.limbs, limb => _.isMatch(limb, b)) == -1)
                     state.limbs.push(b)

@@ -96,11 +96,21 @@
 
                 <v-card-text class="pt-2">
                     <v-list dense color="transparent">
-                        <v-list-item v-for="(message, title) in eData" :key="title+message">
-                            <span class="text-subtitle-1">
-                                <b>{{ title }}</b>: {{ message }}
-                            </span>
-                        </v-list-item>
+                        <template v-for="error in eData">
+                            <v-list-item v-for="(value, key) in error" :key="key+value" class="my-1" style="display: block">
+                                <template v-if="_.isArray(value)">
+                                    <div class="text-subtitle-1 font-weight-medium">
+                                        {{ key }}
+                                    </div>
+                                    <div v-for="msg in value" :key="msg" class="pl-2 text-body-1">
+                                        {{ msg }}
+                                    </div>
+                                </template>
+                                <div v-else class="text-body-1">
+                                    {{ key }}: {{  value}}
+                                </div>
+                            </v-list-item>
+                        </template>
                     </v-list>
                 </v-card-text>
                 <v-card-actions>
@@ -184,11 +194,8 @@
                                 'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${data}`
                             })
                         } else {
-                            let data = error.response.data
                             this.errorsDialog = true
-                            this._.each(data.errors, (message, title) => {
-                                this.eData[title] = message
-                            })
+                            this.eData = error.response.data.errors
                         }
                     } else if (error.request) {     // The request was made but no response was received
                         console.log('No response, request:', error.request)

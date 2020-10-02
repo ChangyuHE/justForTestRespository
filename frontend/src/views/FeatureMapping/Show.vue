@@ -25,7 +25,7 @@
                 <v-col md="12" lg="8" class="pt-0">
                     <v-data-table ref="mappingtable" v-if="showMappingTable"
                         dense multi-sort single-select
-                        class="row-pointer"
+                        class="mappings-table"
                         :headers="computedMappingHeaders"
                         :items="mappingItems"
                         :items-per-page="5"
@@ -119,23 +119,17 @@
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="blue-grey darken-1" text @click="closeMapDialog">Cancel</v-btn>
-                                            <v-btn color="cyan darken-2" text @click="saveMappingItem" :disabled="!isMapFormValid || saveMappingItemDisabled">Save</v-btn>
+                                            <v-btn color="cyan darken-2" text @click="saveMappingItem" :loading="saving" :disabled="!isMapFormValid || saveMappingItemDisabled">Save</v-btn>
                                         </v-card-actions>
                                     </v-card>
                                 </v-dialog>
                             </v-toolbar>
                         </template>
                         <template v-slot:item.public="{ item }">
-                            <v-icon>
-                                <template v-if="item.public">mdi-checkbox-marked</template>
-                                <template v-else>mdi-checkbox-blank-outline</template>
-                            </v-icon>
+                            {{ item.public ? 'Yes' : 'No' }}
                         </template>
                         <template v-slot:item.official="{ item }">
-                            <v-icon>
-                                <template v-if="item.official">mdi-checkbox-marked</template>
-                                <template v-else>mdi-checkbox-blank-outline</template>
-                            </v-icon>
+                            {{ item.official ? 'Yes' : 'No' }}
                         </template>
                         <!-- Actions icons -->
                         <template v-slot:item.actions="{ item }">
@@ -230,6 +224,7 @@
                                                     ></api-auto-complete>
                                                     <v-combobox v-else
                                                         label="Ids"
+                                                        color="blue-grey"
                                                         v-model="idItems"
                                                         :delimiters="[' ']"
                                                         single-line
@@ -253,7 +248,7 @@
                                     <v-card-actions>
                                         <v-spacer></v-spacer>
                                         <v-btn color="blue-grey darken-1" text @click="closeRuleDialog">Cancel</v-btn>
-                                        <v-btn color="cyan darken-2" text @click="saveRule" :disabled="!isFormValid || saveRuleDisabled">Save</v-btn>
+                                        <v-btn color="cyan darken-2" text @click="saveRule" :loading="saving" :disabled="!isFormValid || saveRuleDisabled">Save</v-btn>
                                     </v-card-actions>
                                 </v-card>
                             </v-dialog>
@@ -394,6 +389,7 @@
                     }
                 },
                 isFormValid: null,
+                saving: false,
             }
         },
         computed: {
@@ -548,6 +544,7 @@
                 this.editMappingItemDialog = true
             },
             saveMappingItem() {
+                this.saving = true
                 // prepare item data to send
                 let item = {}
                 for (let [k, v] of Object.entries(this.editedMapItem)) {
@@ -582,6 +579,7 @@
                         }
                         justEditedAnimation(itemId, 'selected-row-error', 'data-row-map-id')
                     })
+                    .finally(() => this.saving = false)
             },
             deleteMappingItemDebounced(item) {
                 // debounce needed to ensure that data loads first, while id exists in database
@@ -699,53 +697,82 @@
                 if (item.ids == '')
                     item.ids = null
 
-                // back: create new item back request ..
-                if (this.editedIndex == -1) {
-                    item.mapping = this.activeMapping.id
-                    const url = 'api/feature_mapping/rules/'
-                    server
-                        .post(url, item)
-                        .then(response => {
-                            this.items.push(response.data)
-                            this.$toasted.success('Successfully created')
-                            this.closeRuleDialog()
-                        })
-                        .catch(error => {
-                            if (error.response && error.response.status == 400) {
-                                this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                // check if item conflict with other rules
+                let url = `api/feature_mapping/${this.activeMapping.id}/rules_conflicts/` +
+                        `?new_ids=${item.ids !== null ? item.ids : 'none'}&scenario_id=${item.scenario}&rule_id=${item.id !== undefined ? item.id : 'none'}`
+                server
+                    .get(url)
+                    .then(response => {
+                        // if conflicts found
+                        if (!this._.isEmpty(response.data)) {
+                            Object.values(response.data)[0].forEach(e => {
+                                this.$toasted.global.alert_error(e)
+                            })
+                        } else {
+                            // Save rule
+                            this.saving = true
+                            // back: create new item back request ..
+                            if (this.editedIndex == -1) {
+                                item.mapping = this.activeMapping.id
+                                url = 'api/feature_mapping/rules/'
+                                server
+                                    .post(url, item)
+                                    .then(response => {
+                                        this.items.push(response.data)
+                                        this.$toasted.success('Successfully created')
+                                        this.closeRuleDialog()
+                                    })
+                                    .catch(error => {
+                                        if (error.response && error.response.status == 400) {
+                                            this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                                        } else {
+                                            if (error.handleGlobally) {
+                                                error.handleGlobally('Could not create rule', url)
+                                            } else {
+                                                this.$toasted.global.alert_error(error)
+                                            }
+                                        }
+                                    })
+                                    .finally(() => this.saving = false)
                             } else {
-                                if (error.handleGlobally) {
-                                    error.handleGlobally('Could not create rule', url)
-                                } else {
-                                    this.$toasted.global.alert_error(error)
-                                }
+                                // .. edit existing one
+                                url = `api/feature_mapping/rules/${this.editedItem.id}/`
+                                let itemId = this.editedItem.id
+                                server
+                                    .patch(url, item)
+                                    .then(response => {
+                                        Object.assign(this.items[this.editedIndex], response.data)
+                                        this.$toasted.success('Successfully updated')
+                                        justEditedAnimation(itemId, 'selected-row-ok', 'data-row-rule-id')
+                                        this.closeRuleDialog()
+                                    })
+                                    .catch(error => {
+                                        if (error.response && error.response.status == 400) {
+                                            this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                                        } else {
+                                            if (error.handleGlobally) {
+                                                error.handleGlobally('Could not update rule', url)
+                                            } else {
+                                                this.$toasted.global.alert_error(error)
+                                            }
+                                        }
+                                        justEditedAnimation(itemId, 'selected-row-error', 'data-row-rule-id')
+                                    })
+                                    .finally(() => this.saving = false)
                             }
-                        })
-                } else {
-                    // .. edit existing one
-                    const url = `api/feature_mapping/rules/${this.editedItem.id}/`
-                    let itemId = this.editedItem.id
-                    server
-                        .patch(url, item)
-                        .then(response => {
-                            Object.assign(this.items[this.editedIndex], response.data)
-                            this.$toasted.success('Successfully updated')
-                            justEditedAnimation(itemId, 'selected-row-ok', 'data-row-rule-id')
-                            this.closeRuleDialog()
-                        })
-                        .catch(error => {
-                            if (error.response && error.response.status == 400) {
-                                this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                        }
+                    })
+                    .catch(error => {
+                        if (error.response && error.response.status == 400) {
+                            this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                        } else {
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Could not check mapping for conflicts in rules', url)
                             } else {
-                                if (error.handleGlobally) {
-                                    error.handleGlobally('Could not update rule', url)
-                                } else {
-                                    this.$toasted.global.alert_error(error)
-                                }
+                                this.$toasted.global.alert_error(error)
                             }
-                            justEditedAnimation(itemId, 'selected-row-error', 'data-row-rule-id')
-                        })
-                }
+                        }
+                    })
             },
             // Flush edit item object and close dialog
             closeRuleDialog() {
@@ -789,8 +816,12 @@
 </script>
 
 <style scoped>
-    .row-pointer >>> tbody tr :hover {
+    .mappings-table >>> tbody tr :hover {
         cursor: pointer;
+    }
+    /* make table columns dense */
+    .mappings-table >>> tbody tr td, .mappings-table >>> thead th {
+        padding: 0 4px !important;
     }
     kbd {
         background-color: #546E7A;

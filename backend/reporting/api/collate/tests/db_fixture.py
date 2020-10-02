@@ -60,6 +60,9 @@ class DbFixture(TransactionTestCase):
         Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_105',
                             args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv -t 105',
                             plugin=plugin, scenario=scenario, test_id='105')
+        Item.objects.create(name='Lucas - Media Encode - VDEnc TEDDI MultiRef BRC_KBL_142',
+                            args='test_media_lucas -s KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_foobar.csv -t 142',
+                            plugin=plugin, scenario=scenario, test_id='105')
 
         Status.objects.create(test_status='Failed', priority=100)
         Status.objects.create(test_status='Passed', priority=100)

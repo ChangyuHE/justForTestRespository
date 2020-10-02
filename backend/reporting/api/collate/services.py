@@ -267,7 +267,11 @@ class RecordBuilder:
         existing_entity = _find_existing_entity(entity)
 
         if not (existing_entity is None or force_item):
-            self.__outcome.add_item_changed_error(existing_entity.status.test_status, entity.status.test_status)
+            self.__outcome.add_item_changed_error(
+                existing_entity.item,
+                existing_entity.status.test_status,
+                entity.status.test_status,
+            )
 
     def build(self, force_run=False, force_item=False):
         if not self.verify(force_run, force_item):

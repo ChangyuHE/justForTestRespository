@@ -183,27 +183,47 @@ class ImportFileIntegrationTest(DramatiqFixture):
         status_id_passed = status_id_failed + 1
 
         self.set_file('import_same_item.json')
-        common_params = dict(validation_id=validation_id, platform_id=platform_id, env_id=env_id, os_id=os_id)
+        common_params = dict(validation_id=validation_id, platform_id=platform_id, env_id=env_id, os_id=os_id, component_id=1)
         Result.objects.bulk_create([Result(
             **common_params,
             item_id = first_item_id,
             status_id = status_id_failed,
+            result_key = 'gtax_GTAX_RIL_FM_57128_tests_10',
+            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57128#task_tests_10',
+            result_reason = 'Not found.',
         ), Result(
             **common_params,
             item_id = first_item_id + 1,
             status_id = status_id_passed,
+            result_key = 'gtax_GTAX_RIL_FM_57128_tests_8',
+            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57128#task_tests_8',
+            result_reason = 'Not found.',
         ), Result(
             **common_params,
             item_id = first_item_id + 2,
             status_id = status_id_failed,
+            result_key = 'gtax_GTAX_RIL_FM_57113_tests_9',
+            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57113#task_tests_9',
+            result_reason = 'Not found.',
         ), Result(
             **common_params,
             item_id = first_item_id + 3,
             status_id = status_id_passed,
+            result_key = 'gtax_GTAX_RIL_FM_57109_tests_0',
+            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57109#task_tests_0',
+            result_reason = 'Not found.',
         ), Result(
             **common_params,
             item_id = first_item_id + 4,
             status_id = status_id_failed,
+            result_key = 'gtax_GTAX_RIL_FM_57115_tests_4',
+            result_url = 'http://gtax-ril-fm.intel.com/#/jobs/57115#task_tests_4',
+        ), Result(
+            **common_params,
+            item_id = first_item_id + 5,
+            status_id = status_id_passed,
+            result_key = '',
+            result_url = '',
         )])
 
         client = Client()

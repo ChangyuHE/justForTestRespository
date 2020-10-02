@@ -204,12 +204,30 @@ class OutcomeBuilder:
         message=f'Unable to auto-convert {field_type} "{date}" to excel date.'
         self.__add_error('ERR_DATE_FORMAT', message)
 
-    def add_item_changed_error(self, old_status, new_status, **kwargs):
+    def add_item_changed_error(self, item, old_status, new_status):
         if old_status != new_status:
             message = f"Result changed from '{old_status}' to '{new_status}'"
         else:
             message = f"Changed Result with '{new_status}' status"
-        self.__add_error('ERR_ITEM_CHANGED', message, **kwargs)
+
+        code = 'ERR_ITEM_CHANGED'
+        suite_name = item.scenario.name if item.scenario else item.name
+
+        for err in self.errors:
+            if err['code'] == code and err['message'] == message:
+                if item.test_id is not None:
+                    err['details'][suite_name].append(item.test_id)
+                break
+        else:
+            details = defaultdict(list)
+
+            if item.test_id is not None:
+                details[suite_name] = [item.test_id]
+            else:
+                details[suite_name] = []
+
+            self.__add_error(code, message, details=details)
+
         self.add_warning(message)
 
 

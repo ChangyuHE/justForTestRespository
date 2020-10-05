@@ -33,12 +33,14 @@ urlpatterns = [
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 
     # Reports
-    re_path(r'^api/report/best/(?P<id>.+)$', views.ReportBestView.as_view()),   # optional param "report=excel"
-    re_path(r'^api/report/last/(?P<id>.+)$', views.ReportLastView.as_view()),   # optional param "report=excel"
+    path('api/report/best/<int_list:val_pks>//', views.ReportBestView.as_view(), name="best-report-special"),  # optional param "report=excel"
+    path('api/report/best/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportBestView.as_view(), name="best-report"),  # optional param "report=excel"
+    path('api/report/last/<int_list:val_pks>//', views.ReportLastView.as_view(), name="last-report-special"),  # optional param "report=excel"
+    path('api/report/last/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportLastView.as_view(), name="last-report"),  # optional param "report=excel"
     re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
     path('api/report/indicator/<int:id>/', views.ReportIndicatorView.as_view()),
-    path('api/report/compare/<int_list:val_pks>//', views.ReportCompareView.as_view(), name="cmp-view-special"),     # optional param "report=excel"
-    path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportCompareView.as_view(), name="cmp-view"),     # optional param "report=excel"
+    path('api/report/compare/<int_list:val_pks>//', views.ReportCompareView.as_view(), name="cmp-view-special"),  # optional param "report=excel"
+    path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportCompareView.as_view(), name="cmp-view"),  # optional param "report=excel"
     path('api/report/extra-data/<list:ti_pks>/', views.ExtraDataView.as_view(), name='api-extra-data'),
 
     # Import

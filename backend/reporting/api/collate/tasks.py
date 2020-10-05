@@ -123,10 +123,12 @@ Test items:
     finally:
         if production:
             log.info("Sending an e-mail...")
+            # None in the from field means that emails will be send from
+            # DEFAULT_FROM_EMAIL setting address
             msg = EmailMessage(
                 topic,
                 text,
-                'reporter@intel.com',
+                None,
                 to_emails,
                 cc=['Arseniy.Obolenskiy@intel.com'],
             )

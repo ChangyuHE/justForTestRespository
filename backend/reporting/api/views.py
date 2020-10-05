@@ -1232,9 +1232,9 @@ class RequestModelCreation(APIView):
                                                          'fields': fields,
                                                          'add_model_object_url': url})
         subject = f'[REPORTER] New {model.lower()} creation request'
-        sender = 'reporter@intel.com'
 
-        msg = EmailMessage(subject, msg, sender, staff_emails, cc=[requester['email']])
+        # None in the from field means take sender from DEFAULT_FROM_EMAIL setting
+        msg = EmailMessage(subject, msg, None, staff_emails, cc=[requester['email']])
         msg.content_subtype = "html"
         try:
             msg.send()

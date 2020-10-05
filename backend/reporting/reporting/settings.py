@@ -43,7 +43,14 @@ GTA_API_PASSWORD = "BDD1D46EB3E6C044F536BC150E074B886B6A12AE741F00EFAA0649660B8A
 JIRA_SERVER = 'https://jira.devtools.intel.com'
 JIRA_AUTH = ('lab_msdkjira', 'pelnq82@*')
 
-EMAIL_HOST = 'smtp.intel.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'lab_msdk'
+EMAIL_HOST_PASSWORD = 'pelnq72@'
+EMAIL_HOST = 'smtpauth.intel.com'
+
+DEFAULT_FROM_EMAIL = 'reporter@intel.com'
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = not production

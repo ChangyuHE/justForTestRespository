@@ -51,6 +51,17 @@
 
         <v-divider class="horizontal-line"></v-divider>
 
+        <!-- Mappings selector -->
+        <v-col cols="12" class="pb-0">
+            <mapping-selector
+                :items="mappingItems"
+                v-model="mappings"
+                @change="onMappingsChange"
+                @validation-passed="reportWeb"
+            ></mapping-selector>
+        </v-col>
+        <v-divider class="horizontal-line"></v-divider>
+
         <!-- DataTable -->
         <v-data-table class="results-table"
             :headers="headers"
@@ -67,14 +78,21 @@
 </template>
 
 <script>
+    import server from '@/server'
     import { mapState, mapGetters } from 'vuex'
+    import mappingSelector from '@/components/MappingSelector.vue'
 
     export default {
+        components: {
+            mappingSelector
+        },
         data() {
             return {
                 search: '',
                 reportGrouping: 0,
-                reportGroups: ['feature', 'component'],
+                reportGroups: ['feature', 'codec'],
+                mappingItems: [],
+                mappings: [],
             }
         },
         props: {
@@ -84,9 +102,9 @@
             ...mapState('tree', ['validations']),
             ...mapGetters('tree', ['branches']),
             ...mapState('reports', ['showReport', 'reportLoading', 'excelLoading']),
-            ...mapState('reports', {'headers': 'originalHeaders', 'items':'originalItems'}),
+            ...mapState('reports', {'headers': 'originalHeaders', 'items': 'originalItems'}),
             url() {
-                return `api/report/${this.type}/${this.validations}`
+                return `api/report/${this.type}/${this.validations}/${this._.map(this.mappings, 'id').join(',')}/`
             }
         },
         methods: {
@@ -100,10 +118,10 @@
                         } else {
                             this.$toasted.global.alert_error(error)
                         }
-                    });
+                    })
             },
             changeGrouping() {
-                this.reportWeb();
+                this.reportWeb()
             },
             reportWeb() {
                 const url = `${this.url}?group-by=${this.reportGroups[this.reportGrouping]}`
@@ -115,23 +133,40 @@
                         } else {
                             this.$toasted.global.alert_error(error)
                         }
-                    });
+                    })
             },
             /**
              * Coloring passrates in report
              */
             getPassrateColor(p) {
-                p = Number(p.slice(0, -1));
+                p = Number(p.slice(0, -1))
                 if (Number.isNaN(p))
-                    p = 0;
+                    p = 0
                 if (p >= 0 && p < 50) return 'red lighten-3'
                 else if (p >= 50 && p < 80) return 'yellow lighten-4'
                 else if (p >= 80 && p < 100) return 'green lighten-4'
                 else return 'green lighten-1'
             },
+            onMappingsChange() {
+                this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
+            },
         },
         mounted() {
-            this.reportWeb();
+            // find appropriate available mappings for our validation
+            let url = `api/validations/mappings/?ids=${this.validations[0]}`
+            server
+                .get(url)
+                .then(response => {
+                    this.mappingItems = response.data
+                    this.reportWeb()
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get available mappings for selected validations', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
         }
     }
 </script>

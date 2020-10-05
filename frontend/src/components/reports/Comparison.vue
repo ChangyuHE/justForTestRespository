@@ -381,7 +381,9 @@
                 else if (s == 'Canceled') return 'brown darken-3'
             },
             onMappingsChange() {
-                this.reportWeb()
+                this.filteredHeaders = []
+                this.filteredItems = []
+                this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
             },
         },
         mounted() {

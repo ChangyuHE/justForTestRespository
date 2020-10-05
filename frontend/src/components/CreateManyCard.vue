@@ -5,22 +5,29 @@
                 <span class="title font-weight-bold">{{ objectName }}</span> objects creation form
             </span>
         </v-card-title>
-        <v-card-text class="mt-2" >
-            <span class="subtitle-1">A number of object will be created using data shown below</span>
-
+        <v-card-text class="pb-0">
+            <div class="d-flex justify-space-between">
+                <span class="subtitle-1 d-flex align-self-center ">A number of object will be created using data shown below</span>
+                <div class="d-flex justify-end">
+                    <v-btn color="red" text :disabled="sending" @click="closeDialog">Close</v-btn>
+                    <v-btn color="cyan darken-2" text :loading="sending" @click="submit">Submit</v-btn>
+                </div>
+            </div>
+            <hr>
             <v-list dense>
-                <v-list-item v-for="error in errors" :key="error.ID">
+                <v-list-item v-for="(error, i) in errors" :key="i">
                     <v-list-item-content>
-                    <span class="text-body-2" v-html="getMessage(error)"></span>
-                    <v-divider class="mt-2"></v-divider>
+                        <span class="text-body-2" v-html="getMessage(error)"></span>
+                        <v-divider class="mt-2" v-if="i != errors.length - 1"></v-divider>
                     </v-list-item-content>
                 </v-list-item>
             </v-list>
+            <hr>
         </v-card-text>
         <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="red" text @click="closeDialog">Close</v-btn>
-            <v-btn color="cyan darken-2" text @click="submit">Submit</v-btn>
+            <v-btn color="red" text :disabled="sending" @click="closeDialog">Close</v-btn>
+            <v-btn color="cyan darken-2" text :loading="sending" @click="submit">Submit</v-btn>
         </v-card-actions>
     </v-card>
 </template>
@@ -30,7 +37,9 @@
 
     export default {
         data() {
-            return {}
+            return {
+                sending: false
+            }
         },
         props: {
             errors: { type: Array, required: true },
@@ -61,6 +70,7 @@
                 this.$emit('closeCreate')
             },
             submit() {
+                this.sending = true
                 let data = {'entities': []}
                 for (let e of this.errors)
                     data.entities.push(e.entity)
@@ -83,6 +93,7 @@
                             this.$toasted.global.alert_error(error)
                         }
                     })
+                    .finally(() => this.sending = false)
             }
         }
     }

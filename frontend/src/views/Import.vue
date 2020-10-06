@@ -172,8 +172,8 @@
 
     import { mapState, mapGetters } from 'vuex'
 
-    function getUniqueID(){
-        return Math.random().toString(36).slice(2);
+    function getUniqueID() {
+        return Math.random().toString(36).slice(2)
     }
 
     export default {
@@ -200,7 +200,7 @@
                 priority: {
                     'blocking': ['ERR_EXISTING_VALIDATION', 'ERR_INVALID_VALIDATION_ID', 'ERR_MISSING_COLUMNS', 'ERR_WORKBOOK_EXCEPTION', 'ERR_DATE_FORMAT', 'ERR_AMBIGUOUS_COLUMN'],
                     'high': ['ERR_MISSING_ENTITY'],
-                    'medium': [],
+                    'medium': ['ERR_ITEM_CHANGED'],
                     'low': ['ERR_EXISTING_RUN']
                 },
                 tab: null,
@@ -216,9 +216,9 @@
             ...mapGetters(['importErrors']),
             uploadDisabled() {
                 if (this.importType == 'existing') {
-                    return !(Boolean(this.file) && this.selected && 'id' in this.selected && this.selected.id != 0);
+                    return !(Boolean(this.file) && this.selected && 'id' in this.selected && this.selected.id != 0)
                 } else {
-                    return !(Boolean(this.file) && this.valDate && this.valName ? this.valName.length >= 10 : false);
+                    return !(Boolean(this.file) && this.valDate && this.valName ? this.valName.length >= 10 : false)
                 }
             },
             /**
@@ -234,28 +234,28 @@
             },
             // Tabs for import errors dialog
             errorsTabs() {
-                let tabs = Object.keys(this.priority);
+                let tabs = Object.keys(this.priority)
                 tabs.forEach(priority => {
                     if (!(priority in this.importErrors))
                         tabs = tabs.filter(e => e !== priority)
-                });
-                return tabs;
+                })
+                return tabs
             },
             uploadFromDialogDisabled() {
                 return 'blocking' in this.importErrors || 'high' in this.importErrors
             },
             today() {
-                let date = new Date();
-                return date.toISOString();
+                let date = new Date()
+                return date.toISOString()
             },
             priorityWarning() {
-                let priority = this.errorsTabs[this.tab];
+                let priority = this.errorsTabs[this.tab]
                 if (priority == 'blocking') {
                     return 'Fix errors in input file to make import possible'
                 } else if (priority == 'high') {
                     return 'Create items or make request to remove these errors to make import possible'
                 } else if (priority == 'medium') {
-                    return 'Possible wrong data warnings, non blocking'
+                    return 'Results update detected, confirmation required'
                 } else if (priority == 'low') {
                     return 'Non blocking warnings'
                 }
@@ -269,7 +269,7 @@
                 this.isLoading = true
 
                 // Lazily load input items
-                const url = 'api/validations/flat';
+                const url = 'api/validations/flat/'
                 server
                     .get(url)
                     .then(res => {
@@ -287,50 +287,55 @@
         },
         methods: {
             onUploadFromDialog() {
-                this.errorsDialog = false;
-                let extra = {'force_run': false}
+                this.errorsDialog = false
+                let extra = {
+                    'force_run': false,
+                    'force_item': false
+                    }
                 if ('low' in this.importErrors && 'ERR_EXISTING_RUN' in this.importErrors['low'])
-                    extra = {'force_run': true}
-                this.onUpload(extra);
+                    extra['force_run'] = true
+                if ('medium' in this.importErrors && 'ERR_ITEM_CHANGED' in this.importErrors['medium'])
+                    extra['force_item'] = true
+                this.onUpload(extra)
             },
             onUpload(extra) {
-                let eData = {};
-                Object.keys(this.priority).forEach(p => eData[p] = {});     // blocking: {}, high: {}, ...
+                let eData = {}
+                Object.keys(this.priority).forEach(p => eData[p] = {})     // blocking: {}, high: {}, ...
 
-                this.uploading = true;
+                this.uploading = true
 
-                let valId = null;
+                let valId = null
                 if (this.selected && 'id' in this.selected)
-                    valId = this.selected.id;
+                    valId = this.selected.id
 
                 // FormData filling
-                let formData = new FormData();
-                formData.append('file', this.file);
+                let formData = new FormData()
+                formData.append('file', this.file)
 
                 if (this.importType == 'new') {
-                    formData.append('validation_name', this.valName);
-                    formData.append('validation_date', this.valDate);
+                    formData.append('validation_name', this.valName)
+                    formData.append('validation_date', this.valDate)
                 } else {
-                    formData.append('validation_id', +valId);
+                    formData.append('validation_id', +valId)
                 }
                 if ('force_run' in extra)
-                    formData.append('force_run', extra['force_run']);
+                    formData.append('force_run', extra['force_run'])
+                if ('force_item' in extra)
+                    formData.append('force_item', extra['force_item'])
 
                 // post it
-                const url = 'api/import/';
+                const url = 'api/import/'
                 server.post(url, formData, {
                     headers: {'Content-Type': 'multipart/form-data'}
                 })
                 .then(response => {
-                    console.log('Import started in the background', response);
                     this.$toasted.success('Import started in the background.<br>\n' +
                                           'You will be notified by email at the end.', { duration: 4000 })
                 })
                 .catch(error => {
                     if (error.response) {           // Request made and server responded out of range of 2xx codes
                         if(error.response.status != 422) {
-                            console.log(error.response);
-                            let data = JSON.stringify(error.response.data);
+                            let data = JSON.stringify(error.response.data)
                             if (data.length > 400)
                                 data = data.slice(0, 400)
 
@@ -340,8 +345,8 @@
                                 'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${data}`
                             })
                         } else {
-                            let data = error.response.data;
-                            this.errorsDialog = true;
+                            let data = error.response.data
+                            this.errorsDialog = true
 
                             // parsed data to fill errors object
                             data.errors.forEach(e => {
@@ -364,27 +369,29 @@
                                                 if (!('no-model' in eData[p][e.code]))
                                                     eData[p][e.code]['no-model'] = []
 
+                                                // append amount data from warnings
+                                                if (e.message in data.warnings)
+                                                    e.message = `${e.message} (${data.warnings[e.message]} item${data.warnings[e.message] > 1 ? 's' : ''})`
                                                 eData[p][e.code]['no-model'].push(
-                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
+                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID(), 'details': e.details}
                                                 )
                                             }
                                         }
                                     }
-                                });
-                            });
+                                })
+                            })
 
                             // delete empty priorities
                             Object.keys(eData).forEach(p => {
                                 if (Object.keys(eData[p]).length == 0)
-                                    delete eData[p];
-                            });
-                            this.$store.dispatch('setImportErrors', eData);
+                                    delete eData[p]
+                            })
+
+                            this.$store.dispatch('setImportErrors', eData)
                         }
                     } else if (error.request) {     // The request was made but no response was received
-                        console.log('No response, request:', error.request);
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     } else {
-                        console.log('Something happened in setting up the request that triggered an Error:', error.message);
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     }
                 })

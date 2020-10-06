@@ -10,6 +10,25 @@
             </span>
             <span v-html="message" class="subtitle-2 font-weight-regular d-inline-block text-truncate" v-if="!isErrors">
             </span>
+            <v-list-group
+                class="changed-scenario"
+                v-for="(items, scenario) in error.details" :key="scenario"
+                v-model="scenario.active"
+                :prepend-icon="scenario.action"
+                no-action
+            >
+                <template v-slot:activator>
+                    <v-list-item-content>
+                        <v-list-item-title v-text="`${scenario} - ${items.length} ${items.length == 1 ? 'case' : 'cases'}`"></v-list-item-title>
+                    </v-list-item-content>
+                </template>
+
+                <v-list-item v-for="item in items" :key="item">
+                    <v-list-item-content>
+                        <v-list-item-title v-text="item"></v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+            </v-list-group>
         </v-col>
 
         <v-col class="d-flex justify-end">
@@ -67,7 +86,8 @@
         'ERR_DATE_FORMAT': 'Couldn\'t convert date format from input file',
         'ERR_EXISTING_VALIDATION': 'Validation duplicate is going to be imported',
         'ERR_AMBIGUOUS_COLUMN': 'Non-unique values in column - only one distinct value allowed',
-        'ERR_EXISTING_RUN': 'Using already imported run'
+        'ERR_EXISTING_RUN': 'Using already imported run',
+        'ERR_ITEM_CHANGED': 'Results update attempt'
     }
 
     const CAN_BE_CREATED = ['Driver', 'Item']
@@ -154,3 +174,12 @@
         }
     }
 </script>
+
+<style>
+.changed-scenario .v-list-item {
+    min-height: 24px;
+}
+.changed-scenario .v-list-item__title {
+    font-size: 12px;
+}
+</style>

@@ -96,6 +96,13 @@
                                 label
                                 @click="!!cellValue.tiId ? openDetailsDialog(cellValue.tiId) : () => null"
                             >{{ cellValue.status }}</v-chip>
+                            <v-icon
+                                v-if="'status' in cellValue && cellValue.changed"
+                                small class="ml-2" title="Update history"
+                                @click="openHistoryDialog(cellValue.tiId)"
+                            >
+                                mdi-clock-outline
+                            </v-icon>
                         </span>
                         <span v-else>{{ cellValue }}</span>
                     </td>
@@ -170,6 +177,13 @@
             @close="detailsDialog = false"
             @change="reportWeb"
         ></result-item-details>
+
+        <!-- Result item history -->
+        <result-history
+            v-if="showResultHistory"
+            :resultItemId="selectedResultId"
+            @close="showResultHistory = false"
+        ></result-history>
     </v-card>
 </template>
 
@@ -177,13 +191,15 @@
     import server from '@/server'
     import ResultItemDetails from '@/components/ResultItemDetails'
     import mappingSelector from '@/components/MappingSelector.vue'
+    import resultHistory from '@/components/ResultHistory'
 
     import { mapState, mapGetters } from 'vuex'
 
     export default {
         components: {
             ResultItemDetails,
-            mappingSelector
+            mappingSelector,
+            resultHistory
         },
         data() {
             return {
@@ -194,6 +210,7 @@
                 compareFiltering: 0,
                 showPassedPolicy: 0,
                 showPassedPolicies: ['show_passed', 'hide_passed'],
+                showResultHistory: false,
                 extraDataLoading: false,
                 extraDataDialog: false,
                 extraData: {},
@@ -333,6 +350,10 @@
             },
             openDetailsDialog(itemId) {
                 this.detailsDialog = true
+                this.selectedResultId = itemId
+            },
+            openHistoryDialog(itemId) {
+                this.showResultHistory = true
                 this.selectedResultId = itemId
             },
             reportExcel() {

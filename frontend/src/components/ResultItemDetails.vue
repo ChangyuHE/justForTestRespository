@@ -5,7 +5,7 @@
             <v-card>
                 <v-card-title>
                     Result item details
-                    <v-icon class="ml-3" title="Update history" @click="openHistoryDialog">mdi-clock-outline</v-icon>
+                    <v-icon class="ml-3" title="Update history" @click="showHistory = true">mdi-clock-outline</v-icon>
                     <v-spacer></v-spacer>
                     <v-switch v-model="enableEditing" label="Editing" color="teal darken-1"></v-switch>
                 </v-card-title>
@@ -262,88 +262,7 @@
         </v-dialog>
 
         <!-- History -->
-        <v-dialog
-            v-if="showHistory"
-            :value="showHistory"
-            persistent no-click-animation
-            max-width="50%"
-        >
-            <v-card>
-                <v-card-title>History of result item</v-card-title>
-                <v-data-table
-                    :expanded.sync="expanded"
-                    show-expand
-                    single-expand
-                    :headers="historyHeaders"
-                    :items="history"
-                    item-key="date"
-                    class="elevation-1"
-                >
-                    <template v-slot:expanded-item="{ headers, item }">
-                        <td :colspan="headers.length" class="px-0">
-                        <v-simple-table :colspan="headers.length" dense light>
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Old value:</th>
-                                    <th>New value:</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="change of item.changes" :key="change.field">
-                                    <td>{{ change.field }}</td>
-                                    <template v-if="change.field != 'additional_parameters'">
-                                        <td>{{ change.old }}</td>
-                                        <td>{{ change.new }}</td>
-                                    </template>
-                                    <template v-else>
-                                        <td v-for="value of [change.old, change.new]" :key="value" class="py-0 my-0">
-                                            <v-simple-table>
-                                                <template v-slot:default>
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Parameter:</th>
-                                                            <th>Value:</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr v-for="(_, key) in additional_parameters(value)"
-                                                            :key="key"
-                                                        >
-                                                            <td>
-                                                                {{ key }}
-                                                            </td>
-                                                            <td>
-                                                                {{ additional_parameter(key, value) }}
-                                                            </td>
-                                                        </tr>
-                                                        <template v-if="needToAddRows(value, change.old, change.new)">
-                                                            <tr v-for="i in rowsToInsert(value, change.old, change.new)"
-                                                                :key="i"
-                                                            >
-                                                                <td></td><td></td>
-                                                            </tr>
-                                                        </template>
-                                                    </tbody>
-                                                </template>
-                                            </v-simple-table>
-                                        </td>
-                                    </template>
-                                </tr>
-                            </tbody>
-                        </v-simple-table>
-                        </td>
-                    </template>
-                </v-data-table>
-
-                <v-card-actions class="pt-0">
-                    <v-spacer></v-spacer>
-                    <v-btn color="cyan darken-2" text @click="showHistory = false">
-                        Close
-                    </v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
+        <result-history v-if="showHistory" :resultItemId="this.resultItemId" @close="showHistory = false"></result-history>
 
         <!-- Result reason html -->
         <v-dialog
@@ -369,10 +288,12 @@
 <script>
     import server from '@/server'
     import ApiAutoComplete from '@/components/APIAutoComplete'
+    import ResultHistory from '@/components/ResultHistory'
 
     export default {
         components: {
             ApiAutoComplete,
+            ResultHistory
         },
         data() {
             return {
@@ -384,8 +305,6 @@
                 showResultReasonDialog: false,
 
                 reason: '',
-                history: [],
-                expanded: [],
                 changes: false,
                 resultItem: null,
                 resultItemCopy: null,
@@ -435,11 +354,6 @@
                 editable: ['driver', 'status', 'scenario_asset', 'msdk_asset',
                           'lucas_asset', 'fulsim_asset', 'simics', 'additional_parameters'],
                 changeHeaders: ['Field', 'Old value', 'New value'],
-                historyHeaders: [
-                    { text: 'User', value: 'user' },
-                    { text:'Date', value: 'date' },
-                    { text:'Reason', value: 'reason' }
-                ],
                 required_additional_parameters: {
                     avg_psnr: '',
                     avg_ssim: '',
@@ -544,7 +458,7 @@
             // return if we need to insert extra rows into table with additional parameters
             needToAddRows() {
                 return (current, old, changed) => {
-                    return Object.keys(this.additional_parameters(current)).length == 
+                    return Object.keys(this.additional_parameters(current)).length ==
                                 Math.min(Object.keys(this.additional_parameters(old)).length,
                                          Object.keys(this.additional_parameters(changed)).length)
                 }
@@ -563,36 +477,6 @@
                 this.selectedField = field
                 this.showEditDialog = true
                 this.selectedFieldValue = this.resultItem[this.selectedField]
-            },
-            openHistoryDialog() {
-                const url = `api/result/history/${this.resultItemId}/`
-                server
-                    .get(url)
-                    .then(response => {
-                        this.history = response.data
-                        for (let change of this.history) {
-                            change['date'] = this.$options.filters.formatDate(change['date'])
-                            for (let diff of change['changes']) {
-                                if (diff.field == 'additional_parameters') {
-                                    // replace all Nones and single quotes
-                                    diff.old = diff.old.replaceAll('\'', '\"')
-                                    diff.old = diff.old == 'None' ? null : diff.old
-                                    diff.new = diff.new.replaceAll('\'', '\"')
-                                    diff.new = diff.new == 'None' ? null : diff.new
-                                }
-                            }
-                        }
-                        this.showHistory = true
-                    })
-                    .catch(error => {
-                        if (error.handleGlobally) {
-                            error.handleGlobally('Error during retrieving result update history', url)
-                        } else {
-                            this.$toasted.global.alert_error(error)
-                        }
-                    })
-                    .finally()
-
             },
 
             // close

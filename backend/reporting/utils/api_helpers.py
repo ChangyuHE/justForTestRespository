@@ -87,7 +87,8 @@ class UpdateWOutputAPIView(generics.UpdateAPIView):
     def perform_update(self, serializer, **kwargs):
         try:
             return self.__class__.serializer_output_class(serializer.save(_history_user=kwargs.get('user'),
-                                                                          _change_reason=kwargs.get('reason')))
+                                                                          _change_reason=kwargs.get('reason'),
+                                                                          _changed=True))
         except IntegrityError:
             raise ValidationError({"integrity error": 'Duplicate creation attempt'})
         except Exception as e:

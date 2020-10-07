@@ -245,6 +245,7 @@ class Result(models.Model):
 
     result_reason = models.TextField(null=True, blank=True)
     history = HistoricalRecords()
+    _changed = models.BooleanField(default=False)
 
 
 class ResultGroup(models.Model):

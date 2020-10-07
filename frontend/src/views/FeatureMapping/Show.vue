@@ -64,7 +64,7 @@
                                 <v-dialog v-model="editMappingItemDialog" max-width="1200px">
                                     <v-card>
                                         <v-card-title>
-                                            <span class="headline">Edit mapping</span>
+                                            <span class="headline">{{ editDialogTitle }}</span>
                                         </v-card-title>
                                         <v-card-text>
                                             <v-form v-model="isMapFormValid" @submit.prevent>
@@ -90,8 +90,8 @@
                                                             class="my-1 pb-1"
                                                             label="Official"
                                                             color="teal darken-1"
-                                                            :disabled="!editedMapItem['public']"
-                                                            v-model="editedMapItem[fieldName]"
+                                                            :disabled="!editedMapItem['public'] || cloneMappingItemDialog"
+                                                            v-model="cloneMappingItemDialog ? false : editedMapItem[fieldName]"
                                                         ></v-checkbox>
                                                         <v-autocomplete v-else-if="fieldName == 'os'"
                                                             class="my-0 pb-1"
@@ -119,7 +119,15 @@
                                         <v-card-actions>
                                             <v-spacer></v-spacer>
                                             <v-btn color="blue-grey darken-1" text @click="closeMapDialog">Cancel</v-btn>
-                                            <v-btn color="cyan darken-2" text @click="saveMappingItem" :loading="saving" :disabled="!isMapFormValid || saveMappingItemDisabled">Save</v-btn>
+                                            <v-btn v-if="cloneMappingItemDialog"
+                                                color="cyan darken-2"
+                                                text @click="saveCloneMappingItem"
+                                                :disabled="!isMapFormValid || cloneMappingItemDisabled">Clone</v-btn>
+                                            <v-btn v-else
+                                                color="cyan darken-2"
+                                                text @click="saveMappingItem"
+                                                :loading="saving"
+                                                :disabled="!isMapFormValid || saveMappingItemDisabled">Save</v-btn>
                                         </v-card-actions>
                                     </v-card>
                                 </v-dialog>
@@ -133,14 +141,6 @@
                         </template>
                         <!-- Actions icons -->
                         <template v-slot:item.actions="{ item }">
-                            <v-hover v-slot:default="{ hover }">
-                                <v-icon
-                                    small title="Export to Excel file" :class="{ 'primary--text': hover }"
-                                    @click="exportMapping2Excel(item)"
-                                >
-                                    mdi-file-excel
-                                </v-icon>
-                            </v-hover>
                             <v-hover v-slot:default="{ hover }"  v-if="mappingType == 'my'">
                                 <v-icon
                                     small title="Edit" :class="{ 'primary--text': hover }"
@@ -148,6 +148,22 @@
                                     @click="editMappingItem(item)"
                                 >
                                     mdi-pencil
+                                </v-icon>
+                            </v-hover>
+                            <v-hover v-slot:default="{ hover }">
+                                <v-icon
+                                    small title="Clone & Edit" :class="{ 'primary--text': hover }"
+                                    @click="cloneMappingItem(item)"
+                                >
+                                    mdi-content-copy
+                                </v-icon>
+                            </v-hover>
+                            <v-hover v-slot:default="{ hover }">
+                                <v-icon
+                                    small title="Export to Excel file" :class="{ 'primary--text': hover }"
+                                    @click="exportMapping2Excel(item)"
+                                >
+                                    mdi-file-excel
                                 </v-icon>
                             </v-hover>
                             <v-hover v-slot:default="{ hover }"  v-if="mappingType == 'my'">
@@ -360,6 +376,7 @@
                 mappingSearch: null,
 
                 // Edit mappings
+                cloneMappingItemDialog: false,
                 editMappingItemDialog: false,
                 editedMapItem: {},
                 defaultMapItem: {},
@@ -402,6 +419,9 @@
             saveMappingItemDisabled() {
                 return this._.isEqual(this.mappingItems[this.editedIndex], this.editedMapItem)
             },
+            cloneMappingItemDisabled() {
+                return this._.isEqual(this.mappingItems[this.editedIndex]['name'], this.editedMapItem['name'])
+            },
             // Rules
             computedHeaders() {
                 // show all columns excepth of id one
@@ -409,6 +429,9 @@
             },
             formTitle() {
                 return this.editedIndex === -1 ? 'New Item' : 'Edit Item'
+            },
+            editDialogTitle() {
+                return this.cloneMappingItemDialog === true ? 'Clone Mapping' : 'Edit Mapping'
             },
             clearDisabled() {
                 return this._.compact(this._.values(this.showParams)).length == 0
@@ -433,6 +456,9 @@
                 values.map(v => this.idsToSelect.push(v))
             },
             editMappingItemDialog(val) {
+                val || this.closeMapDialog()
+            },
+            cloneMappingItemDialog(val) {
                 val || this.closeMapDialog()
             },
             editRuleItemDialog(val) {
@@ -507,10 +533,26 @@
                     })
                     .finally(() => { this.loading = false })
             },
+            // prepare item data to edit/create
+            prepareEditItem(itemObject){
+                let item = {}
+                for (let [k, v] of Object.entries(itemObject)) {
+                    if (typeof(v) === 'object') {
+                        item[k] = v !== null ? v.id : null
+                    } else if (v === undefined || v === '') {
+                        item[k] = null
+                    } else {
+                        item[k] = v
+                    }
+                }
+                return item
+            },
             // Mappings table row click action
             rowClick(item, row) {
-                this.loadRulesTable(item)
-                row.select(true)
+                if (!this.isMapDeleting) {
+                    this.loadRulesTable(item)
+                    row.select(true)
+                }
             },
             // filter in Mappings table
             filterWithBool(value, search, item) {
@@ -526,6 +568,7 @@
             // dialog close action
             closeMapDialog() {
                 this.editMappingItemDialog = false
+                this.cloneMappingItemDialog = false
                 this.$nextTick(() => {
                     this.editedMapItem = Object.assign({}, this.defaultMapItem)
                     this.editedIndex = -1
@@ -543,19 +586,39 @@
                 this.editedMapItem = Object.assign({}, item)
                 this.editMappingItemDialog = true
             },
+            cloneMappingItem(item){
+                this.cloneMappingItemDialog = true
+                this.editMappingItem(item)
+            },
+            saveCloneMappingItem() {
+                const url = `api/feature_mapping/clone/${this.editedMapItem.id}/`
+                let item = this.prepareEditItem(this.editedMapItem)
+                server
+                    .post(url, item)
+                    .then(response => {
+                        this.mappingItems.push(response.data)
+                        this.$toasted.success('Successfully cloned')
+                        this.closeMapDialog()
+                    })
+                    .catch(error => {
+                        if (error.response && error.response.status === 400) {
+                            this.$toasted.global.alert_error(JSON.stringify(error.response.data))
+                        } else {
+                            if (error.handleGlobally) {
+                                error.handleGlobally('Could not clone table', url)
+                            } else {
+                                this.$toasted.global.alert_error(error)
+                            }
+                        }
+                    })
+                    .finally(() => {
+                        this.getMappings()
+                        this.showRulesTable = false
+                    })
+            },
             saveMappingItem() {
                 this.saving = true
-                // prepare item data to send
-                let item = {}
-                for (let [k, v] of Object.entries(this.editedMapItem)) {
-                    if (typeof(v) === 'object') {
-                        item[k] = v !== null ? v.id : null
-                    } else if (v === undefined || v === '') {
-                        item[k] = null
-                    } else {
-                        item[k] = v
-                    }
-                }
+                let item = this.prepareEditItem(this.editedMapItem)
                 // back: edit existing one
                 const url = `api/feature_mapping/${this.editedMapItem.id}/`
                 let itemId = this.editedMapItem.id
@@ -568,7 +631,7 @@
                         this.closeMapDialog()
                     })
                     .catch(error => {
-                        if (error.response && error.response.status == 400) {
+                        if (error.response && error.response.status === 400) {
                             this.$toasted.global.alert_error(JSON.stringify(error.response.data))
                         } else {
                             if (error.handleGlobally) {
@@ -583,10 +646,10 @@
             },
             deleteMappingItemDebounced(item) {
                 // debounce needed to ensure that data loads first, while id exists in database
+                this.isMapDeleting = true
                 this._.debounce(this.deleteMappingItem, 100)(item)
             },
             deleteMappingItem(item) {
-                this.isMapDeleting = true
                 const index = this.mappingItems.indexOf(item)
                 let proceed = confirm('Are you sure you want to delete this item?')
                 if (proceed) {
@@ -604,9 +667,11 @@
                                 this.$toasted.global.alert_error(error)
                             }
                         })
-                        .finally(() => this.showRulesTable = false)
+                        .finally(() => {
+                            this.showRulesTable = false
+                            this.isMapDeleting = false
+                        })
                 }
-                this.isMapDeleting = false
             },
             exportMapping2Excel(item) {
                 const url = `api/feature_mapping/export/${item.id}/`
@@ -682,17 +747,7 @@
             },
             // Create of save edited Rule
             saveRule() {
-                // prepare item object to create/edit
-                let item = {}
-                for (let [k, v] of Object.entries(this.editedItem)) {
-                    if (typeof(v) === 'object') {
-                        item[k] = v !== null ? v.id : null
-                    } else if (v === undefined || v === '') {
-                        item[k] = null
-                    } else {
-                        item[k] = v
-                    }
-                }
+                let item = this.prepareEditItem(this.editedItem)
                 item.ids = this._.join(this.idItems, ',')
                 if (item.ids == '')
                     item.ids = null

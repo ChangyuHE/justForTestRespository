@@ -3,18 +3,16 @@ from itertools import combinations
 from collections import defaultdict
 
 from django.db import transaction
-from django.db.utils import IntegrityError
+from django.db.utils import DatabaseError, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-from django_filters.rest_framework import DjangoFilterBackend
-
-from rest_framework import generics, status, filters
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.parsers import FileUploadParser
+from rest_framework.exceptions import ParseError
 
 from datetime import datetime
 from openpyxl import load_workbook, Workbook
@@ -26,9 +24,8 @@ from api.models import FeatureMapping, FeatureMappingRule, Milestone, Feature, T
 from api.forms import FeatureMappingFileForm
 from api.serializers import FeatureMappingSimpleSerializer, FeatureMappingSerializer, FeatureMappingRuleSerializer, \
     FeatureMappingSimpleRuleSerializer, MilestoneSerializer, FeatureSerializer, TestScenarioSerializer
-from test_verifier.models import Codec
 
-from utils.api_logging import LoggingMixin
+from utils.api_logging import LoggingMixin, get_user_object
 from utils.api_helpers import get_datatable_json, DefaultNameOrdering
 from utils import api_helpers
 
@@ -127,6 +124,41 @@ class FeatureMappingListView(LoggingMixin, DefaultNameOrdering, generics.ListAPI
     filterset_fields = ['name', 'owner', 'platform', 'os', 'component', 'public', 'official']
 
 
+class FeatureMappingCloneView(LoggingMixin, APIView):
+    """
+    post: Clone and edit selected feature mapping table
+    """
+    def post(self, request, pk):
+        fmt = get_object_or_404(FeatureMapping, pk=pk)
+        try:
+            with transaction.atomic():
+                mapping_rules = fmt.rules.all()
+                cloned_fmt = fmt
+                cloned_fmt.pk = None
+                cloned_fmt.official = False
+                cloned_fmt.owner = get_user_object(request)
+                cloned_fmt.name = request.data['name']
+                cloned_fmt.save()
+
+                # obtain backward related rules to clone
+                for rule in mapping_rules:
+                    rule.pk = None
+                    rule.mapping_id = cloned_fmt.id
+                    rule.save()
+                    cloned_fmt.rules.add(rule)
+        except DatabaseError as e:
+            return Response({'errors': e}, status=status.HTTP_400_BAD_REQUEST)
+
+        # trick to allow public foreign tables cloning without changing their names to pass in serializer
+        data = {k: v for k, v in request.data.items() if k != 'owner'}
+        fm_serializer = FeatureMappingSimpleSerializer(cloned_fmt, data=data, partial=True)
+        if not fm_serializer.is_valid():
+            return Response({'errors': fm_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        response_data = FeatureMappingSerializer(fm_serializer.save()).data
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+
 class FeatureMappingTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     """ FeatureMapping table view formatted for DataTable """
     queryset = FeatureMapping.objects.all()
@@ -221,8 +253,6 @@ class FeatureMappingRuleView(LoggingMixin, generics.ListAPIView, api_helpers.Cre
     queryset = FeatureMappingRule.objects.all()
     serializer_output_class = FeatureMappingRuleSerializer
     filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
-    ordering_fields = '__all__'
-    ordering = ['milestone__name']
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -235,8 +265,6 @@ class FeatureMappingRuleTableView(LoggingMixin, generics.ListAPIView):
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
     filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
-    ordering_fields = '__all__'
-    ordering = ['milestone__name']
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self)

@@ -144,10 +144,21 @@
                             </template>
                             <span v-else class="title"><br>No import errors, click IMPORT button</span>
                         </v-card-text>
-
                         <v-card-actions>
+                            <!-- Reason of update -->
+                            <v-container>
+                                <v-form v-model="valid">
+                                    <v-text-field
+                                        color="blue-grey"
+                                        class="mx-7"
+                                        label="Please provide reason of update"
+                                        :rules="[rules.required(reason), rules.isLongEnough(reason)]"
+                                        v-model="reason"
+                                    ></v-text-field>
+                                </v-form>
+                            </v-container>
                             <v-spacer></v-spacer>
-                            <v-btn color="red" text @click="errorsDialog = false">Close</v-btn>
+                            <v-btn color="red" text @click="errorsDialog = false; reason = ''">Close</v-btn>
                             <v-btn color="cyan darken-2" text @click="onUploadFromDialog" :disabled="uploadFromDialogDisabled">Import</v-btn>
                         </v-card-actions>
                     </v-card>
@@ -192,6 +203,18 @@
                 selected: {'id': 0},
                 search: null,
 
+                rules: {
+                    required(value) {
+                        return !!value || 'Required'
+                    },
+                    isLongEnough(value) {
+                        if (value.length < 5)
+                            return 'At least 5 symbols'
+                        return true
+                    }
+                },
+                valid: true,
+
                 // upload
                 uploading: false,
 
@@ -210,6 +233,7 @@
                 menu: null,
                 valName: '',
                 valNotes: '',
+                reason: '',
             }
         },
         computed: {
@@ -242,7 +266,7 @@
                 return tabs
             },
             uploadFromDialogDisabled() {
-                return 'blocking' in this.importErrors || 'high' in this.importErrors
+                return 'blocking' in this.importErrors || 'high' in this.importErrors || !this.valid
             },
             today() {
                 let date = new Date()
@@ -323,6 +347,10 @@
                 if ('force_item' in extra)
                     formData.append('force_item', extra['force_item'])
 
+                if (this.reason) {
+                    formData.append('import_reason', this.reason)
+                }
+
                 // post it
                 const url = 'api/import/'
                 server.post(url, formData, {
@@ -395,7 +423,10 @@
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)
                     }
                 })
-                .finally(() => { this.uploading = false })
+                .finally(() => {
+                    this.uploading = false
+                    this.reason = ''
+                })
             }
         }
     }

@@ -2,11 +2,15 @@ import logging
 from itertools import combinations
 from collections import defaultdict
 
+from typing import Union, Optional, List, Dict, Tuple
+
 from django.db import transaction
 from django.db.utils import DatabaseError, IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+
+from openpyxl.xml.constants import WORKBOOK
 
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -252,7 +256,7 @@ class FeatureMappingRuleView(LoggingMixin, generics.ListAPIView, api_helpers.Cre
     """
     queryset = FeatureMappingRule.objects.all()
     serializer_output_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
+    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping', 'total']
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -264,7 +268,7 @@ class FeatureMappingRuleTableView(LoggingMixin, generics.ListAPIView):
     """ FeatureMappingRule table view formatted for DataTable """
     queryset = FeatureMappingRule.objects.all()
     serializer_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping']
+    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping', 'total']
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self)
@@ -354,7 +358,34 @@ def feature_mapping_form(request):
     return render(request, 'api/feature_mapping_import.html', {'form': form})
 
 
+def check_total(
+        total: Optional[Union[int,str]],
+        test_ids: Optional[Union[int,str]],
+        ERROR_IN_ROW: str
+    ) -> Tuple[Optional[int], List[Dict[str,str]]]:
+    errors = []
+
+    if not total:
+        if not test_ids:
+            errors.append({ERROR_IN_ROW: 'Missing total value for scenario without test ids'})
+    else:
+        try:
+            total = int(total)
+            if total <= 0:
+                errors.append({ERROR_IN_ROW: 'Total value should be positive'})
+
+            if test_ids:
+                if total != len(test_ids.split(',')):
+                    errors.append({ERROR_IN_ROW: 'Total value does not match number of test ids'})
+        except ValueError:
+            errors.append({ERROR_IN_ROW: 'Non-integer total value'})
+            total = None
+
+    return total, errors
+
+
 def import_feature_mapping(file, serializer):
+    WORKBOOK_FORMAT_ERROR = 'There must be 5 columns with "milestone", "feature", "scenario", "ids", and "total" data (column headers do not matter)'
     errors = []
     data = serializer.data
 
@@ -373,17 +404,14 @@ def import_feature_mapping(file, serializer):
 
     rows = sheet.rows
     if not rows:
-        errors.append({'workbook format error': 'There must be 4 columns with "milestone", "feature", '
-                                                '"scenario" and "ids" data (column headers do not matter)'})
+        errors.append({'workbook format error': WORKBOOK_FORMAT_ERROR})
         errors.append({'workbook error': 'No rows found'})
         return errors
 
     first_row = next(rows)
     headings = [c.value for c in first_row]
-    if len(headings) != 4:
-        errors.append(
-            {'workbook format error': 'There must be 4 columns with "milestone", "feature", '
-                                      '"scenario" and "ids" data (column headers do not matter)'})
+    if len(headings) != 5:
+        errors.append({'workbook format error': WORKBOOK_FORMAT_ERROR})
         return errors
 
     fm_rules = []
@@ -394,7 +422,11 @@ def import_feature_mapping(file, serializer):
                                                     os_id=data['os'])
 
             for i, row in enumerate(rows):
-                milestone_name, feature_name, scenario_name, ids_value = [cell.value for cell in row]
+                ERROR_IN_ROW = f'workbook error (row {i + 2})'
+                milestone_name, feature_name, scenario_name, ids_value, total = [cell.value for cell in row]
+                total, total_errors = check_total(total, ids_value, ERROR_IN_ROW)
+                errors.extend(total_errors)
+
                 if all([milestone_name, feature_name, scenario_name]):
                     milestone, _ = Milestone.objects.get_or_create(name=milestone_name)
                     feature, _ = Feature.objects.get_or_create(name=feature_name)
@@ -402,10 +434,10 @@ def import_feature_mapping(file, serializer):
 
                     fm_rules.append(FeatureMappingRule(
                         mapping=mapping, milestone=milestone, feature=feature, scenario=scenario,
-                        ids=ids_value if ids_value else None
+                        ids=ids_value if ids_value else None, total=total
                     ))
                 else:
-                    errors.append({f'workbook error (row {i + 2})': 'Empty cell'})
+                    errors.append({ERROR_IN_ROW: 'Empty cells'})
             FeatureMappingRule.objects.bulk_create(fm_rules)
 
             # check rules for conflicts
@@ -418,6 +450,7 @@ def import_feature_mapping(file, serializer):
                 ids_list = list(rules.values_list('ids', flat=True))
 
                 issues = check_rules_conflicts(ids_list, name, issues)
+
             if issues:
                 raise ValidationException(dict(issues))
     except IntegrityError as e:

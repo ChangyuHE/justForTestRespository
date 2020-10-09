@@ -229,8 +229,8 @@
                                         <v-container>
                                             <v-row>
                                                 <!-- Params selectors -->
-                                                <v-col :cols="paramCols(modelName)" class="pt-0 pb-1" v-for="_, modelName in showParams" :key="modelName">
-                                                    <api-auto-complete v-if="modelName != 'ids'"
+                                                <v-col :cols="paramCols(modelName)" class="pt-0 pb-1" v-for="_, modelName in extendedShowParams" :key="modelName">
+                                                    <api-auto-complete v-if="modelName != 'ids' && modelName != 'total' && modelName != 'error'"
                                                         class="my-0 pb-1"
                                                         type="defined"
                                                         color="blue-grey"
@@ -238,8 +238,19 @@
                                                         :rules="[rules.required(editedItem[modelName], modelName)]"
                                                         v-model="editedItem[modelName]"
                                                     ></api-auto-complete>
+                                                    <v-text-field v-else-if="modelName == 'total'"
+                                                        @input="totalMatchTestIds"
+                                                        label="Total"
+                                                        type="number"
+                                                        min=1
+                                                        v-model="editedItem[modelName]"
+                                                    ></v-text-field>
+                                                    <div v-else-if="modelName == 'error'" class="pt-8">
+                                                        <span v-if="validationError.length" class="red--text">{{ validationError }}</span>
+                                                    </div>
                                                     <v-combobox v-else
                                                         label="Ids"
+                                                        @change="totalMatchTestIds"
                                                         color="blue-grey"
                                                         v-model="idItems"
                                                         :delimiters="[' ']"
@@ -264,7 +275,7 @@
                                     <v-card-actions>
                                         <v-spacer></v-spacer>
                                         <v-btn color="blue-grey darken-1" text @click="closeRuleDialog">Cancel</v-btn>
-                                        <v-btn color="cyan darken-2" text @click="saveRule" :loading="saving" :disabled="!isFormValid || saveRuleDisabled">Save</v-btn>
+                                        <v-btn color="cyan darken-2" text @click="saveRule" :loading="saving" :disabled="!isFormValid || saveRuleDisabled || !!validationError.length">Save</v-btn>
                                     </v-card-actions>
                                 </v-card>
                             </v-dialog>
@@ -306,6 +317,7 @@
                                     </v-btn>
                                 </template>
                             </td>
+                            <td>{{ item.total }}</td>
                             <td>
                                 <template v-if="mappingType == 'my'">
                                     <v-hover v-slot:default="{ hover }">
@@ -356,7 +368,7 @@
                 showRulesTable: false,
                 loading: false,
                 showType: 'show',
-                showParams: {'milestone': undefined, 'feature': undefined, 'scenario': undefined, 'ids': undefined},
+                showParams: {'milestone': undefined, 'feature': undefined, 'scenario': undefined, 'ids': undefined, 'total': undefined},
                 headers: [],
                 items: [],
                 search: null,
@@ -403,10 +415,11 @@
                         if (notEmptyModels.includes(model))
                             return !!value || 'Required'
                         return true
-                    }
+                    },
                 },
                 isFormValid: null,
                 saving: false,
+                validationError: "",
             }
         },
         computed: {
@@ -441,11 +454,19 @@
                 let idsOk = true
                 if (!this._.isEmpty(this.idItems) || !this._.isEmpty(this.editedItem.ids))
                     idsOk = this._.join(this.idItems, ',') == this.editedItem.ids
-                return bodyOk && idsOk
+
+                let totalOk = true
+                if (!this._.isEmpty(this.idItems) && Number.isInteger(this.editedItem.total))
+                    totalOk = this.idItems.length != this.editedItem.total
+
+                return bodyOk && idsOk && totalOk
             },
             activeRulesTableTitle() {
                 return this.activeMapping.name
-            }
+            },
+            extendedShowParams() {
+                return Object.assign({}, this.showParams, {"error": undefined})
+            },
         },
         watch: {
             idItems(values, previous) {
@@ -466,6 +487,20 @@
             },
         },
         methods: {
+            totalMatchTestIds() {
+                let total = +this.editedItem.total
+
+                this.validationError = ""
+                if (total == 0) { // total field is empty
+                    if (this._.isEmpty(this.idItems)) {
+                        this.validationError = 'Missing total value for scenario without test ids'
+                    }
+                } else {
+                    if (!this._.isEmpty(this.idItems) && this.idItems.length != total) {
+                        this.validationError = 'Total value should match number of test ids'
+                    }
+                }
+            },
             filter(item, queryText, itemText) {
                 if (item.header) return false
 
@@ -846,7 +881,7 @@
             paramCols(model) {
                 if (this._.includes(['scenario', 'ids'], model)) {
                     return 12
-                } else if (model == 'feature') {
+                } else if (this._.includes(['feature', 'error'], model)) {
                     return 8
                 } else {
                     return 4

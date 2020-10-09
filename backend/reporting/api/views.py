@@ -1308,6 +1308,10 @@ class ReportIndicatorView(APIView):
             total[key_to_update] += 1
             total['executed'] += 1
 
+            if key_to_update != 'blocked':
+                data['not_run'] -= 1
+                total['not_run'] -= 1
+
         mapping_ids = request.GET.get('fmt_id').split(',')
         mode = request.GET.get('mode')
         do_excel = False
@@ -1315,7 +1319,7 @@ class ReportIndicatorView(APIView):
             do_excel = True
 
         data = defaultdict(dict)
-        total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+        total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': 0, 'total': 0}
 
         results = Result.objects.filter(validation_id=id)
         # get mappings with preserved ids order from request
@@ -1324,16 +1328,21 @@ class ReportIndicatorView(APIView):
 
         for mapping in mappings:
             mapping_data = defaultdict(dict)
-            mapping_total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+            mapping_total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': 0, 'total': 0}
 
-            for milestone, scenario_id, feature, ids in FeatureMappingRule.objects.filter(mapping_id=mapping.id) \
-                    .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids'):
+            for milestone, scenario_id, feature, ids, total_value in FeatureMappingRule.objects.filter(mapping_id=mapping.id) \
+                    .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids', 'total'):
                 if mode == 'combined':
                     feature_name = f'{feature} ({mapping.codec.name})'
                 else:
                     feature_name = feature
 
-                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0}
+                if ids is not None:
+                    total_value = len(ids.split(','))
+
+                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': total_value, 'total': total_value}
+                mapping_total['not_run'] += total_value
+                mapping_total['total'] += total_value
 
                 if ids is not None:
                     ids = ids.split(',')
@@ -1353,7 +1362,7 @@ class ReportIndicatorView(APIView):
                 for key, value in mapping_data.items():
                     for subkey, subvalue in value.items():
                         data[key][subkey] = subvalue
-                for key in ['passed', 'failed', 'blocked', 'executed']:
+                for key in ['total', 'passed', 'failed', 'blocked', 'executed', 'not_run']:
                     total[key] += mapping_total[key]
 
         if not data:
@@ -1364,7 +1373,7 @@ class ReportIndicatorView(APIView):
         if not do_excel:
             # Data-table formatting
             headers, items = [], []
-            for label in ('milestone', 'feature', 'passed', 'failed', 'blocked', 'executed'):
+            for label in ('milestone', 'feature', 'total', 'passed', 'failed', 'blocked', 'executed', 'not run'):
                 headers.append({
                     'text': label.capitalize(),
                     'value': label,

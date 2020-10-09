@@ -80,25 +80,29 @@
                 </template>
                 <template v-slot:group="{ group, items }">
                     <tr class="item-group">
-                        <td colspan="5">
+                        <td colspan="7">
                             <span class="milestone-header">{{ group }}</span>
                         </td>
                     </tr>
                     <tr v-for="(item, i) in items" :key="JSON.stringify(item)">
                         <td class="pl-8" :key="i + 'feature'">{{ item.feature }}</td>
+                        <td :key="i + 'total'">{{ item.total }}</td>
                         <td :key="i + 'passed'">{{ item.passed }}</td>
                         <td :key="i + 'failed'">{{ item.failed }}</td>
                         <td :key="i + 'blocked'">{{ item.blocked }}</td>
                         <td :key="i + 'executed'">{{ item.executed }}</td>
+                        <td :key="i + 'not_run'">{{ item.not_run }}</td>
                     </tr>
                 </template>
                 <template slot="body.append">
                     <tr class="font-weight-bold" :__set="total = getData(mapping.id, 'total')">
                         <td>Total</td>
+                        <td>{{ total.total }}</td>
                         <td>{{ total.passed }}</td>
                         <td>{{ total.failed }}</td>
                         <td>{{ total.blocked }}</td>
                         <td>{{ total.executed }}</td>
+                        <td>{{ total.not_run }}</td>
                     </tr>
                 </template>
             </v-data-table>

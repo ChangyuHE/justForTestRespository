@@ -338,6 +338,7 @@ class FeatureMappingRule(models.Model):
     feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
     scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
     ids = models.TextField(null=True, blank=True)
+    total = models.PositiveIntegerField(null=True, blank=True, default=None)
 
     mapping = models.ForeignKey('FeatureMapping', related_name='rules', null=True, blank=True, on_delete=models.CASCADE)
 
@@ -405,7 +406,7 @@ class ImportJob(models.Model):
 
 class Issues(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-    
+
     name = models.CharField(max_length=50, unique=True, primary_key=True)
     self_url = models.CharField(max_length=255, null=True)
     summary = models.CharField(max_length=255, null=True)

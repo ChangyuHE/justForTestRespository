@@ -228,13 +228,13 @@ class FeatureMappingRuleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['id', 'milestone', 'feature', 'scenario', 'mapping', 'ids']
+        fields = ['id', 'milestone', 'feature', 'scenario', 'mapping', 'ids', 'total']
 
 
 class FeatureMappingSimpleRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.FeatureMappingRule
-        fields = ['milestone', 'feature', 'scenario', 'mapping', 'ids']
+        fields = ['milestone', 'feature', 'scenario', 'mapping', 'ids', 'total']
         validators = [
             UniqueTogetherValidator(
                 queryset=models.FeatureMappingRule.objects.all(),

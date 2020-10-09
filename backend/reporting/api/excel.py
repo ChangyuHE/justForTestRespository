@@ -160,7 +160,7 @@ def do_comparison_report(ct: pd.DataFrame) -> Workbook:
 
 
 def do_indicator_report(data, validation, mappings, mode):
-    statuses = ['passed', 'failed', 'blocked', 'executed']
+    statuses = ['total', 'passed', 'failed', 'blocked', 'executed', 'not_run']
     wb = Workbook()
 
     def report_sheet(data, validation, mappings, mode):
@@ -200,7 +200,7 @@ def do_indicator_report(data, validation, mappings, mode):
         col_width = {}
 
         # Header row
-        headers = ['Feature', 'Passed', 'Failed', 'Blocked', 'Executed']
+        headers = ['Feature', 'Total', 'Passed', 'Failed', 'Blocked', 'Executed', 'Not Run']
         for c_id, header in enumerate(headers, 1):
             # set width for columns except features
             if c_id > 1:
@@ -240,7 +240,7 @@ def do_indicator_report(data, validation, mappings, mode):
         else:
             display_name = f'Single_{mappings[0].id}'
         table = Table(
-            ref=f'A{table_row_start}:E{table_row_start + table_row_end + 1}',
+            ref=f'A{table_row_start}:G{table_row_start + table_row_end + 1}',
             displayName=display_name, tableStyleInfo=MEDIUM_STYLE)
         ws.add_table(table)
 

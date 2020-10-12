@@ -352,8 +352,8 @@ class GTAFieldParser:
                     msg = EmailMessage(
                         subject='Reporter: GTAFieldParser failure',
                         body=text,
-                        from_email='reporter@intel.com',
-                        recipient_list=staff_emails,
+                        from_email=None,
+                        to=staff_emails,
                         cc=['Arseniy.Obolenskiy@intel.com'],
                     )
                     msg.content_subtype = 'html'

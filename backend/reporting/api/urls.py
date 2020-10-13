@@ -102,6 +102,7 @@ urlpatterns = [
 
     path('api/result/<int:pk>/', views.ResultView().as_view()),
     path('api/result/update/<int:pk>/', views.ResultUpdateView.as_view()),
+    path('api/result/bulk_update/', views.ResultBulkListUpdateView.as_view()),
     path('api/result/history/<int:pk>/', views.ResultHistoryView().as_view()),
 
     path('api/driver/', views.DriverView().as_view()),

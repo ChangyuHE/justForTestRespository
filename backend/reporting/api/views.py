@@ -21,6 +21,7 @@ from django.shortcuts import render, get_object_or_404
 from django.template.loader import render_to_string
 from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
+from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 
 
@@ -49,7 +50,7 @@ from api.serializers import UserSerializer, GenerationSerializer, PlatformSerial
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, ScenarioAssetFullSerializer, \
     SimicsSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
-    DriverFullSerializer, StatusFullSerializer, FeatureMappingSerializer
+    DriverFullSerializer, StatusFullSerializer, FeatureMappingSerializer, BulkResultSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -224,11 +225,23 @@ class ResultView(LoggingMixin, generics.RetrieveAPIView):
     filterset_fields = ['validation_id', 'item_id']
 
 
+class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    pass
+
+
+class StatusFilter(django_filters.FilterSet):
+    test_status__in = CharInFilter(field_name="test_status", lookup_expr='in')
+
+    class Meta:
+        model = Status
+        fields = ['test_status__in']
+
+
 class StatusView(LoggingMixin, generics.ListAPIView):
     """ List of Status objects """
     queryset = Status.objects.all()
     serializer_class = StatusFullSerializer
-    filterset_fields = ['test_status']
+    filterset_class = StatusFilter
 
 
 class DriverView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
@@ -300,6 +313,39 @@ class ResultUpdateView(LoggingMixin, generics.DestroyAPIView, UpdateWOutputAPIVi
     queryset = Result.objects.all()
     serializer_class = ResultCutSerializer
     serializer_output_class = ResultFullSerializer
+
+
+class ResultBulkListUpdateView(LoggingMixin, generics.ListAPIView):
+    """
+    put: Bulk update existing Result object
+    """
+    serializer_class = BulkResultSerializer
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        ids = [int(item['id']) for item in request.data]
+
+        if ids:
+            instances = Result.objects.filter(id__in=ids)
+        else:
+            raise ValidationError({"integrity error": 'No results for update'})
+
+        serializer = self.get_serializer(
+            instances, data=request.data, partial=False, many=True
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = get_user_object(request)
+        # Change reason for each items is the same
+        change_reason = request.data[0]['change_reason']
+        self.perform_update(serializer, user, change_reason, *args, **kwargs)
+
+        return Response(serializer.data)
+
+    def perform_update(self, serializer, user, reason, *args, **kwargs):
+        serializer.save(_history_user=user, _change_reason=reason)
 
 
 def convert_to_datatable_json(dataframe: pd.DataFrame):

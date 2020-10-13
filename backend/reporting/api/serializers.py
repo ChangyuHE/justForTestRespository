@@ -314,3 +314,31 @@ class ResultCutSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Result
         fields = '__all__'
+
+
+class BulkUpdateListSerializer(serializers.ListSerializer):
+
+    def update(self, instances, validated_data):
+        result = [self.child.update(instance, attrs) for instance, attrs in zip(instances, validated_data)]
+
+        writable_fields = [
+            field
+            for field in self.child.Meta.fields
+            if field not in self.child.Meta.read_only_fields
+        ]
+
+        try:
+            self.child.Meta.model.objects.bulk_update(result, writable_fields)
+        except IntegrityError as e:
+            raise ValidationError(e)
+
+        return result
+
+
+class BulkResultSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Result
+        fields = ["id", "item", "status"]
+        read_only_fields = ["id", "item"]
+        list_serializer_class = BulkUpdateListSerializer

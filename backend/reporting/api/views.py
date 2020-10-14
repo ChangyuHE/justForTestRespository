@@ -325,10 +325,10 @@ def create_json_for_datatables(
     statuses: pd.DataFrame,
     result_ids: pd.DataFrame,
     id_to_name: Dict[int, str],
-    total: int
+    total: int,
     ):
     reverse_map = {v: k for k, v in id_to_name.items()}
-
+    val_pks = id_to_name.keys()
     d = json.loads(statuses.to_json(orient='table'))
     headers = []
     for i, field in enumerate(d['schema']['fields']):
@@ -339,6 +339,7 @@ def create_json_for_datatables(
     result_ids = json.loads(result_ids.to_json(orient='table'))
 
     items = []
+    changed_results = Result.objects.filter(validation_id__in=val_pks).filter(_changed=True).values_list('id', flat=True)
     for statuses, results in zip(d['data'], result_ids['data']):
         item = {}
         for header in headers:
@@ -357,6 +358,8 @@ def create_json_for_datatables(
                     result_id = results.get(value)
                     if result_id is not None:
                         if result_id != 0:
+                            if result_id in changed_results:
+                                status_dict['changed'] = True
                             status_dict['tiId'] = result_id
                             del status_dict['valId']
                 item[key] = status_dict
@@ -1359,6 +1362,10 @@ class ResultHistoryView(LoggingMixin, APIView):
                     'changes': []}
             for change in delta.changes:
                 field = change.field
+
+                # do not track changes for bool field '_changed' (internal field)
+                if field == '_changed':
+                    continue
                 try:
                     old_value = str(getattr(delta.old_record, field))
                 except Exception:

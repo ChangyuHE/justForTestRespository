@@ -272,10 +272,4 @@
     .results-table-indicator tr.item-group {
         background-color: rgb(207, 216, 220, 0.5);
     }
-    .v-tooltip__content {
-        pointer-events: initial;
-    }
-    .v-application .v-tooltip__content a {
-        color: rgb(247, 248, 201);
-    }
 </style>

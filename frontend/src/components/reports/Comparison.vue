@@ -29,6 +29,34 @@
         <v-divider class="horizontal-line"></v-divider>
 
         <v-col class="d-flex mb-1">
+            <v-menu offset-y >
+                <template v-slot:activator="{ on, attrs }">
+                    <v-scroll-x-transition>
+                        <v-btn small light v-bind="attrs" v-on="on" class="mt-4" v-show="selectedTestItems.length">
+                            Bulk options ({{ selectedTestItems.length }} selected)
+                            <v-icon right>mdi-menu-down</v-icon>
+                        </v-btn>
+                    </v-scroll-x-transition>
+                </template>
+                <v-list>
+                    <v-list-item-group>
+                        <v-list-item v-for="status in bulkStatuses" :key="status.id">
+                            <v-list-item-content>
+                                <v-list-item-title @click="openBulkUpdateConfirm(status)">Make cases
+                                    <v-chip
+                                        :color="getStatusColor(status.test_status)"
+                                        text-color="white"
+                                        class="same-width"
+                                        label
+                                        small>
+                                            {{ status.test_status }}
+                                    </v-chip>
+                                </v-list-item-title>
+                            </v-list-item-content>
+                        </v-list-item>
+                    </v-list-item-group>
+                </v-list>
+            </v-menu>
             <v-spacer></v-spacer>
 
             <!-- Filtering type buttons -->
@@ -77,14 +105,18 @@
         <!-- DataTable -->
         <v-data-table class="results-table"
             @current-items="onItemFilter"
+            v-model="selectedTestItems"
             :headers="headers"
             :items="items"
             :search="search"
             :loading="reportLoading || excelLoading || extraDataLoading"
+            :show-select="validations.length === 1"
+            item-key="f0"
             disable-pagination hide-default-footer multi-sort
         >
             <template v-slot:item="{ item }">
                 <tr>
+                    <td v-if="validations.length === 1"><v-checkbox v-model="selectedTestItems" :value="item"></v-checkbox></td>
                     <td v-for="(cellValue, index) in item" :key="index">
                         <span v-if="index=='f0'"><a class="local-link" @click="openExtraDataDialog(item)">{{ cellValue }}</a></span>
                         <span v-else-if="typeof cellValue === 'object' && cellValue !== null">
@@ -170,6 +202,50 @@
             </v-card>
         </v-dialog>
 
+        <!-- Confirmaton window -->
+        <v-dialog
+            v-model="bulkUpdateConfirmDialog"
+            persistent no-click-animation
+            max-width="50%"
+        >
+            <v-card>
+                <v-card-title>Update reason</v-card-title>
+                <v-card-subtitle class="mt-1">
+                    {{selectedTestItems.length}} selected Test items will get
+                    <v-chip
+                        :color="getStatusColor(selectedStatus.test_status)"
+                        text-color="white"
+                        label
+                        small>
+                            {{ selectedStatus.test_status }}
+                    </v-chip>
+                    status after this operation
+                </v-card-subtitle>
+                <!-- Reason of update -->
+                <v-form v-model="isFormValid">
+                    <v-text-field
+                        color="blue-grey"
+                        class="mx-7"
+                        label="please provide reason of update"
+                        :rules="[rules.required(reason), rules.isLongEnough(reason)]"
+                        v-model="reason"
+                    ></v-text-field>
+                </v-form>
+                <v-card-actions class="pt-0">
+                    <v-spacer></v-spacer>
+                    <v-btn color="cyan darken-2" text @click="bulkUpdateConfirmDialog = false">
+                        Close
+                    </v-btn>
+                    <v-btn color="cyan darken-2" text
+                        @click="bulkUpdateStatus"
+                        :disabled="!isFormValid"
+                    >
+                        Update
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <!-- Result item overview -->
         <result-item-details
             :resultItemId="selectedResultId"
@@ -213,8 +289,13 @@
                 showResultHistory: false,
                 extraDataLoading: false,
                 extraDataDialog: false,
+                bulkUpdateConfirmDialog: false,
                 extraData: {},
                 allKeys: [],
+                selectedTestItems: [],
+                bulkAvailableStatuses: ['Passed', 'Failed'],
+                bulkStatuses: [],
+                selectedStatus: {},
 
                 showTooltip: false,
                 validationErrors: [],
@@ -231,6 +312,19 @@
 
                 detailsDialog: false,
                 selectedResultId: undefined,
+
+                rules: {
+                    required(value) {
+                        return !!value || 'Required'
+                    },
+                    isLongEnough(value) {
+                        if (value.length < 5)
+                            return 'At least 5 symbols'
+                        return true
+                    }
+                },
+                isFormValid: true,
+                reason: ''
             }
         },
         props: {
@@ -388,6 +482,7 @@
                     })
                     .finally(() => {
                         this.filterData()
+                        this.selectedTestItems = []
                     })
             },
             /**
@@ -406,6 +501,44 @@
                 this.filteredItems = []
                 this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
             },
+            openBulkUpdateConfirm(status) {
+                this.bulkUpdateConfirmDialog = true
+                this.selectedStatus = status
+            },
+            bulkUpdateStatus() {
+                let testItemIds = this._.map(this.selectedTestItems, (item) => {
+                    let data = this._.values(item).find((value) => value.tiId)
+                    return data.tiId
+                })
+                this.updateTestItems(testItemIds)
+            },
+            updateTestItems(testItemIds) {
+                const url = "api/result/bulk_update/"
+                let data = testItemIds.map((id) => {
+                    return {
+                        'id': id,
+                        'status': this.selectedStatus.id,
+                        'change_reason': this.reason
+                    }
+                })
+                server
+                    .put(url, data)
+                    .then(response => {
+                        this.reportWeb()
+                        this.$toasted.success('Items have been updated')
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during updating of these items', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    }).finally(() => {
+                        this.selectedTestItems = []
+                        this.reason = ""
+                        this.bulkUpdateConfirmDialog = false
+                    })
+            }
         },
         mounted() {
             // find appropriate available mappings for our validation
@@ -419,6 +552,21 @@
                 .catch(error => {
                     if (error.handleGlobally) {
                         error.handleGlobally('Failed to get available mappings for selected validations', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+
+            // getting of available statuses for Bulk option
+            url = `api/status/?test_status__in=${this.bulkAvailableStatuses.join(',')}`
+            server
+                .get(url)
+                .then(response => {
+                    this.bulkStatuses = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get statuses', url)
                     } else {
                         this.$toasted.global.alert_error(error)
                     }

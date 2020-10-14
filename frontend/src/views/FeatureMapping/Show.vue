@@ -367,7 +367,7 @@
                 familyOses: [],
 
                 // Show mapping data
-                mappingType: null,
+                mappingType: 'my',
                 activeMapping: null,
                 showMappingTable: false,
                 mappingItems: [],
@@ -512,6 +512,10 @@
                 server
                     .get(url)
                     .then(response => {
+                        if (response.data.items.length == 0 && this.mappingType == 'my') {
+                            this.mappingType = 'public'
+                            this.getMappings()
+                        }
                         this.showMappingTable = true
                         let headers = response.data.headers
                         // rename Os to "Os family"

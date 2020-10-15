@@ -6,7 +6,7 @@
             max-width="50%"
         >
             <v-card>
-                <v-card-title>History of result item</v-card-title>
+                <v-card-title>History of result item {{ field ? ' (only for ' + field + ' attribute)' : '' }} </v-card-title>
                 <v-data-table
                     :expanded.sync="expanded"
                     show-expand
@@ -101,6 +101,7 @@
         },
         props: {
             resultItemId: { type: Number, required: true },
+            field: { type: String, required: false },  // to show only specific field
         },
         computed: {
             additional_parameters() {
@@ -146,8 +147,13 @@
                     .then(response => {
                         this.history = response.data
                         for (let change of this.history) {
-                            change['date'] = this.$options.filters.formatDate(change['date'])
-                            for (let diff of change['changes']) {
+
+                            if (this.field) {
+                                // filter changes contains specified field
+                                change.changes = change.changes.filter(diff => diff.field == this.field)
+                            }
+                            change.date = this.$options.filters.formatDate(change.date)
+                            for (let diff of change.changes) {
                                 if (diff.field == 'additional_parameters') {
                                     // replace all Nones and single quotes
                                     diff.old = diff.old.replaceAll('\'', '\"')
@@ -156,6 +162,9 @@
                                     diff.new = diff.new == 'None' ? null : diff.new
                                 }
                             }
+                        }
+                        if (this.field) {
+                            this.history = this.history.filter(change => change.changes.length > 0)
                         }
                         this.showHistory = true
                     })

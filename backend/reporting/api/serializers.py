@@ -105,6 +105,16 @@ class ItemSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ItemFullSerializer(serializers.ModelSerializer):
+    args = serializers.CharField(trim_whitespace=False, max_length=255)
+    plugin = PluginSerializer()
+    scenario = TestScenarioSerializer()
+
+    class Meta:
+        model = models.Item
+        fields = ['name', 'args', 'plugin', 'scenario']
+
+
 class RunSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Run
@@ -290,7 +300,7 @@ class SimicsSerializer(serializers.ModelSerializer):
 class ResultFullSerializer(serializers.ModelSerializer):
     validation = ValidationCutSerializer()
     driver = DriverFullSerializer()
-    item = ItemSerializer()
+    item = ItemFullSerializer()
     component = ComponentCutSerializer()
     env = EnvCutSerializer()
     platform = PlatformCutSerializer()

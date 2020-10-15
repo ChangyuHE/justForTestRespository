@@ -5,26 +5,59 @@
             <v-card>
                 <v-card-title>
                     Result item details
-                    <v-icon class="ml-3" title="Update history" @click="showHistory = true">mdi-clock-outline</v-icon>
+                    <v-icon class="ml-3" title="Result update history" @click="history.length ? openHistoryDialog() : undefined">
+                        {{ history.length ? 'mdi-clock-time-four' : 'mdi-clock-outline' }}
+                    </v-icon>
+                    <div v-if="history.length" class="ml-4 text-subtitle-2 font-weight-light">
+                        Last updated by {{ lastChange.user }} at {{ lastChange.date }}
+                    </div>
                     <v-spacer></v-spacer>
                     <v-switch v-model="enableEditing" label="Editing" color="teal darken-1"></v-switch>
                 </v-card-title>
 
                 <v-row class="mx-3">
-                    <v-col v-for="field of fields.threeOnRow" :key="field" class="py-0" cols="4">
+                    <v-col v-for="field of fields.threeOnRow" :key="field" class="py-0 pl-2" cols="4">
                         <v-text-field
                             color="blue-grey"
                             readonly
                             :append-icon="showEditIcon(field)"
                             @click:append="openEditDialog(field)"
-                            class="px-2 py-0"
+                            class="pl-2 py-0"
+                            :class="fieldLastUpdate(field) ? 'pr-0' : 'px-6'"
                             :label="field"
                             :value="fieldValue(field, resultItem)"
+                        >
+                            <template v-slot:append-outer v-if="fieldLastUpdate(field)">
+                                    <v-icon class="mx-0 px-0"
+                                        small :title="fieldLastUpdate(field)"
+                                        @click="openHistoryDialog(field)"
+                                    >
+                                        mdi-clock-outline
+                                    </v-icon>
+                            </template>
+                        </v-text-field>
+                    </v-col>
+                    <v-col v-if="resultItem.item.scenario == null || resultItem.item.plugin == null" class="py-0 pl-2" cols="8">
+                        <v-text-field
+                            color="blue-grey"
+                            readonly
+                            label="args"
+                            :value="resultItem.item.args"
+                            class="pl-2 px-6 py-0"
+                        >
+                        </v-text-field>
+                    </v-col>
+                    <v-col v-else v-for="field of ['scenario', 'plugin']" :key="field" class="py-0 pl-2" cols="4">
+                        <v-text-field
+                            color="blue-grey"
+                            readonly
+                            :label="field"
+                            :value="resultItem.item[field].name"
+                            class="pl-2 px-6 py-0"
                         >
                         </v-text-field>
                     </v-col>
                 </v-row>
-
                 <v-row class="mt-11 mx-3">
                     <v-col v-for="asset of fields.assets" :key="asset" class="py-0" cols="6">
                         <v-text-field
@@ -32,10 +65,20 @@
                             readonly
                             :append-icon="showEditIcon(asset)"
                             @click:append="openEditDialog(asset)"
-                            class="px-2 py-0"
+                            class="pl-2 py-0"
+                            :class="fieldLastUpdate(asset) ? 'pr-0' : 'px-6'"
                             :label="asset"
                             :value="assetValue(resultItem[asset])"
-                        ></v-text-field>
+                        >
+                            <template v-slot:append-outer v-if="fieldLastUpdate(asset)">
+                                <v-icon class="mx-0 px-0"
+                                    small :title="fieldLastUpdate(asset)"
+                                    @click="openHistoryDialog(asset)"
+                                >
+                                    mdi-clock-outline
+                                </v-icon>
+                            </template>
+                        </v-text-field>
                     </v-col>
                 </v-row>
 
@@ -58,6 +101,12 @@
                 <div class="ml-9 text-subtitle-1 font-weight-light">
                     Additional parameters
                     <v-icon class="ml-2" @click="openEditDialog('additional_parameters')">{{ showEditIcon('additional_parameters') }} </v-icon>
+                    <v-icon class="ml-2" v-if="fieldLastUpdate('additional_parameters')"
+                        small :title="fieldLastUpdate('additional_parameters')"
+                        @click="openHistoryDialog('additional_parameters')"
+                    >
+                        mdi-clock-outline
+                    </v-icon>
                 </div>
                 <v-row class="mx-5">
                     <v-simple-table class="px-3 py-0">
@@ -262,7 +311,7 @@
         </v-dialog>
 
         <!-- History -->
-        <result-history v-if="showHistory" :resultItemId="this.resultItemId" @close="showHistory = false"></result-history>
+        <result-history v-if="showHistory" :resultItemId="resultItemId" :field="historyField" @close="showHistory = false"></result-history>
 
         <!-- Result reason html -->
         <v-dialog
@@ -310,6 +359,7 @@
                 resultItemCopy: null,
                 enableEditing: false,
 
+                historyField: null,
                 selectedField: null,
                 selectedFieldValue: undefined,
 
@@ -469,7 +519,24 @@
                                     Object.keys(this.additional_parameters(changed)).length) -
                                 Object.keys(this.additional_parameters(current)).length
                 }
-            }
+            },
+            fieldLastUpdate() {
+                return field => {
+                    for (let change of this.history) {
+                        for (let diff of change.changes) {
+                            if (diff.field == field) {
+                                return 'Last updated by ' + change.user + ' at ' + change.date
+                            }
+                        }
+                    }
+                    return ''
+                }
+            },
+            lastChange() {
+                if (this.history.length == 0)
+                    return undefined
+                return this.history[0]
+            },
         },
         methods: {
             // open
@@ -497,6 +564,10 @@
             closeConfirmationWindow() {
                 this.showConfirmationWindow = false
                 this.reason = ''
+            },
+            openHistoryDialog(field=null) {
+                this.showHistory = true
+                this.historyField = field
             },
 
             // return appropriate object with fields for assets, simics and driver (used to create a new object)
@@ -544,6 +615,34 @@
                         }
                     })
             },
+            loadHistory() {
+                const url = `api/result/history/${this.resultItemId}/`
+                server
+                    .get(url)
+                    .then(response => {
+                        this.history = response.data
+                        for (let change of this.history) {
+                            change['date'] = this.$options.filters.formatDate(change['date'])
+                            for (let diff of change['changes']) {
+                                if (diff.field == 'additional_parameters') {
+                                    // replace all Nones and single quotes
+                                    diff.old = diff.old.replaceAll('\'', '\"')
+                                    diff.old = diff.old == 'None' ? null : diff.old
+                                    diff.new = diff.new.replaceAll('\'', '\"')
+                                    diff.new = diff.new == 'None' ? null : diff.new
+                                }
+                            }
+                        }
+                        this.showDetails = true
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during retrieving result update history', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    })
+            },
             showResultDetails() {
                 const url = `api/result/${this.resultItemId}/`
                 server
@@ -561,7 +660,7 @@
                         // resultItemCopy is used to track changes
                         this.resultItemCopy = Object.assign({}, this.resultItem)
                         this.enableEditing = false
-                        this.showDetails = true
+                        this.loadHistory()
                     })
                     .catch(error => {
                         if (error.handleGlobally) {

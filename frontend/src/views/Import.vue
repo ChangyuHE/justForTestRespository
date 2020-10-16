@@ -146,7 +146,7 @@
                         </v-card-text>
                         <v-card-actions>
                             <!-- Reason of update -->
-                            <v-container>
+                            <v-container v-if="importType == 'existing'">
                                 <v-form v-model="valid">
                                     <v-text-field
                                         color="blue-grey"
@@ -266,7 +266,7 @@
                 return tabs
             },
             uploadFromDialogDisabled() {
-                return 'blocking' in this.importErrors || 'high' in this.importErrors || !this.valid
+                return 'blocking' in this.importErrors || 'high' in this.importErrors || (this.importType == 'existing' && !this.valid)
             },
             today() {
                 let date = new Date()

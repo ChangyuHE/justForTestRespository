@@ -339,9 +339,10 @@ class FeatureMappingRule(models.Model):
     scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
     ids = models.TextField(null=True, blank=True)
 
-    mapping = models.ForeignKey('FeatureMapping', null=True, blank=True, on_delete=models.CASCADE)
+    mapping = models.ForeignKey('FeatureMapping', related_name='rules', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
+        ordering = ['milestone__name']
         constraints = [
             UniqueConstraint(
                 fields=['milestone', 'feature', 'scenario', 'mapping', 'ids'],

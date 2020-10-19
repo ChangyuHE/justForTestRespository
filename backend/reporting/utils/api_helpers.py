@@ -35,7 +35,8 @@ def serialiazed_to_datatable_json(serialized, exclude=None, actions=True):
         headers.append({'text': field_name.title(), 'sortable': True, 'value': value})
 
     if actions:
-        headers.append({'text': 'Actions', 'value': 'actions', 'sortable': False, 'width': 10})
+        # some style edits for 'Actions' panel on the front view
+        headers.append({'text': 'Actions', 'value': 'actions', 'sortable': False, 'width': 100})
 
     for data in serialized:
         item_data = dict()

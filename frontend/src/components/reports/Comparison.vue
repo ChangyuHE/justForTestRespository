@@ -42,7 +42,7 @@
                     <v-list-item-group>
                         <v-list-item v-for="status in bulkStatuses" :key="status.id">
                             <v-list-item-content>
-                                <v-list-item-title @click="openBulkUpdateConfirm(status)">Make cases
+                                <v-list-item-title @click="openBulkUpdateConfirm(status)">Make items
                                     <v-chip
                                         :color="getStatusColor(status.test_status)"
                                         text-color="white"
@@ -52,6 +52,11 @@
                                             {{ status.test_status }}
                                     </v-chip>
                                 </v-list-item-title>
+                            </v-list-item-content>
+                        </v-list-item>
+                        <v-list-item>
+                            <v-list-item-content>
+                                <v-list-item-title @click="openBulkUpdateItems()">Edit items</v-list-item-title>
                             </v-list-item-content>
                         </v-list-item>
                     </v-list-item-group>
@@ -260,6 +265,14 @@
             :resultItemId="selectedResultId"
             @close="showResultHistory = false"
         ></result-history>
+
+        <!-- Bulk update Result item -->
+        <result-items-bulk-update
+            :resultItemIds="selectedResultItemIds"
+            v-if="bulkDetailsDialog"
+            @close="bulkDetailsDialog = false"
+            @change="reportWeb"
+        ></result-items-bulk-update>
     </v-card>
 </template>
 
@@ -268,6 +281,7 @@
     import ResultItemDetails from '@/components/ResultItemDetails'
     import mappingSelector from '@/components/MappingSelector.vue'
     import resultHistory from '@/components/ResultHistory'
+    import resultItemsBulkUpdate from '@/components/ResultItemsBulkUpdate'
 
     import { mapState, mapGetters } from 'vuex'
 
@@ -275,7 +289,8 @@
         components: {
             ResultItemDetails,
             mappingSelector,
-            resultHistory
+            resultHistory,
+            resultItemsBulkUpdate
         },
         data() {
             return {
@@ -290,9 +305,11 @@
                 extraDataLoading: false,
                 extraDataDialog: false,
                 bulkUpdateConfirmDialog: false,
+                bulkDetailsDialog: false,
                 extraData: {},
                 allKeys: [],
                 selectedTestItems: [],
+                selectedResultItemIds: [],
                 bulkAvailableStatuses: ['Passed', 'Failed'],
                 bulkStatuses: [],
                 selectedStatus: {},
@@ -504,6 +521,13 @@
             openBulkUpdateConfirm(status) {
                 this.bulkUpdateConfirmDialog = true
                 this.selectedStatus = status
+            },
+            openBulkUpdateItems() {
+                this.bulkDetailsDialog = true
+                this.selectedResultItemIds = this._.map(this.selectedTestItems, (item) => {
+                    let data = this._.values(item).find((value) => value.tiId)
+                    return data.tiId
+                })
             },
             bulkUpdateStatus() {
                 let testItemIds = this._.map(this.selectedTestItems, (item) => {

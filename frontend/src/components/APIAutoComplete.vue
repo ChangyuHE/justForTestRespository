@@ -55,7 +55,8 @@
                     // The value must match one of these strings
                     return ['sync', 'defined'].indexOf(value) !== -1
                 }
-            }
+            },
+            prefixItems: { type: Array, required: false }
         },
         data() {
             return {
@@ -69,7 +70,8 @@
         },
         computed: {
             items() {
-                return this.entries.map(entry => {
+                let existing = []
+                let entries = this.entries.map(entry => {
                     let name = entry.name
                     if (this.modelName == 'platform')
                         name = entry.short_name
@@ -78,11 +80,26 @@
                     if (this.modelName.includes('asset'))
                         name = entry.url
                     if (this.modelName == 'simics') {
-                        entry['data'] = JSON.stringify(entry.data)
+                        if (typeof entry.data !== 'string') {
+                            entry.data = JSON.stringify(entry.data)
+                        }
                         name = entry.data
+                    }
+
+                    if (this.prefixItems && this.prefixItems.includes(name) && this.prefixItems.length > 1) {
+                        existing.push(Object.assign({}, entry, { name }))
                     }
                     return Object.assign({}, entry, { name })
                 })
+
+                if (existing.length !== 0) {
+                    // Adding groups for quick access
+                    existing.unshift({"header": "Existing"})
+                    existing.push({"header": "Others"})
+                   return [...existing, ...entries]
+                }
+
+                return entries
             },
             descriptiveField() {
                 let field = 'name'

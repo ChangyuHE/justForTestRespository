@@ -100,6 +100,7 @@ urlpatterns = [
     path('api/codec/<int:pk>/', views.CodecDetailsView.as_view()),
     path('api/codec/', views.CodecView().as_view()),
 
+    path('api/result/', views.ResultListView().as_view()),
     path('api/result/<int:pk>/', views.ResultView().as_view()),
     path('api/result/update/<int:pk>/', views.ResultUpdateView.as_view()),
     path('api/result/bulk_update/', views.ResultBulkListUpdateView.as_view()),

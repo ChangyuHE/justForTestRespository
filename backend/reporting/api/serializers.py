@@ -3,9 +3,10 @@ import logging
 from rest_framework import serializers
 from rest_framework import fields
 from rest_framework.validators import UniqueTogetherValidator
+from rest_framework.exceptions import ValidationError
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, IntegrityError
 
 import api.models as models
 from api.utils.cached_objects_find import parse_item_args, TEST_ITEM_EXTRAS
@@ -349,6 +350,6 @@ class BulkResultSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Result
-        fields = ["id", "item", "status"]
-        read_only_fields = ["id", "item"]
+        fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset', 'fulsim_asset', 'simics']
+        read_only_fields = ['id', 'item']
         list_serializer_class = BulkUpdateListSerializer

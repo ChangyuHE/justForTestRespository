@@ -26,7 +26,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 
 from rest_framework import generics, status, filters
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -225,6 +225,25 @@ class ResultView(LoggingMixin, generics.RetrieveAPIView):
     filterset_fields = ['validation_id', 'item_id']
 
 
+class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
+    pass
+
+
+class ResultsFilter(django_filters.FilterSet):
+    ids__in = NumberInFilter(field_name='id', lookup_expr='in')
+
+    class Meta:
+        model = Result
+        fields = ['ids__in']
+
+
+class ResultListView(LoggingMixin, generics.ListAPIView):
+    """ List of Result objects by Ids """
+    queryset = Result.objects.all()
+    serializer_class = ResultFullSerializer
+    filterset_class = ResultsFilter
+
+
 class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
     pass
 
@@ -345,7 +364,7 @@ class ResultBulkListUpdateView(LoggingMixin, generics.ListAPIView):
         return Response(serializer.data)
 
     def perform_update(self, serializer, user, reason, *args, **kwargs):
-        serializer.save(_history_user=user, _change_reason=reason)
+        serializer.save(_history_user=user, _change_reason=reason, _changed=True)
 
 
 def convert_to_datatable_json(dataframe: pd.DataFrame):

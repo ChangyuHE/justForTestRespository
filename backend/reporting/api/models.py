@@ -214,8 +214,25 @@ class Run(models.Model):
             ),
         ]
 
+    def __str__(self):
+        return self.name
 
-class Result(models.Model):
+
+class DiffMixin(object):
+    def __init__(self, *args, **kwargs):
+        super(DiffMixin, self).__init__(*args, **kwargs)
+        self._original_state = dict(self.__dict__)
+
+    def get_changed_columns(self):
+        missing = object()
+        result = {}
+        for key, value in self._original_state.items():
+            if value != self.__dict__.get(key, missing):
+                result[key] = value
+        return result
+
+
+class Result(DiffMixin, models.Model):
     validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE)
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.CASCADE)

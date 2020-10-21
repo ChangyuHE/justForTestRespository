@@ -50,6 +50,7 @@ class ImportRequestDTO(AbstractRequestDTO):
     requester: User
     site_url: str
     force_item: bool
+    import_reason: str
 
     @classmethod
     def build(cls, request) -> 'ImportRequestDTO':
@@ -65,6 +66,7 @@ class ImportRequestDTO(AbstractRequestDTO):
         dto.requester = api_logging.get_user_object(request)
         dto.site_url = request.build_absolute_uri('/')
         dto.force_item = cls._extract_boolean(request, 'force_item')
+        dto.import_reason = cls._get_field(request, 'import_reason')
 
         return dto
 

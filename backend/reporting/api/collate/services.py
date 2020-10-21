@@ -358,7 +358,7 @@ class RecordBuilder:
 
             setattr(entity, attribute, date)
 
-    def __update_if_exists(self, entity) -> Result :
+    def __update_if_exists(self, entity) -> Result:
         # [MDP-63316] Check if same test from test scenario name and test id combination.
         # Update existing test result in this case.
         existing_entity = _find_existing_entity(entity)

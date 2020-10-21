@@ -2,7 +2,7 @@ import dataclasses
 import logging
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union, Optional
 from dramatiq import actor
 
 from django.contrib.auth import get_user_model
@@ -10,14 +10,14 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.template.loader import get_template
 
-from api.models import ImportJob
+from api.models import ImportJob, Result
 from api.models import JobStatus
 from api.collate.business_entities import Context
 from api.collate.business_entities import ValidationDTO
 from api.collate.excel_utils import open_excel_file
 from api.collate.excel_utils import non_empty_row
 from api.collate.services import RecordBuilder
-from reporting.settings import production
+from reporting.settings import production, AUTH_USER_MODEL
 
 log = logging.getLogger(__name__)
 
@@ -28,20 +28,25 @@ class Changes:
     updated: int = 0
     skipped: int = 0
 
-    def update_from_entity(self, entity):
+    def update_from_entity(self, entity: Result, requester: AUTH_USER_MODEL, reason: str) -> None:
         if entity is None:
             self.skipped += 1
         elif entity.id is None:
             entity.save()
             self.added += 1
-        else:
+        elif entity.get_changed_columns():
+            entity._change_reason = reason
+            entity._history_user = requester
+            entity._changed = True
             entity.save()
             self.updated += 1
+        else:
+            self.skipped += 1
 
 
 @actor
 @transaction.atomic
-def do_import(job_id: int, validation_dict: Dict):
+def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]], reason: str) -> None:
     topic = 'Reporter: <unknown>'
     to_emails = []
     validation_info = '<unknown>'
@@ -83,7 +88,7 @@ def do_import(job_id: int, validation_dict: Dict):
         for row in non_empty_row(rows):
             builder = RecordBuilder(context, row)
             entity = builder.build(job.force_run, job.force_item)
-            changes.update_from_entity(entity)
+            changes.update_from_entity(entity, job.requester, reason)
 
         outcome.changes = dataclasses.asdict(changes)
 
@@ -104,11 +109,11 @@ def do_import(job_id: int, validation_dict: Dict):
     else:
         template = get_template('collate/import_message.html')
         ctx = {'validation_info': validation_info,
-                           'added': changes.added,
-                           'updated': changes.updated,
-                           'skipped': changes.skipped,
-                           'site_url': job.site_url,
-                           'validation_id': context.get_validation_id()}
+               'added': changes.added,
+               'updated': changes.updated,
+               'skipped': changes.skipped,
+               'site_url': job.site_url,
+               'validation_id': context.get_validation_id()}
         text = template.render(ctx)
         topic = f'Reporter: import of validation {validation_info} completed'
         job.status = JobStatus.DONE

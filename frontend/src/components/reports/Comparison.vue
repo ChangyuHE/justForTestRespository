@@ -277,6 +277,7 @@
 </template>
 
 <script>
+    import { EventBus } from '@/event-bus.js'
     import server from '@/server'
     import ResultItemDetails from '@/components/ResultItemDetails'
     import mappingSelector from '@/components/MappingSelector.vue'
@@ -548,6 +549,14 @@
                 server
                     .put(url, data)
                     .then(response => {
+                        let stats = {'passed': 0, 'failed': 0, 'error': 0, 'blocked': 0, 'skipped': 0, 'canceled': 0}
+                        for (let item of this.selectedTestItems) {
+                            stats[item.f4.status.toLowerCase()]++
+                        }
+                        let key = this.selectedStatus.test_status.toLowerCase()
+                        let newStats = {}
+                        newStats[key] = this.selectedTestItems.length
+                        this.updateStatusCounters(stats, newStats)
                         this.reportWeb()
                         this.$toasted.success('Items have been updated')
                     })
@@ -562,6 +571,9 @@
                         this.reason = ""
                         this.bulkUpdateConfirmDialog = false
                     })
+            },
+            updateStatusCounters(stats, newStats) {
+                EventBus.$emit('update-counters', {'old': stats, 'new': newStats, 'validation': this.validations[0]})
             }
         },
         mounted() {

@@ -335,6 +335,7 @@
 </template>
 
 <script>
+    import { EventBus } from '@/event-bus.js'
     import server from '@/server'
     import ApiAutoComplete from '@/components/APIAutoComplete'
     import ResultHistory from '@/components/ResultHistory'
@@ -710,6 +711,19 @@
                 server
                     .put(url, resItemEdited)
                     .then(response => {
+                        let newStatus = this.resultItem.status.test_status
+                        let oldStatus = this.resultItemCopy.status.test_status
+                        if (oldStatus != newStatus) {
+                            oldStatus = {}
+                            oldStatus[this.resultItemCopy.status.test_status] = 1
+                            newStatus = {}
+                            newStatus[this.resultItem.status.test_status] = 1
+                            EventBus.$emit('update-counters', {
+                                'old': oldStatus,
+                                'new': newStatus,
+                                'validation': this.resultItem.validation.id
+                                })
+                        }
                         Object.assign(this.resultItem, response.data)
 
                         // make string from additional_parameters and simics.data fields (it is JSON fields in db so object is returned)

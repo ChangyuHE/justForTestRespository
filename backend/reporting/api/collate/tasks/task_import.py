@@ -94,7 +94,10 @@ def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]]
 
         log.debug('File store outcome: %s', outcome.build())
 
-        # file should be removed only after successful import
+        vstats = validation.update_status_counters()
+        log.info("Imported validation details - %s", vstats.__format__('full'))
+        validation.save()
+
         log.debug('Removing temporary xlsx: %s', job.path)
         xlsx = Path(job.path)
         if xlsx.is_file():

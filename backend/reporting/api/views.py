@@ -516,12 +516,26 @@ class ValidationsView(LoggingMixin, APIView):
                 # find node by name and level, if not create new one
                 node = anytree.search.find(parent, lambda n: n.name == name and n.level == node_data['level'])
                 if not node:
-                    node = Node(
-                        parent=parent, name=name, text=name, text_flat=name,
-                        selected=False, opened=True,
-                        level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
-                        icon=f'{icon} mdi tree-icon'
-                    )
+                    if node_data['level'] == 5:
+                        node = Node(
+                            parent=parent, name=name, text=name, text_flat=name,
+                            selected=False, opened=True,
+                            level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
+                            icon=f'{icon} mdi tree-icon',
+                            passed=validation.passed,
+                            failed=validation.failed,
+                            error=validation.error,
+                            blocked=validation.blocked,
+                            skipped=validation.skipped,
+                            canceled=validation.canceled,
+                        )
+                    else:
+                        node = Node(
+                            parent=parent, name=name, text=name, text_flat=name,
+                            selected=False, opened=True,
+                            level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
+                            icon=f'{icon} mdi tree-icon'
+                        )
                 parent = node
 
         exporter = JsonExporter()

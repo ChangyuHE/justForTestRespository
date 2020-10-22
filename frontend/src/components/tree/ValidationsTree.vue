@@ -134,6 +134,24 @@
         <!-- Derevo -->
         <v-jstree ref="tree" v-if="data.length" class="mt-4"
             :data="data" show-checkbox allow-batch multiple @item-click="itemClick">
+            <template slot-scope="_">
+                <div style="display: inherit;" @click.exact="itemClick(_.vm, _.model, $event)">
+                <i :class="_.vm.themeIconClasses" role="presentation" v-if="!_.model.loading"></i>
+                    <span v-html="_.model.text"></span>
+                    <span v-if="_.model.level == 5 && hasAnyStatus(_.model)"> — </span>
+                    <template v-for="status in ['passed', 'failed', 'error', 'blocked', 'skipped', 'canceled']">
+                        <small>
+                            <span
+                                :class="getStatusColor(status)"
+                                v-if="_.model[status] != 0"
+                                :title="status"
+                            >
+                                {{ _.model[status] }}&nbsp;
+                            </span>
+                        </small>
+                    </template>
+                </div>
+            </template>
         </v-jstree>
         <v-card v-else outlined class="ml-4 mr-7 mt-4">
             <v-card-text class="text-center subtitle-1">No data to show</v-card-text>
@@ -141,10 +159,12 @@
     </div>
 </template>
 <script>
+    import { mapState } from 'vuex'
+    import { EventBus } from '@/event-bus.js'
+
     import qs from 'query-string'
     import VJstree from 'vue-jstree'
     import server from '@/server.js'
-    import { mapState } from 'vuex'
     import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
     import { alterHistory } from '@/utils/history-management.js'
 
@@ -414,6 +434,33 @@
             },
             prepareBranches(branches) {
                 return this._.map(branches, b => { return this._.map(b, n => n.model.text_flat ).reverse() })
+            },
+            getStatusColor(s) {
+                if (s == 'passed') { return 'green--text text--darken-1' }
+                else if (s == 'failed') { return 'red--text text--darken-4' }
+                else if (s == 'error') { return 'deep-orange--text text--darken-2' }
+                else if (s == 'blocked') { return 'grey--text text--darken-1' }
+                else if (s == 'skipped') { return 'cyan--text text--darken-3' }
+                else if (s == 'canceled') { return 'brown--text text--darken-3' }
+            },
+            hasAnyStatus(el) {
+                return this._.some([el.passed, el.failed, el.error, el.blocked, el.skipped, el.canceled], function(e) { return e != 0 })
+            },
+            updateStatusCounters(oldStatuses, newStatus, validation_id) {
+                this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                    node => {
+                        if (typeof node.model != 'undefined' && node.model.selected && node.model.id === validation_id) {
+                            for (const [status, number] of Object.entries(oldStatuses)) {
+                                if (number != 0) {
+                                    node.model[status.toLowerCase()] -= number
+                                }
+                            }
+                            for (const [status, number] of Object.entries(newStatus)) {
+                                node.model[status.toLowerCase()] += number
+                            }
+                        }
+                    }
+                )
             }
         },
         beforeCreate() {
@@ -479,7 +526,12 @@
         },
         updated() {
             this.initiallyLoaded && this.urlParamsToStore()
-        }
+        },
+        mounted() {
+            EventBus.$on('update-counters', payload => {
+                this.updateStatusCounters(payload.old, payload.new, payload.validation)
+            })
+         }
     }
 </script>
 <style>

@@ -1,3 +1,7 @@
 1. When you add HistoricalRecords field for some model after ordinary migration execute
    this command to create initial data for history:
         * python manage.py populate_history --auto
+2. After applying 'MDP-64612: Status counters in validation tree' commit to your
+   source tree and making migration from this commit please run
+   'fill_validation_data.py' script which put initial counters to Validation
+   instances.

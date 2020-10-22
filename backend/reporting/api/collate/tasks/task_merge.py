@@ -81,6 +81,8 @@ def _copy_results(target_validation: Validation, validation_ids: List[int], stra
         new_entities.append(entity)
 
     Result.objects.bulk_create(new_entities)
+    vstats = target_validation.update_status_counters()
+    log.debug("Merged validation details - %s", vstats.__format__('full'))
 
 def _query_result_distinct_on_item(validation_ids, strategy_args):
     unique_item_ids = []

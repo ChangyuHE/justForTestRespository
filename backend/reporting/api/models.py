@@ -1,9 +1,10 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 from django.conf import settings
 
-from django.db import models
-from django.db.models import UniqueConstraint, Q
+from django.db import models, transaction
+from django.db.models import UniqueConstraint, Q, Count
 from simple_history.models import HistoricalRecords
 
 from reporting.settings import AUTH_USER_MODEL
@@ -264,6 +265,38 @@ class Result(DiffMixin, models.Model):
     history = HistoricalRecords()
     _changed = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            # if it is not the first save
+            val = self.validation
+            cols = self.get_changed_columns()
+            if 'status_id' in cols:
+                old_value = cols['status_id']
+                old_status = Status.objects.get(pk=old_value).test_status
+                new_status = self.status.test_status
+
+                if new_status != old_status:
+                    with transaction.atomic():
+                        results_with_old_status = val.get_by_status(old_status)
+                        results_with_new_status = val.get_by_status(new_status)
+                        results_with_old_status -= 1
+                        results_with_new_status += 1
+                        val.set_by_status(old_status, results_with_old_status)
+                        val.set_by_status(new_status, results_with_new_status)
+                        val.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        val = self.validation
+        status = self.status.test_status
+
+        with transaction.atomic():
+            results_with_status = val.get_by_status(status)
+            results_with_status -= 1
+            val.set_by_status(status, results_with_status)
+            val.save()
+
 
 class ResultGroup(models.Model):
     name = models.CharField(max_length=255)
@@ -286,6 +319,26 @@ class ResultGroupMask(models.Model):
     group = models.ForeignKey(ResultGroupNew, on_delete=models.CASCADE, related_query_name='group_mask')
     mask = models.CharField(max_length=255)
 
+@dataclass
+class ValidationStats:
+    Passed: int = 0
+    Failed: int = 0
+    Error: int = 0
+    Blocked: int = 0
+    Skipped: int = 0
+    Canceled: int = 0
+
+    def __format__(self, spec):
+        res = []
+        for field in ['Passed', 'Failed', 'Error', 'Blocked', 'Skipped', 'Canceled']:
+            count = getattr(self, field)
+            if not count:
+                continue
+            if spec == 'full':
+                res.append(f'{field.lower()}:{count}')
+            else:
+                res.append(f'{field[0].lower()}:{count}')
+        return ', '.join(res)
 
 class Validation(models.Model):
     name = models.CharField(max_length=255)
@@ -313,6 +366,35 @@ class Validation(models.Model):
         choices=SubSystems.choices,
         null=True
     )
+
+    # details about Results in this validations
+    passed = models.PositiveSmallIntegerField(default=0)
+    failed = models.PositiveSmallIntegerField(default=0)
+    error = models.PositiveSmallIntegerField(default=0)
+    blocked = models.PositiveSmallIntegerField(default=0)
+    skipped = models.PositiveSmallIntegerField(default=0)
+    canceled = models.PositiveSmallIntegerField(default=0)
+
+    def get_by_status(self, status: str) -> int:
+        return getattr(self, status.lower())
+
+    def set_by_status(self, status: str, value: int) -> None:
+        setattr(self, status.lower(), value)
+
+    def update_status_counters(self) -> ValidationStats:
+        vstats = ValidationStats()
+        stats = self.results.values('status').annotate(count=Count('status'))
+        with transaction.atomic():
+            for stat in stats:
+                # status in query result is pk of Status obj
+                status = Status.objects.get(pk=stat['status']).test_status
+                count = stat['count']
+                setattr(vstats, status, count)
+                self.set_by_status(status, count)
+
+            self.save()
+
+        return vstats
 
     class Meta:
         constraints = [

@@ -234,7 +234,7 @@ class DiffMixin(object):
 
 
 class Result(DiffMixin, models.Model):
-    validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE)
+    validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE, related_name='results')
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.CASCADE)
     component = models.ForeignKey(Component, null=True, blank=True, on_delete=models.CASCADE)

@@ -42,6 +42,7 @@ class Changes:
 @actor
 @transaction.atomic
 def do_import(job_id: int, validation_dict: Dict):
+    topic = 'Reporter: <unknown>'
     to_emails = []
     validation_info = '<unknown>'
 
@@ -87,8 +88,12 @@ def do_import(job_id: int, validation_dict: Dict):
         outcome.changes = dataclasses.asdict(changes)
 
         log.debug('File store outcome: %s', outcome.build())
-        # if not outcome.is_success():
-        #     transaction.set_rollback(True)
+
+        # file should be removed only after successful import
+        log.debug('Removing temporary xlsx: %s', job.path)
+        xlsx = Path(job.path)
+        if xlsx.is_file():
+            xlsx.unlink()
     except Exception:
         log.exception("Import job failed")
         # Get list of staff e-mails to report an error
@@ -105,11 +110,14 @@ def do_import(job_id: int, validation_dict: Dict):
                            'site_url': job.site_url,
                            'validation_id': context.get_validation_id()}
         text = template.render(ctx)
-        topic = f'Reporter: import of validation {validation_info}'
+        topic = f'Reporter: import of validation {validation_info} completed'
         job.status = JobStatus.DONE
     finally:
+        log.info("Sending an e-mail...")
+        log.info("To: %s", ", ".join(to_emails))
+        log.info("Subject: %s", topic)
+
         if production:
-            log.info("Sending an e-mail...")
             # None in the from field means that emails will be send from
             # DEFAULT_FROM_EMAIL setting address
             msg = EmailMessage(
@@ -117,11 +125,8 @@ def do_import(job_id: int, validation_dict: Dict):
                 text,
                 None,
                 to_emails,
-                cc=['Arseniy.Obolenskiy@intel.com'],
             )
             msg.content_subtype = 'html'
             msg.send()
-        xlsx = Path(job.path)
-        if xlsx.is_file():
-            xlsx.unlink()
+
         job.save()

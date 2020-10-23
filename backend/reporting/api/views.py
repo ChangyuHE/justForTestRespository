@@ -1300,7 +1300,7 @@ class ReportIndicatorView(APIView):
                 key_to_update = 'passed'
             elif status == 'Failed':
                 key_to_update = 'failed'
-            elif status in ('Skipped', 'Blocked', 'Canceled'):
+            elif status in ('Skipped', 'Blocked', 'Canceled', 'Error'):
                 key_to_update = 'blocked'
 
             data[key_to_update] += 1

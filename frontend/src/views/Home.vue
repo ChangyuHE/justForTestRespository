@@ -49,8 +49,9 @@
                                     :disabled="!validations.length"
                                     :loading="reportTypeLoading('best')"
                                     value="best"
+                                    title="Best results report"
                                 >
-                                    Best results report
+                                    Best results
                                 </v-btn>
 
                                 <!-- Last report button -->
@@ -58,8 +59,9 @@
                                     :disabled="!validations.length"
                                     :loading="reportTypeLoading('last')"
                                     value="last"
+                                    title="Last results report"
                                 >
-                                    Last results report
+                                    Last results
                                 </v-btn>
 
                                 <!-- Comparison report -->
@@ -67,6 +69,7 @@
                                     :disabled="!validations.length"
                                     :loading="reportTypeLoading('compare')"
                                     value="comparison"
+                                    :title="compareButtonName"
                                 >
                                     {{ compareButtonName }}
                                 </v-btn>
@@ -76,6 +79,7 @@
                                     :disabled="!validations.length || (validations.length !== 1)"
                                     :loading="reportTypeLoading('indicator')"
                                     value="indicator"
+                                    title="Indicator"
                                 >
                                     Indicator
                                 </v-btn>
@@ -84,7 +88,7 @@
 
                         <!-- Report card -->
                         <component v-if="reportIsReadyToBeRendered" :is="reportName" :type="reportType"
-                            :title="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"/>
+                            :header="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"/>
 
                         <!-- Selected validations -->
                         <template v-if="!showReport && validations.length">

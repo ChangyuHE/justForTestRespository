@@ -329,7 +329,7 @@
         },
         props: {
             type: { type: String, required: true },
-            title: { type: String, required: false }
+            header: { type: String, required: false }
         },
         computed: {
             ...mapState('tree', ['validations']),
@@ -339,7 +339,7 @@
                 return `api/report/compare/${this.validations}/${this._.map(this.mappings, 'id').join(',')}/`
             },
             reportHeader() {
-                return this.title !== undefined ? this.title: 'Validations comparison'
+                return this.header !== undefined ? this.header: 'Validations comparison'
             },
             headers() {
                 return this.showHideTestIdStatus ? this.originalHeaders : this.filteredHeaders

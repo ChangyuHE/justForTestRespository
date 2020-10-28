@@ -10,8 +10,6 @@ from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from openpyxl.xml.constants import WORKBOOK
-
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -50,7 +48,19 @@ class FeatureMappingPostView(LoggingMixin, APIView):
 
         fm_serializer = FeatureMappingSimpleSerializer(data=request.data)
         if not fm_serializer.is_valid():
-            return Response({'errors': fm_serializer.errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            for field, errors in fm_serializer.errors.items():
+                if field == 'non_field_errors':
+                    # we have only one non field checker so we may have only
+                    # one non field error
+                    fm_serializer.errors['non_field_errors'].clear()
+                    fm_serializer.errors['non_field_errors'].append(
+                        f"You already have FMT named '{request.data['name']}'"
+                    )
+                    break
+            return Response(
+                {'errors': fm_serializer.errors},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
 
         errors = import_feature_mapping(request.data['file'], fm_serializer)
         if errors:

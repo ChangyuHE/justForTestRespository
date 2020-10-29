@@ -112,7 +112,7 @@
             }
         },
         computed: {
-            ...mapState({rawUserData: 'userData'}),
+            ...mapState({rawUserData: 'userData', urlParams: 'urlParams'}),
             ...mapState('tree', ['validations']),
             ...mapState('reports', ['reportType']),
             ...mapGetters(['userName']),
@@ -128,8 +128,9 @@
         methods: {
             passParamsToURL() {
                 // only for click on Validations button
-                if (this.$route.name == 'home')
-                    alterHistory('replace', {selected: this.validations, rtype: this.reportType})
+                if (this.$route.name == 'home') {
+                    alterHistory('replace', this.urlParams)
+                }
             },
             onScroll(e) {
                 if (typeof window === 'undefined') return

@@ -17,22 +17,6 @@
                         <v-card width="100%" class="elevation-0 ml-1" color="transparent">
                             <validations-tree ref="validations-tree"/>
                         </v-card>
-                        <!-- Clear selection button -->
-                        <div class="d-flex justify-end">
-                            <v-btn x-small fixed color="blue-grey lighten-4" class="mx-n4 mt-2"
-                                :disabled="!validations.length"
-                                @click="clearSelected"
-                            >
-                                <v-badge
-                                    class="d-flex justify-end clear-button-badge" color="teal darken-3"
-                                    :content="validations.length"
-                                    :value="validations.length"
-                                    overlap
-                                >
-                                    clear selection
-                                </v-badge>
-                            </v-btn>
-                        </div>
                     </div>
                 </pane>
                 <!-- Right part -->
@@ -91,7 +75,7 @@
                             :header="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"/>
 
                         <!-- Selected validations -->
-                        <template v-if="!showReport && validations.length">
+                        <template v-if="showValidationsList">
                             <v-subheader class="mt-4" style="height: 32px;">
                                 Selected Validations
                             </v-subheader>
@@ -161,9 +145,13 @@
             },
             compareButtonName() {
                 return (this.validations.length > 1) ? 'Compare Selected' : 'Overview'
+            },
+            showValidationsList() {
+                return (!this.showReport) && this.validations.length
             }
         },
         watch: {
+            // Remove report type from store and URL params on validations change
             validations(current, previous) {
                 if (previous.length !== 0 && !this._.isEqual(current, previous)) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
@@ -180,17 +168,17 @@
                 this.$refs['split'].panes[0].size = 50
                 this.showExpand = false
             },
-            clearSelected() {
-                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] })
-            },
             reportClick() {
                 if (this.reportType == undefined) {
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
+                    alterHistory('push', {}, ['rtype'])
+                } else {
+                    alterHistory('push', {rtype: this.reportType})
                 }
-                alterHistory('push', {rtype: this.reportType})
-            },
+            }
         },
         created() {
+            // get report type from query string
             if (this.$route.query.rtype)
                 this.reportType = this.$route.query.rtype
         }

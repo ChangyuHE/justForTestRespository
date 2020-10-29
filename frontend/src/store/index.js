@@ -17,12 +17,14 @@ export default new Vuex.Store({
     state: {
         userData: {username: ''},
         importErrors: {},
+        urlParams: {}
     },
     getters: {
         importErrors: (state) => state.importErrors,
         userName: (state) => state.userData.username
     },
     mutations: {
+        SET_URL_PARAMS: (state, payload) => state.urlParams = payload,
         SET_IMPORT_ERRORS: (state, payload) => state.importErrors = payload,
         DELETE_IMPORT_ERROR: (state, {id, priority, errorCode}) => {
             state.importErrors[priority][errorCode] = state.importErrors[priority][errorCode].filter(e => { return e.ID != id })
@@ -64,6 +66,9 @@ export default new Vuex.Store({
                 .catch(error => {
                     error.handleGlobally('Could not get current user data', url)
                 })
+        },
+        setUrlParams: ({ commit }, payload) => {
+            commit('SET_URL_PARAMS', payload)
         }
     },
     strict: process.env.NODE_ENV !== 'production'

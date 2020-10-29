@@ -123,7 +123,7 @@
                 <tr :class="{'not-similar-result': !item.is_similar && validations.length !== 1 }">
                     <td v-if="validations.length === 1"><v-checkbox v-model="selectedTestItems" :value="item"></v-checkbox></td>
                     <td v-for="(cellValue, index) in item" :key="index" v-show="index != 'is_similar'">
-                        <span v-if="index=='f0'"><a class="local-link" @click="openExtraDataDialog(item)">{{ cellValue }}</a></span>
+                        <span v-if="index=='f0'"><a class="local-link teal--text text--darken-3" @click="openExtraDataDialog(item)">{{ cellValue }}</a></span>
                         <span v-else-if="typeof cellValue === 'object' && cellValue !== null">
                             <v-chip
                                 v-if="'status' in cellValue"
@@ -694,6 +694,6 @@
 </style>
 <style>
     .not-similar-result {
-        background-image: linear-gradient(to right, #B2DFDB , #E0F2F1) !important;
+        background-image: linear-gradient(to right, #b2dfdbdd, #e0f2f1dd) !important;
     }
 </style>

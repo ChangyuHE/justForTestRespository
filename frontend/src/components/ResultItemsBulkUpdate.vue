@@ -18,15 +18,15 @@
                                 :value="fieldValue(field)"
                             >
                             </v-text-field>
-                            <v-btn v-if="allFieldValues(field).length > 1"
+                            <v-btn v-if="oldFieldValues(field).length > 1"
                                 color="blue-grey"
                                 icon
                                 @click="openAllFieldValues(field)"
                             >
                                 <v-badge
                                     class="d-flex justify-end clear-button-badge" color="warning"
-                                    :content="allFieldValues(field).length"
-                                    :value="allFieldValues(field).length"
+                                    :content="oldFieldValues(field).length"
+                                    :value="oldFieldValues(field).length"
                                     overlap>
                                     <v-icon>mdi-dots-horizontal</v-icon>
                                 </v-badge>
@@ -46,15 +46,15 @@
                                 :label="asset"
                                 :value="fieldValue(asset)"
                             ></v-text-field>
-                            <v-btn v-if="allFieldValues(asset).length > 1"
+                            <v-btn v-if="oldFieldValues(asset).length > 1"
                                 color="blue-grey"
                                 icon
                                 @click="openAllFieldValues(asset)"
                             >
                                 <v-badge
                                     class="d-flex justify-end clear-button-badge" color="warning"
-                                    :content="allFieldValues(asset).length"
-                                    :value="allFieldValues(asset).length"
+                                    :content="oldFieldValues(asset).length"
+                                    :value="oldFieldValues(asset).length"
                                     overlap>
                                     <v-icon>mdi-dots-horizontal</v-icon>
                                 </v-badge>
@@ -101,7 +101,7 @@
                     :model-name="selectedField"
                     :key="autocompleteKey"
                     :icon="creationIcon(selectedField)"
-                    :prefix-items="allFieldValues(selectedField)"
+                    :prefix-items="oldFieldValues(selectedField)"
                     @click:append-outer="showCreationDialog = true"
                 ></api-auto-complete>
 
@@ -204,7 +204,7 @@
                         </thead>
                         <tbody>
                             <tr
-                                v-for="result in resultItems"
+                                v-for="result in oldResultItems"
                                 :key="result.id"
                             >
                                 <td>{{ result.item.name }}</td>
@@ -245,7 +245,7 @@
                 reason: '',
                 changes: false,
                 resultItems: [],
-                resultItemsCopy: [],
+                oldResultItems: [],
 
                 selectedField: null,
                 selectedFieldValue: undefined,
@@ -306,17 +306,22 @@
                     return !!resultItem[asset] ? (!!resultItem[asset].data ? resultItem[asset].data : resultItem[asset].url) : null
                 }
             },
-            allFieldValues() {
+            oldFieldValues() {
                 return field => {
-                    return this._.uniq(this.resultItemsCopy.map((resultItem) => {
-                        return this._.includes(this.fields.assets, field) ? this.getAssetValue(field, resultItem) : this.getFieldValue(field, resultItem)
-                    }))
+                    return this.iterateOverItems(this.oldResultItems, field)
                 }
             },
             fieldValue() {
                 return field  => {
-                    let values =  this.allFieldValues(field)
-                    return values.length != 0 ? values[0] : ''
+                    let values =  this.iterateOverItems(this.resultItems, field)
+                    return values.length ? values[0] : ''
+                }
+            },
+            iterateOverItems() {
+                return (items, field) => {
+                    return this._.uniq(items.map((resultItem) => {
+                        return this._.includes(this.fields.assets, field) ? this.getAssetValue(field, resultItem) : this.getFieldValue(field, resultItem)
+                    }))
                 }
             },
             creationIcon() {
@@ -421,8 +426,8 @@
                                 item.simics.data = JSON.stringify(item.simics.data)
                             }
                         })
-                        // resultItemsCopy to check existing values
-                        this.resultItemsCopy = this._.cloneDeep(this.resultItems)
+                        // oldResultItems to check existing values
+                        this.oldResultItems = this._.cloneDeep(this.resultItems)
                         this.showUpdate = true
                     })
                     .catch(error => {

@@ -147,9 +147,41 @@
             </template>
         </v-data-table>
 
-        <v-dialog v-model="extraDataDialog" max-width="90%">
+        <v-dialog v-model="extraDataDialog" max-width="95%">
             <v-card>
                 <v-card-title>{{ extraData.item }}</v-card-title>
+                <v-card-subtitle class="text-subtitle-1 mt-2">Results Overview</v-card-subtitle>
+                <v-divider></v-divider>
+                <v-card-text>
+                    <v-simple-table dense>
+                        <template v-slot:default>
+                            <colgroup>
+                                <col class="first-column">
+                                <col v-for="datum in extraData.extra"
+                                     :style="{width: 90 / extraData.extra.length + '%'}"
+                                     :key="datum.vinfo.validation">
+                            </colgroup>
+                            <tbody>
+                                <tr v-for="data in resultsOverviewRows(extraData.extra)" :key="data">
+                                    <td>{{ data }}</td>
+                                    <td v-for="datum in extraData.extra" class="text-left" :key="datum.vinfo.validation">
+                                        <template v-if="'main_info' in datum">
+                                            <span v-if="data !== 'status'" v-html="formatDataAsLink(datum.main_info[data])"></span>
+                                            <v-chip v-else
+                                                :color="getStatusColor(datum.main_info[data])"
+                                                text-color="white"
+                                                class="same-width"
+                                                label
+                                                small
+                                            >{{ datum.main_info[data] }}</v-chip>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </template>
+                    </v-simple-table>
+                </v-card-text>
+
                 <v-card-subtitle class="text-subtitle-1 mt-2">Assets</v-card-subtitle>
                 <v-divider></v-divider>
                 <v-card-text>
@@ -169,13 +201,14 @@
                                 <tr v-for="asset in ['msdk', 'lucas', 'scenario', 'fullsim', 'os']" :key="asset">
                                     <td>{{ asset }}</td>
                                     <td v-for="datum in extraData.extra" class="text-left" :key="datum.vinfo.validation">
-                                        <span v-if="'assets' in datum" v-html="formatAssetAsLink(datum.assets[asset])"></span>
+                                        <span v-if="'assets' in datum" v-html="formatDataAsLink(datum.assets[asset])"></span>
                                     </td>
                                 </tr>
                             </tbody>
                         </template>
                     </v-simple-table>
                 </v-card-text>
+
                 <v-card-subtitle class="text-subtitle-1">Additional parameters</v-card-subtitle>
                 <v-divider></v-divider>
                 <v-card-text>
@@ -185,12 +218,6 @@
                                 <col class="first-column">
                                 <col v-for="datum in extraData.extra" :style="{width: 90 / extraData.extra.length + '%'}" :key="datum.vinfo.validation">
                             </colgroup>
-                            <thead>
-                                <tr>
-                                    <th class="text-left">Parameter</th>
-                                    <th v-for="datum in extraData.extra" class="text-left" v-html="formatValidation(datum.vinfo)" :key="datum.vinfo.validation"></th>
-                                </tr>
-                            </thead>
                             <tbody>
                                 <tr v-for="param in allKeys" :key="param">
                                     <td>{{ param }}</td>
@@ -326,7 +353,7 @@
                 current: 0,
 
                 showHideTestIdStatus: false,
-                fileSizeRE: /(\d+)B$/,
+                fileSizeRE: /(\d+)B(?:\s\(([+-]\d+)\))?$/,
 
                 detailsDialog: false,
                 selectedResultId: undefined,
@@ -381,22 +408,47 @@
                 this.current = this.total
                 this.filteredItems = this._.cloneDeep(this.originalItems)
                 this.filteredItems.forEach(item => delete item.f1)
-                this.filteredHeaders = this.originalHeaders.filter(header => header.text != 'Test ID')
+                this.filteredHeaders = this.originalHeaders.filter(header => header.text !== 'Test ID')
             },
             isFileSizeParam(name, value) {
-                return name == 'file_size' && this.fileSizeRE.test(value)
+                return name === 'file_size' && this.fileSizeRE.test(value)
             },
-            formatAssetAsLink(asset) {
-                if (typeof asset === 'string' && asset.startsWith("http") && !asset.endsWith("///")) {
-                    return `<a href='${asset}' target='_blank'>${asset}</a>`
+            // Prepare info as link if it could be
+            formatDataAsLink(asset) {
+                if (typeof asset === 'string' && !asset.endsWith('///')) {
+                    if ((asset.startsWith('http') || asset.startsWith('https'))) {
+                        return `<a href=${asset} target='_blank'>${asset}</a>`
+                    }
+                    // if we have a data starts with gfx-media - it means that the asset is stored on Artifactory,
+                    // and we can prepare proper link to it
+                    if (asset.startsWith('gfx-media-')) {
+                        let locations = ['fm', 'nn', 'igk']
+                        let mainStorage = asset.split('/')[0]
+                        for (let location of locations) {
+                            if (mainStorage.endsWith(location)) {
+                                if (location === 'nn') {
+                                  location = 'inn'
+                                }
+                                asset = `https://gfx-assets.${location}.intel.com/artifactory/${asset}`
+                                return `<a href=${asset} target='_blank'>${asset}</a>`
+                            }
+                        }
+                    }
                 }
                 return asset
             },
             formatFileSize(value) {
+                // make file size byte postfix prettier with space and locale US format
                 value.match(this.fileSizeRE)
-                let fileSize = parseInt(RegExp.$1)
-                fileSize = fileSize.toLocaleString()
-                return `${fileSize}\u202FB`
+                let fileSize = parseInt(RegExp.$1).toLocaleString()
+                let diff = RegExp.$2
+
+                if (diff === '') {
+                    return `${fileSize}\u202FB`
+                } else {
+                    diff = parseInt(diff).toLocaleString()
+                    return `${fileSize}\u202FB (${diff})`
+                }
             },
             formatAdditionalParameter(data, parameter) {
                 if ('additional_parameters' in data) {
@@ -412,10 +464,21 @@
             formatValidation(vinfo) {
                 return `${vinfo.validation}<br><small>(${vinfo.platform}, ${vinfo.env}, ${vinfo.os})</small>`
             },
+            resultsOverviewRows(extraData) {
+                let basicData = ['status', 'job link', 'build version']
+                for (let datum of extraData) {
+                    if ('main_info' in datum) {
+                        if (![null, 'None', ''].includes(datum.main_info['kernel version'])) {
+                            return basicData.concat(['kernel version', 'kernel update date'])
+                        }
+                    }
+                }
+                return basicData
+            },
             openExtraDataDialog(item) {
                 let testItemIds = []
                 let values = Object.values(item)
-                const error = "There no validation or test result ids for this test item"
+                const error = 'There no validation or test result ids for this test item'
 
                 let lastColumn = this.showHideTestIdStatus ? values.length - 1 : values.length
                 for (let i = 4; i <= lastColumn; i++) {

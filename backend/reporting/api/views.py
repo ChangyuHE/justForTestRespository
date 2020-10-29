@@ -22,10 +22,9 @@ from django.template.loader import render_to_string
 from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django_filters import rest_framework as django_filters
-from django_filters.rest_framework import DjangoFilterBackend
 
 
-from rest_framework import generics, status, filters
+from rest_framework import generics, status
 from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -36,21 +35,23 @@ from anytree import Node
 from anytree.exporter import JsonExporter
 
 from sqlalchemy import and_
-from sqlalchemy.orm import query, Query
+from sqlalchemy.orm import Query
 from sqlalchemy.sql import func
 
 
 from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
-from api.models import Generation, Platform, Env, Component, Item, Driver, Status, Os, OsGroup, Validation, Action, \
-    Result, ResultGroupNew, Run, FeatureMappingRule, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, FeatureMapping, \
-    Feature
+from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, \
+    Status, Os, OsGroup, Validation, Action, \
+    Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
+    FeatureMapping, FeatureMappingRule, Feature
 from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
-    ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, ScenarioAssetFullSerializer, \
-    SimicsSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
-    DriverFullSerializer, StatusFullSerializer, FeatureMappingSerializer, BulkResultSerializer
+    ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
+    FeatureMappingSerializer, BulkResultSerializer, \
+    ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
+    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -270,6 +271,16 @@ class DriverView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
     """
     queryset = Driver.objects.all()
     serializer_class = DriverFullSerializer
+    filterset_fields = ['name']
+
+
+class KernelView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
+    """
+        get: List Kernel objects
+        post: Create Kernel object
+    """
+    queryset = Kernel.objects.all()
+    serializer_class = KernelFullSerializer
     filterset_fields = ['name']
 
 
@@ -913,7 +924,7 @@ def get_result_ids(validation_ids: List[int]) -> pd.DataFrame:
 
 
 def update_feature_and_codec(row: pd.Series, df: pd.DataFrame) -> None:
-    feature_and_codec =  df.loc[df['scenario_id'] == row.scenario_id]
+    feature_and_codec = df.loc[df['scenario_id'] == row.scenario_id]
     if not feature_and_codec.empty:
         # to prevent strange effect with list of single
         # element inside...
@@ -1055,7 +1066,6 @@ class ExtraDataView(LoggingMixin, APIView):
                     'os':  val.os.name,
                     'env':  val.env.name
                 }
-                datum['status'] = res.status.test_status
                 additional_parameters = {
                     'avg_psnr': '',
                     'avg_ssim': '',
@@ -1075,12 +1085,60 @@ class ExtraDataView(LoggingMixin, APIView):
                     'fullsim': str(res.fulsim_asset),
                     'os': str(res.os_asset),
                 }
+                datum['main_info'] = {
+                    'status': res.status.test_status,
+                    'job link': str(res.result_url),
+                    'build version': str(res.driver),
+                    'kernel version': str(res.kernel.name) if res.kernel else '',
+                    'kernel update date': str(res.kernel.updated_date) if res.kernel else ''
+                }
             extra_data.append(datum)
+
+        try:
+            extra_data = _calculate_metric_diff(extra_data)
+        except (KeyError, ValueError, TypeError):
+            # to do not affect main extra data actions
+            pass
 
         return Response({
             'item': item_name,
             'extra': extra_data
         })
+
+
+def _calculate_metric_diff(extra_data: List[Dict]) -> List[Dict]:
+    """
+    Calculate difference for extra data view between numeric metrics
+    :param extra_data: result data of all compared validations
+    :return: modified extra_data with added metric difference calculations
+    """
+    if len(extra_data) < 2:
+        return extra_data
+
+    metrics_key = 'additional_parameters'
+    compared_data = extra_data[0][metrics_key]  # first selected validation as a base for comparison of metrics
+    for ti_data in extra_data[1:]:
+        if metrics_key not in ti_data:
+            continue
+        for metric in ti_data[metrics_key]:
+            m = ti_data[metrics_key][metric]
+            if m:
+                # prepare metrics for calc: change comma to float point/drop byte 'B' suffix for diff
+                compared_m = compared_data[metric].replace(',', '.').replace('B', '').strip()
+                m = m.replace(',', '.').replace('B', '').strip()
+                if m.isdigit() or m.replace('.', '', 1).isdigit():
+                    diff: float = float(m) - float(compared_m)
+                    if diff == 0.0:
+                        diff: str = ''
+                    elif diff.is_integer():
+                        diff: int = int(diff)
+                        diff: str = f' ({diff:+})'
+                    else:
+                        diff: str = f' ({diff:+.6f})'
+                        # remove trailing zeroes for floating values if exist
+                        diff: str = re.sub(r'(0+)\)$', ')', diff)
+                    ti_data[metrics_key][metric] += diff
+    return extra_data
 
 
 @dataclass

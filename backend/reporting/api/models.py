@@ -303,6 +303,16 @@ class Result(DiffMixin, models.Model):
             val.set_by_status(status, results_with_status)
             val.save()
 
+    def similar(self, other):
+        if not isinstance(other, Result):
+            # don't attempt to compare against unrelated types
+            return NotImplemented
+        fields = ['status', 'scenario_asset', 'msdk_asset', 'os_asset', 'lucas_asset','fulsim_asset', 'simics', 'additional_parameters']
+        for field in fields:
+            if getattr(self, field, None) != getattr(other, field, None):
+                return False
+        return True
+
 
 class ResultGroup(models.Model):
     name = models.CharField(max_length=255)

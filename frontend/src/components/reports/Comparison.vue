@@ -120,9 +120,9 @@
             disable-pagination hide-default-footer multi-sort
         >
             <template v-slot:item="{ item }">
-                <tr>
+                <tr :class="{'not-similar-result': !item.is_similar && validations.length !== 1 }">
                     <td v-if="validations.length === 1"><v-checkbox v-model="selectedTestItems" :value="item"></v-checkbox></td>
-                    <td v-for="(cellValue, index) in item" :key="index">
+                    <td v-for="(cellValue, index) in item" :key="index" v-show="index != 'is_similar'">
                         <span v-if="index=='f0'"><a class="local-link" @click="openExtraDataDialog(item)">{{ cellValue }}</a></span>
                         <span v-else-if="typeof cellValue === 'object' && cellValue !== null">
                             <v-chip
@@ -480,7 +480,8 @@
                 let values = Object.values(item)
                 const error = 'There no validation or test result ids for this test item'
 
-                let lastColumn = this.showHideTestIdStatus ? values.length - 1 : values.length
+                // -1 for is_similar field
+                let lastColumn = this.showHideTestIdStatus ? values.length - 2 : values.length - 1
                 for (let i = 4; i <= lastColumn; i++) {
                     let key = `f${i}`
                     let value = item[key]
@@ -674,19 +675,22 @@
     }
 </script>
 
-<style>
+<style scoped>
     .same-width {
         width: 80px;
         display: inline-flex;
         justify-content: center;
     }
     .local-link {
-        color: #00f;
         text-decoration: none;
         border-bottom: 1px dashed;
-        border-color: rgba(0, 0, 255, 0.3);
     }
     .first-column {
         width: 10%;
+    }
+</style>
+<style>
+    .not-similar-result {
+        background-color: #B2DFDB !important;
     }
 </style>

@@ -415,9 +415,20 @@ def create_json_for_datatables(
     result_ids = json.loads(result_ids.to_json(orient='table'))
 
     items = []
-    changed_results = Result.objects.filter(validation_id__in=val_pks).filter(_changed=True).values_list('id', flat=True)
+    _results = list(Result.objects.filter(validation_id__in=val_pks))
+    changed_results = [result.id for result in _results if result._changed]
     for statuses, results in zip(d['data'], result_ids['data']):
         item = {}
+
+        # result ids list to get similar marker
+        ids = [result_id for key, result_id in results.items() if key != 'Item ID']
+        instances = [result for result in _results if result.id in ids]
+        if len(instances) > 1:
+            # reference instance from the first validation
+            reference_instance = instances[0]
+            different = [instance for instance in instances[1:] if not reference_instance.similar(instance)]
+            item['is_similar'] = not different
+
         for header in headers:
             # value is something like f<N>
             # text is real header title

@@ -480,8 +480,11 @@
                 let values = Object.values(item)
                 const error = 'There no validation or test result ids for this test item'
 
-                // -1 for is_similar field
-                let lastColumn = this.showHideTestIdStatus ? values.length - 2 : values.length - 1
+                let lastColumn = this.showHideTestIdStatus ? values.length - 1 : values.length
+                if (this.validations.length > 1) {
+                    // -1 for is_similar field
+                    lastColumn--
+                }
                 for (let i = 4; i <= lastColumn; i++) {
                     let key = `f${i}`
                     let value = item[key]
@@ -691,6 +694,6 @@
 </style>
 <style>
     .not-similar-result {
-        background-color: #B2DFDB !important;
+        background-image: linear-gradient(to right, #B2DFDB , #E0F2F1) !important;
     }
 </style>

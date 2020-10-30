@@ -44,7 +44,6 @@ ADDITIONAL_PARAMS_MAPPING = dict([
     ("md5_value", "result.custom.MD5"),
 ])
 
-
 CUSTOM_COLUMNS_MAPPING = dict([
     custom_column("lucas"),
     custom_column("scenario"),
@@ -54,6 +53,8 @@ CUSTOM_COLUMNS_MAPPING = dict([
     custom_column_os("simics"),
     ("driver_build_id", "build.external_id"),
     ("driver_name", "build.version"),
+    ("kernel_version", "execution.machine.properties.kernel_version_full.value"),
+    ("kernel_date", "execution.machine.properties.kernel_version_full.updated_date")
 ], **ADDITIONAL_PARAMS_MAPPING)
 
 
@@ -140,6 +141,18 @@ class OsImageAsset:
 
 
 @dataclass
+class Driver:
+    name: str = ''
+    build_id: str = ''
+
+
+@dataclass
+class Kernel:
+    name: str = ''
+    updated_date: str = ''
+
+
+@dataclass
 class DutOsImageAsset(OsImageAsset):
     pass
 
@@ -153,12 +166,6 @@ class SimicsOsImageAsset(OsImageAsset):
 class LucasAsset(Asset):
     def asset_name(self):
         return 'lucas'
-
-
-@dataclass
-class Driver:
-    name: str = None
-    build_id: str = None
 
 
 @dataclass
@@ -190,12 +197,12 @@ class GTAFieldParser:
         os.environ.pop('HTTPS_PROXY', None)
 
     def fetch_from(self,
-            test_run_id: int,
-            test_session_id: int,
-            mapped_component: str,
-            vertical: str,
-            platform: str,
-            url_list: list):
+                   test_run_id: int,
+                   test_session_id: int,
+                   mapped_component: str,
+                   vertical: str,
+                   platform: str,
+                   url_list: list):
 
         self.test_run_id = test_run_id
         self.test_session_id = test_session_id
@@ -207,7 +214,7 @@ class GTAFieldParser:
         self.process()
 
     def _patch_lucas_version(self, gta_instance_url: str):
-        # If Lucas version is already retrieved for currect test run ID we return cached value
+        # If Lucas version is already retrieved for correct test run ID we return cached value
         if self.test_run_id in self.lucas_version_cache.keys():
             return self.lucas_version_cache[self.test_run_id]
         s = requests.Session()
@@ -350,11 +357,11 @@ class GTAFieldParser:
                     text = f'<pre>{stacktrace}</pre>'
                     staff_emails = get_user_model().staff_emails()
                     msg = EmailMessage(
-                        subject='Reporter: GTAFieldParser failure',
-                        body=text,
-                        from_email=None,
-                        to=staff_emails,
-                        cc=['Arseniy.Obolenskiy@intel.com'],
+                            subject='Reporter: GTAFieldParser failure',
+                            body=text,
+                            from_email=None,
+                            to=staff_emails,
+                            cc=['Arseniy.Obolenskiy@intel.com'],
                     )
                     msg.content_subtype = 'html'
                     msg.send()
@@ -373,6 +380,9 @@ class GTAFieldParser:
             driver = Driver()
             driver.name = item[CUSTOM_COLUMNS_MAPPING['driver_name']][0]
             driver.build_id = item[CUSTOM_COLUMNS_MAPPING['driver_build_id']][0]
+            kernel = Kernel()
+            kernel.name = item[CUSTOM_COLUMNS_MAPPING['kernel_version']][0]
+            kernel.updated_date = item[CUSTOM_COLUMNS_MAPPING['kernel_date']][0]
             os = item['os'][0]
             test_item_url = item['testRunUrl'][0]
             # http://gtax-gcmxd-fm.intel.com/#/jobs/32416620#task_tests_0 -> http://gtax-gcmxd-fm.intel.com
@@ -433,13 +443,14 @@ class GTAFieldParser:
                 "msdk": msdk,
                 "fulsim": fulsim,
                 "simics": simics,
+                "kernel": kernel,
                 "additional_params": add_params if add_params else None
             }
 
             test_items_amount += 1
         log.debug(f"Finished processing {self.test_run_id}, added {test_items_amount} keys")
 
-    def is_cached(self, url:str):
+    def is_cached(self, url: str):
         return url in GTAFieldParser.result.keys()
 
     def create_result_data(self, url: str) -> ResultExtraData:
@@ -458,6 +469,7 @@ class GTAFieldParser:
             (api_models.LucasAsset, 'lucas_asset', 'lucas'),
             (api_models.FulsimAsset, 'fulsim_asset', 'fulsim'),
             (api_models.Simics, 'simics', 'simics'),
+            (api_models.Kernel, 'kernel', 'kernel'),
         ]
 
         for model, result_field, parser_key in resultConverterTable:

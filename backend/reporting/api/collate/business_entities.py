@@ -327,6 +327,7 @@ class ResultExtraData:
     scenario_asset: api_models.ScenarioAsset = None
     msdk_asset: api_models.MsdkAsset = None
     os_asset: api_models.OsAsset = None
+    kernel: api_models.Kernel = None
     lucas_asset: api_models.LucasAsset = None
     fulsim_asset: api_models.FulsimAsset = None
     simics: api_models.Simics = None

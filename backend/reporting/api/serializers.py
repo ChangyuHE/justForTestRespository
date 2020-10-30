@@ -35,6 +35,18 @@ class EnvSerializer(serializers.ModelSerializer):
         fields = ['name', 'short_name']
 
 
+class KernelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Kernel
+        fields = ['name']
+
+
+class KernelFullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Kernel
+        fields = ['name', 'id']
+
+
 class DriverSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Driver
@@ -306,6 +318,7 @@ class ResultFullSerializer(serializers.ModelSerializer):
     env = EnvCutSerializer()
     platform = PlatformCutSerializer()
     os = OsCutSerializer()
+    kernel = KernelFullSerializer()
     status = StatusFullSerializer()
     run = RunSerializer()
 

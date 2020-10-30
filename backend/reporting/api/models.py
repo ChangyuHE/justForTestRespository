@@ -92,9 +92,14 @@ class Component(models.Model):
         return self.name
 
 
+class Kernel(models.Model):
+    name = models.CharField(max_length=255, null=True, blank=True)
+    updated_date = models.DateTimeField(max_length=40, null=True, blank=True)
+
+
 class Driver(models.Model):
     name = models.CharField(max_length=255)
-    build_id = models.CharField(max_length=16, null=True, blank=True)
+    build_id = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -241,6 +246,7 @@ class Result(DiffMixin, models.Model):
     env = models.ForeignKey(Env, null=True, blank=True, on_delete=models.CASCADE)
     platform = models.ForeignKey(Platform, null=True, blank=True, on_delete=models.CASCADE)
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
+    kernel = models.ForeignKey(Kernel, null=True, blank=True, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.CASCADE)
     run = models.ForeignKey(Run, null=True, blank=True, on_delete=models.CASCADE)
     scenario_asset = models.ForeignKey(ScenarioAsset, null=True, blank=True, on_delete=models.CASCADE)
@@ -339,6 +345,7 @@ class ValidationStats:
             else:
                 res.append(f'{field[0].lower()}:{count}')
         return ', '.join(res)
+
 
 class Validation(models.Model):
     name = models.CharField(max_length=255)
@@ -525,7 +532,6 @@ class MergeJob(models.Model):
 
 class Issues(models.Model):
     objects = BulkUpdateOrCreateQuerySet.as_manager()
-
     name = models.CharField(max_length=50, unique=True, primary_key=True)
     self_url = models.CharField(max_length=255, null=True)
     summary = models.CharField(max_length=255, null=True)

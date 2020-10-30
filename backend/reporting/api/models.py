@@ -307,7 +307,7 @@ class Result(DiffMixin, models.Model):
         if not isinstance(other, Result):
             # don't attempt to compare against unrelated types
             return NotImplemented
-        fields = ['status', 'scenario_asset', 'msdk_asset', 'os_asset', 'lucas_asset','fulsim_asset', 'simics', 'additional_parameters']
+        fields = ['status_id', 'scenario_asset_id', 'msdk_asset_id', 'os_asset_id', 'lucas_asset_id','fulsim_asset_id', 'simics_id', 'additional_parameters']
         for field in fields:
             if getattr(self, field, None) != getattr(other, field, None):
                 return False

@@ -436,12 +436,12 @@
                 return this._.map(branches, b => { return this._.map(b, n => n.model.text_flat ).reverse() })
             },
             getStatusColor(s) {
-                if (s == 'passed') { return 'green--text text--darken-1' }
-                else if (s == 'failed') { return 'red--text text--darken-4' }
-                else if (s == 'error') { return 'deep-orange--text text--darken-2' }
-                else if (s == 'blocked') { return 'grey--text text--darken-1' }
-                else if (s == 'skipped') { return 'cyan--text text--darken-3' }
-                else if (s == 'canceled') { return 'brown--text text--darken-3' }
+                if (s === 'passed') { return 'green--text text--darken-1' }
+                else if (s === 'failed') { return 'red--text text--darken-3' }
+                else if (s === 'error') { return 'purple--text text--darken-1' }
+                else if (s === 'blocked') { return 'yellow--text text--darken-3' }
+                else if (s === 'skipped') { return 'grey--text text--darken-1' }
+                else if (s === 'canceled') { return 'blue--text text--lighten-3' }
             },
             hasAnyStatus(el) {
                 return this._.some([el.passed, el.failed, el.error, el.blocked, el.skipped, el.canceled], function(e) { return e != 0 })

@@ -571,12 +571,12 @@
              * Coloring status column in comparison report
              */
             getStatusColor(s) {
-                if (s == 'Passed') return 'green darken-1'
-                else if (s == 'Failed') return 'red darken-4'
-                else if (s == 'Error') return 'deep-orange darken-2'
-                else if (s == 'Blocked') return 'grey darken-1'
-                else if (s == 'Skipped') return 'cyan darken-3'
-                else if (s == 'Canceled') return 'brown darken-3'
+                if (s === 'Passed') { return 'green darken-1' }
+                else if (s === 'Failed') { return 'red darken-3'}
+                else if (s === 'Error') { return 'purple darken-1' }
+                else if (s === 'Blocked') { return 'yellow darken-3' }
+                else if (s === 'Skipped') { return 'grey darken-1' }
+                else if (s === 'Canceled') { return 'blue lighten-3' }
             },
             onMappingsChange() {
                 this.filteredHeaders = []

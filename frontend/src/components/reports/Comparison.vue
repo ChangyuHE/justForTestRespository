@@ -616,11 +616,11 @@
                 server
                     .put(url, data)
                     .then(response => {
-                        let stats = {'passed': 0, 'failed': 0, 'error': 0, 'blocked': 0, 'skipped': 0, 'canceled': 0}
+                        let stats = {'Passed': 0, 'Failed': 0, 'Error': 0, 'Blocked': 0, 'Skipped': 0, 'Canceled': 0}
                         for (let item of this.selectedTestItems) {
-                            stats[item.f4.status.toLowerCase()]++
+                            stats[item.f4.status]++
                         }
-                        let key = this.selectedStatus.test_status.toLowerCase()
+                        let key = this.selectedStatus.test_status
                         let newStats = {}
                         newStats[key] = this.selectedTestItems.length
                         this.updateStatusCounters(stats, newStats)

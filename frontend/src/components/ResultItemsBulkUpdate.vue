@@ -226,8 +226,11 @@
 </template>
 
 <script>
+    import { EventBus } from '@/event-bus.js'
     import server from '@/server'
     import ApiAutoComplete from '@/components/APIAutoComplete'
+
+    import { mapState } from 'vuex'
 
     export default {
         components: {
@@ -292,6 +295,7 @@
             resultItemIds: { type: Array, required: true },
         },
         computed: {
+            ...mapState('tree', ['validations']),
             getFieldValue() {
                 return (field, resultItem) => {
                     if (!this._.isObject(resultItem[field])) {
@@ -462,6 +466,17 @@
                 server
                     .put(url, data)
                     .then(response => {
+                        let old_statuses = {'Passed': 0, 'Failed': 0, 'Error': 0, 'Blocked': 0, 'Skipped': 0, 'Canceled': 0}
+                        for (let item of this.oldResultItems) {
+                            old_statuses[item.status.test_status]++
+                        }
+                        let newStats = {}
+                        newStats[this.fieldValue('status')] = this.resultItems.length
+                        EventBus.$emit('update-counters', {
+                            'old': old_statuses,
+                            'new': newStats,
+                            'validation': this.validations[0]
+                        })
                         this.showEditDialog = false
                         this.reason = ''
                         this.closeUpdateItems()

@@ -488,12 +488,13 @@ class ValidationsView(LoggingMixin, APIView):
 
             # tree branch data: gen -> platform -> os.group -> os -> env -> validation name
             branch = (
-                {'obj': platform.generation, 'name': platform.generation.name, 'level': 0},
-                {'obj': platform, 'name': platform.short_name, 'level': 1},
-                {'obj': os.group, 'name': os.group.name, 'level': 2},
-                {'obj': os.group, 'name': os.name, 'level': 3},
-                {'obj': validation.env, 'name': validation.env.name, 'level': 4},
-                {'obj': validation, 'name': validation.name, 'level': 5}
+                {'obj': platform.generation, 'name': platform.generation.name, 'level': 'gen'},
+                {'obj': platform, 'name': platform.short_name, 'level': 'platform'},
+                {'obj': os.group, 'name': os.group.name, 'level': 'os_group'},
+                {'obj': os.group, 'name': os.name, 'level': 'os'},
+                {'obj': validation.env, 'name': validation.env.name, 'level': 'env'},
+                {'obj': validation, 'name': validation.name, 'owner': validation.owner.id,
+                 'level': 'validation'}
             )
 
             # filter by input data
@@ -509,7 +510,7 @@ class ValidationsView(LoggingMixin, APIView):
                         for node in branch:
                             if node['level'] == f['level']:
                                 # validation name pattern check
-                                if f['level'] == 5:
+                                if f['level'] == 'validation':
                                     if f['text'].lower() in node['name'].lower():
                                         ok.append(True)
                                         break
@@ -517,6 +518,11 @@ class ValidationsView(LoggingMixin, APIView):
                                     if node['name'] in f['text']:
                                         ok.append(True)
                                         break
+                            # filter validation nodes by owner
+                            if f['level'] == 'users' and node['level'] == 'validation' and \
+                                    node['owner'] in f['text']:
+                                ok.append(True)
+                                break
                         else:
                             ok.append(False)
 
@@ -538,7 +544,7 @@ class ValidationsView(LoggingMixin, APIView):
                 # find node by name and level, if not create new one
                 node = anytree.search.find(parent, lambda n: n.name == name and n.level == node_data['level'])
                 if not node:
-                    if node_data['level'] == 5:
+                    if node_data['level'] == 'validation':
                         node = Node(
                             parent=parent, name=name, text=name, text_flat=name,
                             selected=False, opened=True,
@@ -641,11 +647,10 @@ class ValidationMappings(LoggingMixin, generics.GenericAPIView):
 class ValidationsStructureView(LoggingMixin, APIView):
     def get(self, request, *args, **kwargs):
         d = [
-            {'name': 'gen', 'label': 'Generation', 'items': [], 'level': 0},
-            {'name': 'platform', 'label': 'Platform', 'items': [], 'level': 1},
-            {'name': 'os_group', 'label': 'OS Family', 'items': [], 'level': 2},
-            {'name': 'os', 'label': 'OS', 'items': [], 'level': 3},
-            # {'name': 'env', 'label': 'Env', 'items': [], 'level': 4},
+            {'level': 'gen', 'label': 'Generation', 'items': []},
+            {'level': 'platform', 'label': 'Platform', 'items': []},
+            {'level': 'os_group', 'label': 'OS Family', 'items': []},
+            {'level': 'os', 'label': 'OS', 'items': []}
         ]
 
         d[0]['items'] = Validation.objects.all().values_list('platform__generation__name', flat=True) \

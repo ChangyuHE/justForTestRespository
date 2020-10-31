@@ -804,7 +804,7 @@
         },
         beforeCreate() {
             // Variants of nodes values for filters
-            let url = 'api/users/'
+            let url = 'api/users/?validations=true'
             server
                 .get(url)
                 .then(response => {

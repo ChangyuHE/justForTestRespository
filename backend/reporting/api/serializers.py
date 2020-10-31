@@ -18,7 +18,16 @@ log = logging.getLogger(__name__)
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ['id', 'last_login', 'username', 'first_name', 'last_name', 'email', 'is_staff']
+        fields = [
+            'id',
+            'last_login',
+            'username',
+            'first_name',
+            'last_name',
+            'email',
+            'is_staff',
+            'validations'
+        ]
 
 
 class UserCutSerializer(serializers.ModelSerializer):

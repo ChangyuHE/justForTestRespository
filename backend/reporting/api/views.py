@@ -76,12 +76,28 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
+class ValidationsFilter(django_filters.FilterSet):
+    validations = django_filters.BooleanFilter(
+        field_name='validations',
+        method='validations_empty'
+    )
+
+    def validations_empty(self, queryset, name, value):
+        # construct the full lookup expression.
+        lookup = '__'.join([name, 'isnull'])
+        return queryset.filter(**{lookup: not value}).distinct('id')
+
+    class Meta:
+        model = get_user_model()
+        fields = ['validations']
+
 # Users block
 class UserList(LoggingMixin, generics.ListAPIView):
     """ List Users """
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
-    filterset_fields = ['is_staff', 'username']
+    filterset_class = ValidationsFilter
+    filterset_fields = ('is_staff', 'username', 'validations')
 
 
 class CurrentUser(LoggingMixin, APIView):

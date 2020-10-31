@@ -369,7 +369,7 @@ class Validation(models.Model):
 
     ignore = models.BooleanField(default=False)
     hash_last = models.CharField(max_length=40, null=True, blank=True)
-    owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
+    owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='validations')
 
     class SubSystems(models.IntegerChoices):
         VALib = 1, 'valib'

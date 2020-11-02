@@ -706,7 +706,7 @@
                     }
                 }
                 if (isIDsFilter(level)) {
-                    selected = this._.map(value, this._.toNumber)
+                    selected = this._.map(selected, this._.toNumber)
                 }
                 this.selectors[level] = selected
             },

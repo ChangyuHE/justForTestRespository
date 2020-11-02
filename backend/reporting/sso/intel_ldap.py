@@ -8,7 +8,7 @@ class IntelLDAP(object):
         'CONNECTION_OPTIONS': {
             ldap.OPT_REFERRALS: 0
         },
-        'SERVER_URI': 'ldap://ccr.corp.intel.com:3268',
+        'SERVER_URI': 'ldap://corpad.intel.com:3268',
         'USER_FLAGS_BY_GROUP': {},
         'USER_GROUPS_BY_GROUP': {},
         'USER_ATTR_MAP': {

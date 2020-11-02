@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 
 class RemoteUserBackend(BaseRemoteUserBackend):
-    def configure_user(self, user):
+    def configure_user(self, request, user):
         intel_ldap = IntelLDAP(settings.INTEL_LDAP_USERNAME,
                                settings.INTEL_LDAP_PASSWORD)
         try:

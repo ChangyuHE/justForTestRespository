@@ -494,7 +494,8 @@ class ValidationsView(LoggingMixin, APIView):
 
         tree = Node('')
 
-        validations_qs = Validation.objects.all().select_related('os__group', 'platform__generation', 'env')
+        validations_qs = Validation.objects.all() \
+           .select_related('os__group', 'platform__generation', 'env', 'owner')
         for validation in validations_qs.order_by('-platform__generation__weight', 'platform__weight',
                                                   'os__group__name',
                                                   'os__name', 'env__name', 'name'):

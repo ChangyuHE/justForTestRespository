@@ -689,7 +689,7 @@
                         this.fillDate(key.split('-')[1], value)
                     }
                 })
-                if (this._.some([this.showFilters, this.showDateSlider], this._.isUndefined)) {
+                if (this.showFilters !== undefined || this.showDateSlider !== undefined) {
                     this.doFilter()
                 }
             },

@@ -8,8 +8,9 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.styles import Font, Alignment
 from openpyxl.styles.colors import WHITE
 from openpyxl.utils import get_column_letter as to_letter
+from django.template.defaultfilters import pluralize
 
-from .models import Status
+from .models import Status, Validation
 from utils import intel_calendar
 
 BOLD_FONT = Font(bold=True)
@@ -264,3 +265,62 @@ def compose_sheet_name(codec):
     if len(name) > 31:
         name = f'{name[:27]}#{codec.id}'
     return name
+
+
+def do_issues_report(pk, failed_groups, error_groups):
+    wb = Workbook()
+    ws = wb.active
+
+    val = Validation.objects.get(pk=pk)
+    ws['B1'] = f"Issues report for '{val.name}'"
+    ws['B1'].font = Font(bold=True, size=12)
+
+    total_failed = 0
+    for failed_list in failed_groups.values():
+        total_failed += len(failed_list)
+
+    row = 3
+    if total_failed > 0:
+        ws[f'B{row}'] = f'{total_failed} Test Item{pluralize(total_failed)} with status Failed'
+        ws[f'B{row}'].font = Font(bold=True, size=12)
+
+        row += 2
+        for error_feature, failed_list in failed_groups.items():
+            ws[f'A{row}'] = error_feature
+            ws[f'A{row}'].font = Font(bold=True, size=12)
+            row += 1
+
+            for item in failed_list:
+                ws[f'A{row}'] = item['ti']
+                ws[f'B{row}'] = item['err']
+                row += 1
+
+    total_error = 0
+    for error_list in error_groups.values():
+        total_error += len(error_list)
+
+    if total_error > 0:
+        if total_failed != 0:
+            row += 2
+
+        ws[f'B{row}'] = f'{total_error} Test Item{pluralize(total_error)} with status Error'
+        ws[f'B{row}'].font = Font(bold=True, size=12)
+
+        row += 2
+        for error_feature, error_list in error_groups.items():
+            ws[f'A{row}'] = error_feature
+            ws[f'A{row}'].font = Font(bold=True, size=12)
+            row += 1
+
+            for item in error_list:
+                ws[f'A{row}'] = item['ti']
+                ws[f'B{row}'] = item['err']
+                row += 1
+
+    if total_failed == 0 and total_error == 0:
+        ws['A3'] = 'There are no Test Items with Failed or Error statuses'
+        ws['A3'].font = Font(bold=True, size=12)
+    else:
+        ws.column_dimensions['A'].width = 24
+
+    return wb

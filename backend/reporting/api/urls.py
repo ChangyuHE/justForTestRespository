@@ -42,6 +42,7 @@ urlpatterns = [
     path('api/report/compare/<int_list:val_pks>//', views.ReportCompareView.as_view(), name="cmp-view-special"),  # optional param "report=excel"
     path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportCompareView.as_view(), name="cmp-view"),  # optional param "report=excel"
     path('api/report/extra-data/<list:ti_pks>/', views.ExtraDataView.as_view(), name='api-extra-data'),
+    path('api/report/issues/<int:pk>/', views.ReportIssuesView.as_view(), name="issues-report"),  # optional param "report=excel"
 
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester

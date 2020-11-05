@@ -405,7 +405,7 @@
                 if (this._.isUndefined(this.originalHeaders)) {
                     this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
                 }
-                this.current = this.total
+                this.current = this.originalItems.length
                 this.filteredItems = this._.cloneDeep(this.originalItems)
                 this.filteredItems.forEach(item => delete item.f1)
                 this.filteredHeaders = this.originalHeaders.filter(header => header.text !== 'Test ID')

@@ -38,28 +38,29 @@
         },
         computed: {
             objectName() {
-                let model = this.modelObject.model;
-                if (model == 'Item')
-                    model = 'Test ' + model;
-                return model;
+                let model = this.modelObject.model
+                if (model == 'Item') {
+                    model = 'Test ' + model
+                }
+                return model
             }
         },
         methods: {
             closeDialog() {
-                this.$emit('closeCreate');
+                this.$emit('closeCreate')
             },
             submit() {
                 let data = { "entities": [{ "model": this.modelObject.model, "fields": {} }] }
 
                 Object.keys(this.modelObject.fields).forEach(field => {
-                    data["entities"][0]["fields"][field] = this.modelObject.fields[field];
-                });
+                    data["entities"][0]["fields"][field] = this.modelObject.fields[field]
+                })
 
-                const url = 'api/import/create/';
+                const url = 'api/import/create/'
                 server
                     .post(url, data)
                     .then(response => {
-                        this.$toasted.success(`${this.modelObject.model} object was created`);
+                        this.$toasted.success(`${this.modelObject.model} object was created`)
 
                         // remove error by ID from importErrors
                         this.$store.dispatch('deleteImportError', {id: this.ID, priority: this.priority, errorCode: this.errorCode})

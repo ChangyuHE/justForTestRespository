@@ -1,9 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 from django.conf import settings
 
 from django.db import models, transaction
+from django.contrib.postgres.fields import ArrayField
 from django.db.models import UniqueConstraint, Q, Count
 from simple_history.models import HistoricalRecords
 
@@ -238,11 +240,16 @@ class DiffMixin(object):
         return result
 
 
+class ResultFeature(models.Model):
+    name = models.CharField(max_length=255)
+
+
 class Result(DiffMixin, models.Model):
     validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE, related_name='results')
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.CASCADE)
     component = models.ForeignKey(Component, null=True, blank=True, on_delete=models.CASCADE)
+    features = models.ManyToManyField(ResultFeature, blank=True)
     env = models.ForeignKey(Env, null=True, blank=True, on_delete=models.CASCADE)
     platform = models.ForeignKey(Platform, null=True, blank=True, on_delete=models.CASCADE)
     os = models.ForeignKey(Os, null=True, blank=True, on_delete=models.CASCADE)
@@ -358,6 +365,33 @@ class ValidationStats:
         return ', '.join(res)
 
 
+@dataclass
+class ComponentsAndFeatures:
+    components: List[str] = field(default_factory=list)
+    features: List[str] = field(default_factory=list)
+
+    def components_as_str(self) -> str:
+        if self.components:
+            components = ', '.join(self.components)
+        else:
+            components = '<none>'
+
+        return components
+
+    def features_as_str(self) -> str:
+        if self.features:
+            features = ', '.join(self.features)
+        else:
+            features = '<none>'
+
+        return features
+
+    def __str__(self):
+        components = self.components_as_str()
+        features = self.features_as_str()
+
+        return f'components: {components}; features: {features}'
+
 class Validation(models.Model):
     name = models.CharField(max_length=255)
     env = models.ForeignKey(Env, on_delete=models.CASCADE)
@@ -393,6 +427,9 @@ class Validation(models.Model):
     skipped = models.PositiveSmallIntegerField(default=0)
     canceled = models.PositiveSmallIntegerField(default=0)
 
+    components = ArrayField(models.IntegerField(), default=list)
+    features = ArrayField(models.IntegerField(), default=list)
+
     def get_by_status(self, status: str) -> int:
         return getattr(self, status.lower())
 
@@ -413,6 +450,25 @@ class Validation(models.Model):
             self.save()
 
         return vstats
+
+    def update_components_and_features(self) -> ComponentsAndFeatures:
+        c_and_f = ComponentsAndFeatures()
+
+        with transaction.atomic():
+            self.components = []
+            for comp in self.results.values_list('component_id', 'component__name', named=True).distinct():
+                c_and_f.components.append(comp.component__name)
+                self.components.append(comp.component_id)
+
+            self.features = []
+            for feature in self.results.values_list('features', 'features__name', named=True).distinct():
+                if feature.features is None:
+                    continue
+                c_and_f.features.append(feature.features__name)
+                self.features.append(feature.features)
+
+            self.save()
+        return c_and_f
 
     class Meta:
         constraints = [

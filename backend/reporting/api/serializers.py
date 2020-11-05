@@ -199,6 +199,8 @@ def create_serializer(class_name, instance=None, data=fields.empty, **kwargs):
         return PlatformSerializer(instance, data, **kwargs)
     elif class_name == 'Os':
         return OsSerializer(instance, data, **kwargs)
+    elif class_name == 'ResultFeature':
+        return ResultFeatureSerializer(instance, data, **kwargs)
     else:
         log.warning(f"Serializer for class '{class_name}' is not defined.'")
         return None
@@ -375,3 +377,10 @@ class BulkResultSerializer(serializers.ModelSerializer):
         fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset', 'fulsim_asset', 'simics']
         read_only_fields = ['id', 'item']
         list_serializer_class = BulkUpdateListSerializer
+
+
+class ResultFeatureSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.ResultFeature
+        fields = ['id', 'name']

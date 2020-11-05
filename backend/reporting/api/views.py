@@ -1,6 +1,7 @@
 import json
 import re
 import copy
+import itertools
 import urllib.parse
 from collections import defaultdict
 from dataclasses import dataclass
@@ -30,9 +31,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+
 import anytree.search
 from anytree import Node
 from anytree.exporter import JsonExporter
+
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Query
@@ -42,7 +45,7 @@ from sqlalchemy.sql import func
 from openpyxl.writer.excel import save_virtual_workbook
 
 from . import excel
-from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, \
+from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, ResultFeature, \
     Status, Os, OsGroup, Validation, Action, \
     Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
     FeatureMapping, FeatureMappingRule, Feature
@@ -51,7 +54,7 @@ from api.serializers import UserSerializer, GenerationSerializer, PlatformSerial
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
     FeatureMappingSerializer, BulkResultSerializer, \
     ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
-    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer
+    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -170,14 +173,6 @@ class OsTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         return get_datatable_json(self, actions=False, exclude=['group', 'weight'])
-
-
-# Component
-class ComponentView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
-    """ List Component objects """
-    queryset = Component.objects.all()
-    serializer_class = ComponentSerializer
-    filterset_fields = ['name']
 
 
 class ComponentTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
@@ -535,11 +530,18 @@ class ValidationsView(LoggingMixin, APIView):
                                     if node['name'] in f['text']:
                                         ok.append(True)
                                         break
-                            # filter validation nodes by owner
-                            if f['level'] == 'users' and node['level'] == 'validation' and \
-                                    node['owner'] in f['text']:
-                                ok.append(True)
-                                break
+
+                            # filter validation nodes by owner/component/feature
+                            if node['level'] == 'validation':
+                                if f['level'] == 'users' and node['owner'] in f['text']:
+                                    ok.append(True)
+                                    break
+                                if f['level'] == 'components' and set(node['obj'].components) & set(f['text']):
+                                    ok.append(True)
+                                    break
+                                if f['level'] == 'features' and set(node['obj'].features) & set(f['text']):
+                                    ok.append(True)
+                                    break
                         else:
                             ok.append(False)
 
@@ -572,7 +574,7 @@ class ValidationsView(LoggingMixin, APIView):
                             error=validation.error,
                             blocked=validation.blocked,
                             skipped=validation.skipped,
-                            canceled=validation.canceled,
+                            canceled=validation.canceled
                         )
                     else:
                         node = Node(
@@ -1557,3 +1559,67 @@ class ResultHistoryView(LoggingMixin, APIView):
             changes.insert(0, diff)
             old_record = new_record
         return Response(changes)
+
+
+class ResultFeatureFilter(django_filters.FilterSet):
+    active = django_filters.BooleanFilter(
+        field_name='id',
+        method='is_active'
+    )
+
+    def is_active(self, queryset, name, _):
+        # get list of features in all validations
+        features = set(
+            # flatten list of lists
+            itertools.chain.from_iterable(
+                list(
+                    Validation.objects.values_list(
+                        'features',
+                        flat=True).distinct()
+                    )
+            )
+        )
+        return queryset.filter(id__in=sorted(features))
+
+    class Meta:
+        model = ResultFeature
+        fields = ['active', 'name']
+
+
+class ResultFeatureView(LoggingMixin, generics.ListAPIView):
+    """ List of ResultFeature objects """
+    queryset = ResultFeature.objects.all()
+    serializer_class = ResultFeatureSerializer
+    filterset_class = ResultFeatureFilter
+
+
+class ComponentFilter(django_filters.FilterSet):
+    active = django_filters.BooleanFilter(
+        field_name='id',
+        method='is_active'
+    )
+
+    def is_active(self, queryset, name, _):
+        # get list of components in all validations
+        components = set(
+            # flatten list of lists
+            itertools.chain.from_iterable(
+                list(
+                    Validation.objects.values_list(
+                        'components',
+                        flat=True).distinct()
+                    )
+                )
+            )
+        return queryset.filter(id__in=sorted(components))
+
+    class Meta:
+        model = Component
+        fields = ['active', 'name']
+
+
+class ComponentView(LoggingMixin, generics.ListAPIView):
+    """ List of Component objects """
+    queryset = Component.objects.all()
+    serializer_class = ComponentSerializer
+    filterset_class = ComponentFilter

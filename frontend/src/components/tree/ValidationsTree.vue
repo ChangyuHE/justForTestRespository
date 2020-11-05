@@ -158,7 +158,7 @@
                         @change="onSelectorChange($event, 'users')"
                     >
                         <template v-slot:label>
-                            <span class="blue-grey--text text--darken-2">Users</span>
+                            <span class="blue-grey--text text--darken-2">User</span>
                         </template>
                     </v-autocomplete>
                     <v-btn-toggle
@@ -186,6 +186,42 @@
                     >
                         <template v-slot:label>
                             <span class="blue-grey--text text--darken-2" v-text="selector.label"></span>
+                        </template>
+                    </v-autocomplete>
+                </v-col>
+                <v-col cols="6" class="py-0 d-flex">
+                    <v-autocomplete class="ml-4 my-2 pt-1 filter-select"
+                        color="blue-grey"
+                        item-color="blue-grey"
+                        clear-icon="mdi-close"
+                        item-text="name"
+                        item-value="id"
+                        multiple clearable small-chips deletable-chips hide-details
+                        :menu-props="{closeOnContentClick: true}"
+                        :items="components"
+                        v-model="selectors.components"
+                        @change="onSelectorChange($event, 'components')"
+                    >
+                        <template v-slot:label>
+                            <span class="blue-grey--text text--darken-2">Component</span>
+                        </template>
+                    </v-autocomplete>
+                </v-col>
+                <v-col cols="6" class="py-0 d-flex">
+                    <v-autocomplete class="ml-4 my-2 pt-1 filter-select"
+                        color="blue-grey"
+                        item-color="blue-grey"
+                        clear-icon="mdi-close"
+                        item-text="name"
+                        item-value="id"
+                        multiple clearable small-chips deletable-chips hide-details
+                        :menu-props="{closeOnContentClick: true}"
+                        :items="features"
+                        v-model="selectors.features"
+                        @change="onSelectorChange($event, 'features')"
+                    >
+                        <template v-slot:label>
+                            <span class="blue-grey--text text--darken-2">Feature</span>
                         </template>
                     </v-autocomplete>
                 </v-col>
@@ -285,15 +321,6 @@
     import ValidationClone from '@/components/tree/ValidationClone'
     import { getTextColorFromStatus } from '@/utils/styling.js'
 
-    // Get text for branch from list of components
-    function selectedValidationsText(branches) {
-        return branches.map(function(branch) {
-                let texted = branch.reverse().map((node) => (node.model.text_flat))
-                return `${texted[5]} (${texted[1]}, ${texted[3]}, ${texted[4]})`
-            }
-        )
-    }
-
     // get branch as list of nodes for clicked node
     function getBranchForLeaf(node) {
         let branch = [node]
@@ -341,7 +368,7 @@
         return ['validation'].includes(name)
     }
     function isIDsFilter(name) {
-        return ['users'].includes(name)
+        return ['users', 'components', 'features'].includes(name)
     }
 
     export default {
@@ -356,7 +383,7 @@
                 data: [],
 
                 // filtering
-                selectors: {validation: '', users: []},
+                selectors: {validation: '', users: [], components: [], features: []},
                 showMyValidations: undefined,
                 // objectsData: {},
                 treeStructure: null,
@@ -380,6 +407,10 @@
                     {'months': 11, 'text': '1 y'},
                 ],
                 sliderButtonValue: null,
+
+                // components and features
+                components: [],
+                features: [],
             }
         },
         computed: {
@@ -475,7 +506,7 @@
                 this.sliderButtonValue = null
                 this.sliderValue = [6, 11]
                 // tree
-                this.selectors = {validation: '', users: []}
+                this.selectors = {validation: '', users: [], components: [], features: []}
                 // close panels
                 this.showFilters = undefined
                 this.showDateSlider = undefined
@@ -484,7 +515,9 @@
                     'push',
                     {},
                     ['treeDates-button', 'treeDates-range',
-                     'treeFilter-gen', 'treeFilter-os', 'treeFilter-os_group', 'treeFilter-platform', 'treeFilter-validation', 'treeFilter-users']
+                     'treeFilter-gen', 'treeFilter-os', 'treeFilter-os_group',
+                     'treeFilter-platform', 'treeFilter-validation',
+                     'treeFilter-users', 'treeFilter-components', 'treeFilter-features']
                 )
             },
             // set range according to clicked group button
@@ -857,6 +890,37 @@
                         this.$toasted.global.alert_error(error)
                     }
                 })
+
+            // Load components
+            url = 'api/component/?active=True'
+            server
+                .get(url)
+                .then(response => {
+                    this.components = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get Components data', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+
+            // Load Features
+            url = 'api/result_feature/?active=True'
+            server
+                .get(url)
+                .then(response => {
+                    this.features = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Failed to get Features data', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+
         },
         mounted() {
             EventBus.$on('update-counters', payload => {

@@ -1,5 +1,6 @@
+import time
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from collections import defaultdict
 from typing import Any
@@ -84,12 +85,13 @@ class ImportRequestDTO(AbstractRequestDTO):
         date = cls._get_field(request, 'validation_date')
 
         if str(date).strip() == '':
-            date = None
+            date = datetime.now()
+        else:
+            date = datetime(*time.strptime(date, '%Y-%m-%d')[:6])
 
-        if date is None:
-            date = timezone.make_aware(datetime.now())
-
-        return date
+        # always return datetime with TZ set to ensure we have
+        # no warning on validation save
+        return timezone.make_aware(date)
 
 
 class MergeRequestDTO(AbstractRequestDTO):
@@ -351,6 +353,7 @@ class ResultMandatoryData:
     validation: api_models.Validation = None
     env: api_models.Env = None
     component: api_models.Component = None
+    features: List[api_models.ResultFeature] = field(default_factory=list)
     item: api_models.Item = None
     status: api_models.Status = None
     platform: api_models.Platform = None

@@ -81,6 +81,7 @@ urlpatterns = [
     path('api/scenario/', feature_mapping.FeatureMappingScenarioView.as_view()),
 
     # Common
+    path('api/result_feature/', views.ResultFeatureView.as_view(), name='result_feature'),
     path('api/component/table/', views.ComponentTableView().as_view()),
     path('api/component/', views.ComponentView().as_view()),
 

@@ -11,6 +11,7 @@ NAME_MAPPING = {
     'item name': 'itemName',
     'args': 'itemArgs',
     'component': 'componentName',
+    'feature': 'feature',
     'execution start time': 'execStart',
     'execution end time': 'execEnd',
     'environment': 'envName',

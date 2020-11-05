@@ -131,7 +131,7 @@
                                         <!-- iterating over error codes -->
                                         <div v-for="(items, eCode) in edata" :key="eCode">
                                             <div v-for="(errors, modelName) in items" :key="modelName">
-                                                <issue-card v-if="modelName == 'Item' && eCode == 'ERR_MISSING_ENTITY'"
+                                                <issue-card v-if="(modelName == 'Item' || modelName == 'ResultFeature') && eCode == 'ERR_MISSING_ENTITY'"
                                                     :error-data="errors"
                                                     :priority="priority"
                                                     :error-code="eCode" />

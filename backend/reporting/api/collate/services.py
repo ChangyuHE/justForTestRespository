@@ -2,6 +2,7 @@ import dataclasses
 import logging
 import re
 
+from typing import List, Tuple, Optional
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from datetime import datetime
@@ -12,7 +13,7 @@ from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 
 from api.models import Component, Env, Item, Os, Run, Platform, Result, ResultGroupMask, ResultGroupNew, Validation, \
-    Status
+    Status, ResultFeature
 
 from api.collate.gta_field_parser import GTAFieldParser
 from api.collate.excel_utils import REVERSE_NAME_MAPPING
@@ -220,6 +221,7 @@ class RecordBuilder:
         record.env = self._find_object(Env, name=columns['envName'])
         record.component = self._find_object(Component, name=columns['componentName'])
         record.item = self._find_testitem_object(name=columns['itemName'], args=columns['itemArgs'])
+        record.features.extend(self._find_features(name=columns['feature']))
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
@@ -285,26 +287,34 @@ class RecordBuilder:
 
         return True
 
-    def build(self, force_run=False, force_item=False):
+    def build(
+        self,
+        force_run=False,
+        force_item=False) \
+        -> Tuple[
+            Optional[Result],
+            Optional[List[ResultFeature]]
+        ]:
+
         if not self.verify(force_run, force_item):
-            return None
+            return None, None
 
         # Ensure that all mandatory fields are present.
         if not self.__data.mandatory.is_valid():
             self.__notify_missing_fields()
-            return None
+            return None, None
 
         self.__retrieve_extra_fields()
         self.__data.save_transient(new_objects_ids)
 
         entity = Result()
-        self.__set_model_fields(entity)
+        result_features = self.__set_model_fields(entity)
         self.__set_model_datetime_range(entity)
 
         entity = self.__update_if_exists(entity)
         self.__assign_and_save_group(entity)
 
-        return entity
+        return entity, result_features
 
     def __retrieve_extra_fields(self):
         # Retrieve additional fields from GTA API
@@ -322,7 +332,7 @@ class RecordBuilder:
             self.__data.extra = parser.create_result_data(result_url)
 
         else:
-            log.error(f'Missing key {result_url}')
+            log.warning(f'Missing key {result_url}')
 
     def __create_parser_constraint(self):
         return tuple(self.__columns[x] for x in [
@@ -333,13 +343,19 @@ class RecordBuilder:
             'platformName',
         ])
 
-    def __set_model_fields(self, entity):
+    def __set_model_fields(self, entity) -> List[ResultFeature]:
+        result_features = []
         for key, value in self.get_fields().items():
-            setattr(entity, key, value)
+            if key == 'features':
+                result_features.extend(value)
+            else:
+                setattr(entity, key, value)
 
         entity.result_key = self.__columns['resultKey']
         entity.result_url = self.__columns['resultURL']
         entity.result_reason = self.__columns['reason']
+
+        return result_features
 
     def __set_model_datetime_range(self, entity):
         # Set exec_start and exec_end model attributes
@@ -398,6 +414,26 @@ class RecordBuilder:
 
         self._notify_object_not_found(Item, {'name': params['name'], 'args': params['args']}, ignore_warnings)
         return None
+
+    def _find_features(self, ignore_warnings=False, **params):
+        feature_objs = []
+        features = params['name']
+        if features.startswith("['"):
+            # remove square brackets
+            # and split by comma to handle cases like this:
+            # ['AVC_VME', 'AVC_VDEnc']
+            features = features[1:-1].split(', ')
+            for feat in features:
+                feat = feat[1:-1]  # remove quotes
+                params = {'name': feat}
+                obj = find_object(ResultFeature, **params)
+                if obj is None:
+                    self._notify_object_not_found(ResultFeature, params, ignore_warnings)
+                else:
+                    feature_objs.append(obj)
+
+        return feature_objs
+
 
     def _find_with_alias(self, cls, alias, ignore_warnings=False):
         if alias is None:

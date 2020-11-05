@@ -52,8 +52,9 @@
             },
             objectName() {
                 let model = this.error.model
-                if (model == 'Item')
+                if (model == 'Item') {
                     model = 'Test ' + model
+                }
                 return model
             }
         },

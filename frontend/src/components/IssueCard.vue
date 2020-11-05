@@ -90,7 +90,7 @@
         'ERR_ITEM_CHANGED': 'Results update attempt'
     }
 
-    const CAN_BE_CREATED = ['Driver', 'Item']
+    const CAN_BE_CREATED = ['Driver', 'Item', 'ResultFeature']
     const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Generation']
 
     export default {
@@ -110,7 +110,6 @@
             errorCode: { type: String, required: true },
         },
         computed: {
-            ...mapState(['userData']),
             ...mapState('request', ['requestItemDialog']),
             error() {
                 if (Array.isArray(this.errorData)) {
@@ -124,8 +123,9 @@
             },
             objectName() {
                 let model = this.error.entity.model
-                if (model == 'Item')
+                if (model == 'Item') {
                     model = 'Test ' + model
+                }
                 return model
             },
             canBeCreated() {

@@ -50,7 +50,12 @@ def copy_results(target_validation: Validation, validation_ids: List[int], strat
 
     Result.objects.bulk_create(new_entities)
     vstats = target_validation.update_status_counters()
-    log.debug(f"{'Merged' if strategy else 'Cloned'} validation details - %s", vstats.__format__('full'))
+    c_and_f = target_validation.update_components_and_features()
+
+    log.debug(f"{'Merged' if strategy else 'Cloned'} validation details:")
+    log.info('  Item statuses: %s', vstats.__format__('full'))
+    log.info('  Components: %s', c_and_f.components_as_str())
+    log.info('  Features: %s', c_and_f.features_as_str())
 
 
 def _query_result_distinct_on_item(validation_ids, strategy):

@@ -2,7 +2,7 @@ import dataclasses
 import logging
 
 from pathlib import Path
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, List
 from dramatiq import actor
 
 from django.contrib.auth import get_user_model
@@ -10,7 +10,7 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.template.loader import get_template
 
-from api.models import ImportJob, Result
+from api.models import ImportJob, Result, ResultFeature
 from api.models import JobStatus
 from api.collate.business_entities import Context
 from api.collate.business_entities import ValidationDTO
@@ -28,17 +28,25 @@ class Changes:
     updated: int = 0
     skipped: int = 0
 
-    def update_from_entity(self, entity: Result, requester: AUTH_USER_MODEL, reason: str) -> None:
+    def update_from_entity(
+        self,
+        entity: Optional[Result],
+        requester: AUTH_USER_MODEL,
+        reason: str,
+        features: Optional[List[ResultFeature]]) -> None:
+
         if entity is None:
             self.skipped += 1
         elif entity.id is None:
             entity.save()
+            entity.features.set(features)
             self.added += 1
         elif entity.get_changed_columns():
             entity._change_reason = reason
             entity._history_user = requester
             entity._changed = True
             entity.save()
+            entity.features.set(features)
             self.updated += 1
         else:
             self.skipped += 1
@@ -87,16 +95,21 @@ def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]]
         # Process file content row by row and perform queries to get additional data
         for row in non_empty_row(rows):
             builder = RecordBuilder(context, row)
-            entity = builder.build(job.force_run, job.force_item)
-            changes.update_from_entity(entity, job.requester, reason)
+            entity, features = builder.build(job.force_run, job.force_item)
+            changes.update_from_entity(entity, job.requester, reason, features)
 
         outcome.changes = dataclasses.asdict(changes)
 
         log.debug('File store outcome: %s', outcome.build())
 
         vstats = validation.update_status_counters()
-        log.info("Imported validation details - %s", vstats.__format__('full'))
+        c_and_f = validation.update_components_and_features()
         validation.save()
+
+        log.info('Imported validation details:')
+        log.info('  Item statuses: %s', vstats.__format__('full'))
+        log.info('  Components: %s', c_and_f.components_as_str())
+        log.info('  Features: %s', c_and_f.features_as_str())
 
         log.debug('Removing temporary xlsx: %s', job.path)
         xlsx = Path(job.path)

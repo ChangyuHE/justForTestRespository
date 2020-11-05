@@ -26,11 +26,11 @@ def merge_validations(request_dto: MergeRequestDTO) -> MergeOutcomeBuilder:
         return outcome
 
     job = MergeJob.objects.create(
-        requester = request_dto.requester,
-        validation_name = request_dto.validation_name,
-        notes = request_dto.notes,
-        site_url = request_dto.site_url,
-        strategy = request_dto.strategy,
+        requester=request_dto.requester,
+        validation_name=request_dto.validation_name,
+        notes=request_dto.notes,
+        site_url=request_dto.site_url,
+        strategy=request_dto.strategy,
     )
 
     do_merge.send(job.id, request_dto.validation_ids)
@@ -38,16 +38,18 @@ def merge_validations(request_dto: MergeRequestDTO) -> MergeOutcomeBuilder:
 
     return outcome
 
+
 def _verify_request(request_dto: MergeRequestDTO, outcome: MergeOutcomeBuilder):
     """ Checks if request contains valid data.
     """
     # Validation name should be provided
-    if len(request_dto.validation_name.strip()) == 0:
+    if request_dto.validation_name_missed():
         outcome.add_validation_name_error()
 
     # At least two validations should be selected for merge
     if len(request_dto.validation_ids) < 2:
         outcome.add_validation_list_error()
+
 
 def _verify_consistence(request_dto: MergeRequestDTO, outcome: MergeOutcomeBuilder):
     """ Ensures that results from all specified validations can be
@@ -79,12 +81,8 @@ def _verify_consistence(request_dto: MergeRequestDTO, outcome: MergeOutcomeBuild
 
     for model, name in query_map:
         values = model.objects.filter(
-                result__validation__id__in=request_dto.validation_ids
-            ).distinct().values_list('name', flat=True)
+            result__validation__id__in=request_dto.validation_ids
+        ).distinct().values_list('name', flat=True)
 
         if len(values) > 1:
             outcome.add_ambiguous_column_error(name, values)
-
-
-class MergeException(Exception):
-    pass

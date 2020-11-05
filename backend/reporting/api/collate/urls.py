@@ -7,4 +7,5 @@ urlpatterns = [
     path('create/', views.CreateEntitiesView.as_view(), name='create'),
     path('form/', views.index, name='index'),
     path('merge/', views.MergeValidationsView.as_view(), name='merge'),
+    path('clone/', views.CloneValidationsView.as_view(), name='clone'),
 ]

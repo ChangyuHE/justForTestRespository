@@ -2,14 +2,14 @@ import logging
 
 from django.shortcuts import render
 
-from .business_entities import ImportRequestDTO
+from .business_entities import ImportRequestDTO, CloneRequestDTO
 from .business_entities import MergeRequestDTO
+from .clone_api import clone_validations
 from .forms import SelectFileForm
 from .import_api import EntityException
 from .import_api import import_results
 from .import_api import create_entities
 from .merge_api import merge_validations
-from .merge_api import MergeException
 
 from rest_framework.exceptions import ParseError
 from rest_framework.parsers import FileUploadParser
@@ -77,6 +77,17 @@ class MergeValidationsView(LoggingMixin, APIView):
 
         dto = MergeRequestDTO.build(request)
         outcome = merge_validations(dto)
+        code = _get_status_code(outcome)
+
+        return Response(data=outcome.build(), status=code)
+
+
+class CloneValidationsView(LoggingMixin, APIView):
+    def post(self, request):
+        log.debug(f'request data: {request.data}')
+
+        dto = CloneRequestDTO.build(request)
+        outcome = clone_validations(dto)
         code = _get_status_code(outcome)
 
         return Response(data=outcome.build(), status=code)

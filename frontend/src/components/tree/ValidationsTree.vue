@@ -47,19 +47,18 @@
             <!-- Clean and actions buttons -->
             <div>
                 <!-- UNCOMMENT WHEN REQUIRED -->
-                <!-- <div style="position: fixed; margin-left: -295px; z-index: 1"> -->
-                <div style="position: fixed; margin-left: -255px; z-index: 1">
+                <div style="position: fixed; margin-left: -295px; z-index: 1">
                     <div class="d-flex justify-end">
                         <!-- UNCOMMENT WHEN REQUIRED -->
                         <!-- Validations actions show/hide button -->
-                        <!-- <v-btn
+                        <v-btn
                             text x-small
                             class="mt-2 mx-1 px-0"
                             @click="showValActions = !showValActions"
                             :class="{'primary--text text--darken-1': showValActions}"
                         >
                             <v-icon>mdi-dots-horizontal</v-icon>
-                        </v-btn> -->
+                        </v-btn>
                         <!-- Clear tree filters -->
                         <v-btn x-small color="blue-grey lighten-4" class="mr-1 mt-2"
                             :disabled="disableClearFilters"
@@ -84,8 +83,8 @@
                     </div>
                     <!-- UNCOMMENT WHEN REQUIRED -->
                     <!-- Validations actions buttons -->
-                    <!-- <div class="mt-2 d-flex justify-end">
-                        <v-btn
+                    <div class="mt-2 d-flex justify-end">
+                        <!-- <v-btn
                             v-if="showValActions"
                             x-small
                             color="blue-grey lighten-4"
@@ -93,7 +92,7 @@
                             :disabled="!(validations.length && validations.length != 1)"
                         >
                             Merge
-                        </v-btn>
+                        </v-btn> -->
                         <v-btn
                             v-if="showValActions"
                             x-small
@@ -101,10 +100,11 @@
                             class="ml-1"
                             :disabled="!(validations.length && validations.length == 1)"
                             v-show="showValActions"
+                            @click="showCloneDialog = true"
                         >
                             Clone
                         </v-btn>
-                        <v-btn
+                        <!-- <v-btn
                             v-if="showValActions"
                             x-small
                             color="blue-grey lighten-4"
@@ -113,8 +113,8 @@
                             v-show="showValActions"
                         >
                             Lock
-                        </v-btn>
-                    </div> -->
+                        </v-btn> -->
+                    </div>
                 </div>
             </div>
         </v-row>
@@ -264,6 +264,13 @@
         <v-card v-else flat class="ml-4 mr-7 mt-4">
             <v-card-text class="text-center text-h6 grey--text">No data to show</v-card-text>
         </v-card>
+
+        <validation-clone
+            v-if="showCloneDialog"
+            :selectedNode="selectedNode"
+            @close="showCloneDialog = false"
+        >
+        </validation-clone>
     </div>
 </template>
 <script>
@@ -275,6 +282,7 @@
     import server from '@/server.js'
     import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
     import { alterHistory } from '@/utils/history-management.js'
+    import ValidationClone from '@/components/tree/ValidationClone'
     import { getTextColorFromStatus } from '@/utils/styling.js'
 
     // Get text for branch from list of components
@@ -339,7 +347,8 @@
     export default {
         name: 'ValidationsTree',
         components: {
-            VJstree
+            VJstree,
+            ValidationClone
         },
         data() {
             return {
@@ -357,6 +366,7 @@
                 showTooltip: false,
                 showValActions: false,
                 usersData: [],
+                showCloneDialog: false,
 
                 // date slider
                 enableDates: false,
@@ -383,7 +393,19 @@
             },
             disableClearFilters() {
                 return !this.enableDates && this._.every(this._.values(this.selectors), this._.isEmpty)
-            }
+            },
+            // first of selected nodes
+            selectedNode() {
+                let selectedNode = null
+                this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                        node => {
+                            if (typeof node.model != 'undefined' && node.model.id == this.validations[0]) {
+                                selectedNode = node
+                            }
+                        }
+                )
+                return selectedNode
+            },
         },
         watch: {
             'selectors.validation': function(value) {

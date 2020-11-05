@@ -124,6 +124,32 @@ class MergeRequestDTO(AbstractRequestDTO):
 
         return strategy
 
+    def validation_name_missed(self):
+        return not bool(self.validation_name.strip())
+
+
+class CloneRequestDTO(AbstractRequestDTO):
+    requester: User
+    validation_name: str
+    notes: str
+    validation_id: int
+    site_url: str
+
+    @classmethod
+    def build(cls, request) -> 'CloneRequestDTO':
+        dto = cls()
+
+        dto.requester = api_logging.get_user_object(request)
+        dto.validation_name = cls._get_field(request, 'validation_name', fallback_value='')
+        dto.notes = cls._get_field(request, 'notes')
+        dto.validation_id = cls._get_field(request, 'validation_id')
+        dto.site_url = request.build_absolute_uri('/')
+
+        return dto
+
+    def validation_name_missed(self):
+        return not bool(self.validation_name.strip())
+
 
 @dataclass
 class ValidationDTO:
@@ -214,6 +240,14 @@ class AbstractOutcomeBuilder(ABC):
 
         self._add_error('ERR_EXISTING_VALIDATION', message, entity=entity)
 
+    def add_validation_name_error(self):
+        message = 'Missing or empty validation name.'
+        self._add_error('ERR_EMPTY_VALIDATION_NAME', message)
+
+    def add_nonexistent_validation_error(self):
+        message = 'Non-existent validation id'
+        self._add_error('ERR_NONEXISTENT_VALIDATION_ID', message)
+
 
 class ImportOutcomeBuilder(AbstractOutcomeBuilder):
     def __init__(self):
@@ -279,13 +313,19 @@ class ImportOutcomeBuilder(AbstractOutcomeBuilder):
 
 
 class MergeOutcomeBuilder(AbstractOutcomeBuilder):
-    def add_validation_name_error(self):
-        message = 'Missing or empty validation name.'
-        self._add_error('ERR_EMPTY_VALIDATION_NAME', message)
-
     def add_validation_list_error(self):
         message = 'List of validations must contain at least 2 items.'
         self._add_error('ERR_VALIDATION_LIST', message)
+
+
+class CloneOutcomeBuilder(AbstractOutcomeBuilder):
+    def add_selected_validation_error(self):
+        message = 'Missing validation.'
+        self._add_error('ERR_EMPTY_VALIDATION', message)
+
+    def add_duplicated_validation_error(self):
+        message = 'Duplicate validation name.'
+        self._add_error('ERR_DUPLICATE_VALIDATION', message)
 
 
 class Context:

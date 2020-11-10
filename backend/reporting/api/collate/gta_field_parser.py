@@ -54,7 +54,8 @@ CUSTOM_COLUMNS_MAPPING = dict([
     ("driver_build_id", "build.external_id"),
     ("driver_name", "build.version"),
     ("kernel_version", "execution.machine.properties.kernel_version_full.value"),
-    ("kernel_date", "execution.machine.properties.kernel_version_full.updated_date")
+    ("kernel_date", "execution.machine.properties.kernel_version_full.updated_date"),
+    ("tests_errors", "result.custom.tests_errors"),
 ], **ADDITIONAL_PARAMS_MAPPING)
 
 
@@ -433,6 +434,8 @@ class GTAFieldParser:
                 if parameter_value:
                     add_params[attr] = parameter_value
 
+            test_error = item[CUSTOM_COLUMNS_MAPPING['tests_errors']][0]
+
             # Save all retrieved fields for current test item
             self.result[test_item_url] = {
                 "os": os,
@@ -444,6 +447,7 @@ class GTAFieldParser:
                 "fulsim": fulsim,
                 "simics": simics,
                 "kernel": kernel,
+                "test_error": test_error,
                 "additional_params": add_params if add_params else None
             }
 
@@ -478,5 +482,6 @@ class GTAFieldParser:
             setattr(data, result_field, value)
 
         data.additional_parameters = cached_result_dict['additional_params']
+        data.test_error = cached_result_dict['test_error']
 
         return data

@@ -332,6 +332,7 @@ class ResultExtraData:
     fulsim_asset: api_models.FulsimAsset = None
     simics: api_models.Simics = None
     additional_parameters: Any = None
+    test_error: str = None
 
 
 class ResultData:

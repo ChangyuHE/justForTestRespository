@@ -29,6 +29,13 @@
     }
 },
 {
+    "model": "api.os",
+    "pk": 3,
+    "fields": {
+        "name": "Windows 20H1 Vibranium x64"
+    }
+},
+{
     "model": "api.run",
     "pk": 1,
     "fields": {
@@ -98,10 +105,24 @@
     }
 },
 {
+    "model": "api.component",
+    "pk": 2,
+    "fields": {
+        "name": "MediaSDK-Encode"
+    }
+},
+{
     "model": "api.plugin",
     "pk": 1,
     "fields": {
         "name": "test_media_lucas"
+    }
+},
+{
+    "model": "api.plugin",
+    "pk": 2,
+    "fields": {
+        "name": "test_msdk"
     }
 },
 {
@@ -123,6 +144,13 @@
     "pk": 3,
     "fields": {
         "name": "KBL_AVC_VDEnc_TEDDI_VBR_MultiRef_MBBRC_Unified.csv"
+    }
+},
+{
+    "model": "api.testscenario",
+    "pk": 4,
+    "fields": {
+        "name": "beh_avce_encoder_roi"
     }
 },
 {
@@ -189,6 +217,17 @@
         "plugin": 1,
         "scenario": 3,
         "test_id": 142
+    }
+},
+{
+    "model": "api.item",
+    "pk": 7,
+    "fields": {
+        "name": "0001.beh_avce_encoder_roi",
+        "args": "test_msdk -s beh_avce_encoder_roi --seed 777 -i 1",
+        "plugin": 2,
+        "scenario": 4,
+        "test_id": 1
     }
 },
 {

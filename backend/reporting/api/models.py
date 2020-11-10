@@ -256,6 +256,7 @@ class Result(DiffMixin, models.Model):
     fulsim_asset = models.ForeignKey(FulsimAsset, null=True, blank=True, on_delete=models.CASCADE)
     simics = models.ForeignKey(Simics, null=True, blank=True, on_delete=models.CASCADE)
     additional_parameters = models.JSONField(null=True, blank=True)
+    test_error = models.CharField(null=True, blank=True, max_length=1024)
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)

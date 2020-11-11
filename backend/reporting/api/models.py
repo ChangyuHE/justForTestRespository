@@ -106,6 +106,18 @@ class Driver(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'build_id'],
+                name='unique_%(class)s_composite_constraint'
+            ),
+            # one null
+            UniqueConstraint(
+                fields=['name'], condition=Q(build_id=None),
+                name='unique_%(class)s_composite_constraint_with_build_id_null'
+            )
+        ]
 
 class Plugin(models.Model):
     name = models.CharField(max_length=255, unique=True)

@@ -16,12 +16,14 @@
                 </v-btn-toggle>
 
                 <!-- File input controller -->
-                <dnd-frame @file-drop="file = $event">
+                <dnd-frame @file-drop="onFileDrop">
                     <v-file-input
                         label="Select File to import"
                         full-width show-size counter truncate-length="100"
                         class="pt-0" color="blue-grey"
+                        accept=".xlsx"
                         v-model="file"
+                        @change="onFileSelect"
                         :disabled="uploading"
                     ></v-file-input>
                 </dnd-frame>
@@ -310,6 +312,31 @@
             },
         },
         methods: {
+            onFileSelect() {
+                if (this.file != null) {
+                    if (this._.isEmpty(this.valName)) {
+                        let fn = this.file.name
+                        this.valName = fn.substring(0, fn.lastIndexOf('.'))
+                    }
+
+                    if (this._.isEmpty(this.valDate)) {
+                        let valDate = new Date(this.file.lastModified)
+                        let month = valDate.getMonth() + 1
+                        if (month < 10) {
+                            month = `0${month}`
+                        }
+                        let date = valDate.getDate()
+                        if (date < 10) {
+                            date = `0${date}`
+                        }
+                        this.valDate = `${valDate.getFullYear()}-${month}-${date}`
+                    }
+                }
+            },
+            onFileDrop(event) {
+                this.file = event
+                this.onFileSelect()
+            },
             onUploadFromDialog() {
                 this.errorsDialog = false
                 let extra = {

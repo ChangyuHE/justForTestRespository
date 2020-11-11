@@ -229,7 +229,7 @@ class GTAFieldParser:
         jsn = r.json()
         artifacts_path = jsn['artifacts_path']
         # Parse LucasLog
-        r = s.get(f'{gta_instance_url}/logs/strage/{artifacts_path}/logs/tests/0/LucasLog.txt')
+        r = s.get(f'{gta_instance_url}/logs/storage/{artifacts_path}/logs/tests/0/LucasLog.txt')
         if r.status_code != 200:
             self.lucas_version_cache[self.test_run_id] = '0000'
             log.warning("Lucas version is not retrieved")

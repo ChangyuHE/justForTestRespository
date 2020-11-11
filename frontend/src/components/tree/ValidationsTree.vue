@@ -275,6 +275,7 @@
     import server from '@/server.js'
     import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
     import { alterHistory } from '@/utils/history-management.js'
+    import { getTextColorFromStatus } from '@/utils/styling.js'
 
     // Get text for branch from list of components
     function selectedValidationsText(branches) {
@@ -720,13 +721,8 @@
                     this.sliderButtonValue = +value
                 }
             },
-            getStatusColor(s) {
-                if (s === 'passed') { return 'green--text text--darken-1' }
-                else if (s === 'failed') { return 'red--text text--darken-3' }
-                else if (s === 'error') { return 'purple--text text--darken-1' }
-                else if (s === 'blocked') { return 'yellow--text text--darken-3' }
-                else if (s === 'skipped') { return 'grey--text text--darken-1' }
-                else if (s === 'canceled') { return 'blue--text text--lighten-3' }
+            getStatusColor(status) {
+                return getTextColorFromStatus(status)
             },
             hasAnyStatus(el) {
                 return this._.some([el.passed, el.failed, el.error, el.blocked, el.skipped, el.canceled], function(e) { return e != 0 })

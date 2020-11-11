@@ -310,6 +310,7 @@
     import mappingSelector from '@/components/MappingSelector.vue'
     import resultHistory from '@/components/ResultHistory'
     import resultItemsBulkUpdate from '@/components/ResultItemsBulkUpdate'
+    import { getColorFromStatus } from '@/utils/styling.js'
 
     import { mapState, mapGetters } from 'vuex'
 
@@ -573,13 +574,8 @@
             /**
              * Coloring status column in comparison report
              */
-            getStatusColor(s) {
-                if (s === 'Passed') { return 'green darken-1' }
-                else if (s === 'Failed') { return 'red darken-3'}
-                else if (s === 'Error') { return 'purple darken-1' }
-                else if (s === 'Blocked') { return 'yellow darken-3' }
-                else if (s === 'Skipped') { return 'grey darken-1' }
-                else if (s === 'Canceled') { return 'blue lighten-3' }
+            getStatusColor(status) {
+                return getColorFromStatus(status)
             },
             onMappingsChange() {
                 this.filteredHeaders = []

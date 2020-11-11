@@ -182,7 +182,7 @@
     import { mapState } from 'vuex'
     import { fields } from '@/store/request'
     import requestItemDialogComponent from '@/components/RequestItemDialog'
-    import { justEditedAnimation } from '@/utils/data-table-animation.js'
+    import { justEditedAnimation } from '@/utils/styling.js'
 
     export default {
         components: {

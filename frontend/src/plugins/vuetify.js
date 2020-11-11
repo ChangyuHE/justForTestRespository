@@ -21,6 +21,13 @@ export default new Vuetify({
                 secondary: '#b0bec5',
                 accent: '#A7FFEB',
                 error: '#b71c1c',
+
+                failed_status: '#C62828',       // red darken-3
+                passed_status: '#43A047',       // green darken-1
+                error_status: '#8E24AA',        // purple darken-1
+                blocked_status: '#F9A825',      // yellow darken-3
+                skipped_status: '#757575',      // grey darken-1
+                canceled_status: '#90CAF9',     // blue lighten-3
             },
         },
     },

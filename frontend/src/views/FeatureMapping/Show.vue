@@ -356,7 +356,7 @@
     import server from '@/server'
     import ApiAutoComplete from '@/components/APIAutoComplete'
     import ImportFeatureMappings from './Import'
-    import { justEditedAnimation } from '@/utils/data-table-animation.js'
+    import { justEditedAnimation } from '@/utils/styling.js'
 
     export default {
         components: {

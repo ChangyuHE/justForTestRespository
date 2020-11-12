@@ -9,6 +9,7 @@ import re
 import traceback
 from dataclasses import InitVar, dataclass
 from typing import Dict, Tuple
+from typing import Any
 
 import aiohttp
 import aiomisc
@@ -33,6 +34,18 @@ def custom_column(asset: str) -> Tuple[str, str]:
 def custom_column_os(asset: str) -> Tuple[str, str]:
     return asset, f"execution.testRun.repro.value.tasks[?(@.name == 'setup')].items[?(@.['{asset}.asset.os_image.asset_version'])]"
 
+def _extract_first_error(test_error: Any) -> str:
+    if type(test_error) == str:
+        try:
+            test_error = json.loads(test_error)
+        except ValueError:
+            pass
+
+    if type(test_error) == list and test_error:
+        return test_error[0]
+
+    return test_error
+
 
 ADDITIONAL_PARAMS_MAPPING = dict([
     ("error_features", "result.custom.error_features"),
@@ -55,7 +68,7 @@ CUSTOM_COLUMNS_MAPPING = dict([
     ("driver_name", "build.version"),
     ("kernel_version", "execution.machine.properties.kernel_version_full.value"),
     ("kernel_date", "execution.machine.properties.kernel_version_full.updated_date"),
-    ("tests_errors", "result.custom.tests_errors"),
+    ("test_errors", "result.custom.tests_errors"),
 ], **ADDITIONAL_PARAMS_MAPPING)
 
 
@@ -434,7 +447,7 @@ class GTAFieldParser:
                 if parameter_value:
                     add_params[attr] = parameter_value
 
-            test_error = item[CUSTOM_COLUMNS_MAPPING['tests_errors']][0]
+            test_error = _extract_first_error(item[CUSTOM_COLUMNS_MAPPING['test_errors']][0])
 
             # Save all retrieved fields for current test item
             self.result[test_item_url] = {

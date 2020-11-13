@@ -245,8 +245,6 @@
             },
         },
         created() {
-            // to hide selected validations list and flush data-table items data
-            this.$store.commit('reports/SET_STATE', { showReport: true })
             this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
 
             // find appropriate available mappings for our validation

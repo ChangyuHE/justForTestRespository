@@ -67,6 +67,16 @@
                                 >
                                     Indicator
                                 </v-btn>
+
+                                <!-- Issues report -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length || (validations.length !== 1)"
+                                    :loading="reportTypeLoading('issues')"
+                                    value="issues"
+                                    title="Issues"
+                                >
+                                    Issues
+                                </v-btn>
                             </v-btn-toggle>
                         </v-toolbar>
 
@@ -99,6 +109,7 @@
     import comparisonReport from '@/components/reports/Comparison.vue'
     import bestOrLastReport from '@/components/reports/BestOrLast.vue'
     import indicatorReport from '@/components/reports/Indicator.vue'
+    import issuesReport from '@/components/reports/Issues.vue'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
@@ -113,6 +124,7 @@
             'best-report': bestOrLastReport,
             'last-report': bestOrLastReport,
             'indicator-report': indicatorReport,
+            'issues-report': issuesReport,
         },
         data() {
             return {
@@ -173,6 +185,7 @@
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                     alterHistory('push', {}, ['rtype'])
                 } else {
+                    this.$store.commit('reports/SET_STATE', {'showReport': true})
                     alterHistory('push', {rtype: this.reportType})
                 }
             }

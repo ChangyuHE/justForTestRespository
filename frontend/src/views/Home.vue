@@ -21,7 +21,7 @@
                 </pane>
                 <!-- Right part -->
                 <pane>
-                    <div class="ml-4 mr-1 mt-2">
+                    <div class="ml-4 mr-1 mt-2" :style="{position: reportIsReadyToBeRendered ? 'relative': 'fixed'}">
                         <!-- Buttons toolbar -->
                         <v-toolbar tile class="elevation-3">
                             <v-btn-toggle
@@ -79,11 +79,6 @@
                                 </v-btn>
                             </v-btn-toggle>
                         </v-toolbar>
-
-                        <!-- Report card -->
-                        <component v-if="reportIsReadyToBeRendered" :is="reportName" :type="reportType"
-                            :header="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"/>
-
                         <!-- Selected validations -->
                         <template v-if="showValidationsList">
                             <v-subheader class="mt-4" style="height: 32px;">
@@ -98,6 +93,14 @@
                             </v-list>
                         </template>
                     </div>
+                    <!-- Report card -->
+                    <component
+                        v-if="reportIsReadyToBeRendered"
+                        class="ml-4 mr-1 mt-2"
+                        :is="reportName"
+                        :type="reportType"
+                        :header="(validations.length > 1) ? 'Validations Comparison' : 'Validation Overview'"
+                    />
                 </pane>
             </splitpanes>
         </v-col>
@@ -169,6 +172,11 @@
                     this.$store.commit('reports/SET_STATE', {'showReport': false})
                     this.reportType = undefined
                     alterHistory('push', {}, ['rtype'])
+                }
+            },
+            reportType(value) {
+                if (value) {
+                    this.$vuetify.goTo(0)
                 }
             }
         },

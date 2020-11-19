@@ -12,9 +12,8 @@ from django.utils import timezone
 from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 
-from api.models import Component, Env, Item, Os, Run, Platform, Result, ResultGroupMask, ResultGroupNew, Validation, \
+from api.models import Component, Env, Item, Os, Run, Platform, Result, Validation, \
     Status, ResultFeature
-
 from api.collate.gta_field_parser import GTAFieldParser
 from api.collate.excel_utils import REVERSE_NAME_MAPPING
 from api.collate.excel_utils import open_excel_file
@@ -116,19 +115,6 @@ def _find_existing_entity(reference):
             os_id=reference.os.id
         )
     except (Result.DoesNotExist, Result.MultipleObjectsReturned):
-        return None
-
-
-def _find_group(item_name):
-    group_mask_queryset = queryset_cache.get(ResultGroupMask)
-
-    for group_mask in group_mask_queryset:
-        if re.match(group_mask.mask, item_name):
-            return group_mask.group
-
-    try:
-        return ResultGroupNew.objects.get(name='Unknown')
-    except (ResultGroupNew.DoesNotExist, ResultGroupNew.MultipleObjectsReturned):
         return None
 
 
@@ -312,7 +298,6 @@ class RecordBuilder:
         self.__set_model_datetime_range(entity)
 
         entity = self.__update_if_exists(entity)
-        self.__assign_and_save_group(entity)
 
         return entity, result_features
 
@@ -386,15 +371,6 @@ class RecordBuilder:
             setattr(existing_entity, attribute, getattr(entity, attribute))
 
         return existing_entity
-
-    def __assign_and_save_group(self, entity):
-        if entity is not None:
-            item = entity.item
-            if item.group is None:
-                group = _find_group(item.name)
-                if group is not None:
-                    item.group = group
-                    item.save()
 
     def get_fields(self):
         return self.__data.get_fields()

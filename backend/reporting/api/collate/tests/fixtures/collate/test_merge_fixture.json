@@ -1,20 +1,10 @@
 [
 {
-    "model": "api.resultgroupnew",
-    "pk": 3,
-    "fields": {
-        "name": "AVC VME Basic CQP",
-        "alt_name": "AVC VME",
-        "category": "PreSi"
-    }
-},
-{
     "model": "api.item",
     "pk": 12,
     "fields": {
         "name": "035.AVC.ENC.CQP.PRG.1920x1080",
         "args": "test_media_lucas -s PreSi_AVC.csv -t 035.AVC.ENC.CQP.PRG.1920x1080",
-        "group": 3,
         "plugin": null,
         "scenario": null,
         "test_id": null

@@ -38,14 +38,13 @@ class Changes:
         if entity is None:
             self.skipped += 1
         elif entity.id is None:
-            entity.save()
-            entity.features.set(features)
+            entity.save(skip_stats_update=True)
             self.added += 1
         elif entity.get_changed_columns():
             entity._change_reason = reason
             entity._history_user = requester
             entity._changed = True
-            entity.save()
+            entity.save(skip_stats_update=True)
             entity.features.set(features)
             self.updated += 1
         else:

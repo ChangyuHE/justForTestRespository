@@ -7,7 +7,7 @@ from api.view.feature_mapping import check_mappings
 class FeatureMappingMatchTest(TestCase):
     fixtures = [
         '../tests/fixtures/users.json', 'Codec.json', 'component.json', 'driver.json', 'env.json', 'generation.json',
-        'item.json', 'os.json', 'platform.json', 'resultgroupmask.json', 'resultgroupnew.json', 'run.json', 'status.json',
+        'item.json', 'os.json', 'platform.json', 'run.json', 'status.json',
         'milestone.json', 'plugin.json', 'testscenario.json', 'feature.json', 'featuremapping.json', 'featuremappingrule.json',
         'simics.json', 'scenario_asset.json', 'os_asset.json', 'msdk_asset.json', 'lucas_asset.json', 'fulsim_asset.json',
         '../tests/fixtures/results.json', '../tests/fixtures/validations.json'

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import List
 
 from django.conf import settings
@@ -10,52 +9,26 @@ from django.db.models import UniqueConstraint, Q, Count
 from simple_history.models import HistoricalRecords
 
 from reporting.settings import AUTH_USER_MODEL
-from bulk_update_or_create import BulkUpdateOrCreateQuerySet
+from .assets import *
 
 
-class Asset(models.Model):
-    root = models.CharField(max_length=255, null=True, blank=True)
-    path = models.CharField(max_length=255, null=True, blank=True)
-    name = models.CharField(max_length=255, null=True, blank=True)
-    version = models.CharField(max_length=255, null=True, blank=True)
-
-    class Meta:
-        abstract = True
-        unique_together = ('root', 'path', 'name', 'version')
-
-    def __str__(self):
-        if self.root is None or self.path is None or self.name is None or self.version is None:
-            return ''
-        path = self.path if self.path.endswith('/') else f'{self.path}/'
-        root = self.root if self.root.endswith('/') else f'{self.root}/'
-        return f'{root}{path}{self.name}/{self.version}'
-
-
-class ScenarioAsset(Asset):
-    pass
-
-
-class MsdkAsset(Asset):
-    pass
-
-
-class OsAsset(Asset):
-    pass
-
-
-class LucasAsset(Asset):
-    pass
-
-
-class FulsimAsset(Asset):
-    pass
-
-
-class Simics(models.Model):
-    data = models.JSONField()
-
-    def __str__(self):
-        return str(self.data)
+__all__ = [
+    'Generation',
+    'Platform',
+    'Env',
+    'Component',
+    'Kernel',
+    'Driver',
+    'Plugin',
+    'Item',
+    'Os',
+    'OsGroup',
+    'Status',
+    'Run',
+    'Result',
+    'Validation',
+    'ResultFeature'
+]
 
 
 class Generation(models.Model):
@@ -126,7 +99,6 @@ class Plugin(models.Model):
 class Item(models.Model):
     name = models.CharField(max_length=255)
     args = models.CharField(max_length=255)
-    group = models.ForeignKey('ResultGroupNew', null=True, blank=True, on_delete=models.SET_NULL)
 
     plugin = models.ForeignKey(Plugin, null=True, blank=True, on_delete=models.CASCADE)
     scenario = models.ForeignKey('TestScenario', null=True, blank=True, on_delete=models.CASCADE)
@@ -292,8 +264,11 @@ class Result(DiffMixin, models.Model):
     _changed = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
-        if self.pk is not None:
+        skip_stats_update = kwargs.pop('skip_stats_update', False)
+
+        if self.pk is not None and not skip_stats_update:
             # if it is not the first save
+            # and statuses should be updated
             val = self.validation
             cols = self.get_changed_columns()
             if 'status_id' in cols:
@@ -310,6 +285,7 @@ class Result(DiffMixin, models.Model):
                         val.set_by_status(old_status, results_with_old_status)
                         val.set_by_status(new_status, results_with_new_status)
                         val.save()
+
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -333,27 +309,6 @@ class Result(DiffMixin, models.Model):
                 return False
         return True
 
-
-class ResultGroup(models.Model):
-    name = models.CharField(max_length=255)
-    mask = models.CharField(max_length=255, null=True, blank=True)
-    alt_name = models.CharField(max_length=255, null=True, blank=True)
-    category = models.CharField(max_length=255, null=True, blank=True)
-
-
-class ResultGroupNew(models.Model):
-    name = models.CharField(max_length=255)
-    alt_name = models.CharField(max_length=255, null=True, blank=True)
-    category = models.CharField(max_length=255, null=True, blank=True)
-
-    class Meta:
-        verbose_name = 'Result Group'
-        verbose_name_plural = 'Result Groups'
-
-
-class ResultGroupMask(models.Model):
-    group = models.ForeignKey(ResultGroupNew, on_delete=models.CASCADE, related_query_name='group_mask')
-    mask = models.CharField(max_length=255)
 
 @dataclass
 class ValidationStats:
@@ -493,147 +448,3 @@ class Validation(models.Model):
     def __str__(self):
         return self.name
 
-
-class Action(models.Model):  # working functional, example: best, last, compare reports
-    name = models.CharField(max_length=255, default='compare')
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=['name'],
-                name='unique_action_name'
-            )
-        ]
-
-
-class Milestone(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-
-class Feature(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-
-class TestScenario(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-
-class FeatureMappingRule(models.Model):
-    milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE)
-    feature = models.ForeignKey(Feature, on_delete=models.CASCADE)
-    scenario = models.ForeignKey(TestScenario, on_delete=models.CASCADE)
-    ids = models.TextField(null=True, blank=True)
-    total = models.PositiveIntegerField(null=True, blank=True, default=None)
-
-    mapping = models.ForeignKey('FeatureMapping', related_name='rules', null=True, blank=True, on_delete=models.CASCADE)
-
-    class Meta:
-        ordering = ['milestone__name']
-        constraints = [
-            UniqueConstraint(
-                fields=['milestone', 'feature', 'scenario', 'mapping', 'ids'],
-                name='unique_%(class)s_composite_constraint_with_ids'
-            ),
-            UniqueConstraint(
-                fields=['milestone', 'feature', 'scenario', 'mapping'],
-                condition=Q(ids=None),
-                name='unique_%(class)s_composite_constraint_without_ids'
-            )
-        ]
-
-
-class FeatureMapping(models.Model):
-    name = models.CharField(max_length=255)
-    owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
-
-    codec = models.ForeignKey('test_verifier.Codec', on_delete=models.CASCADE)
-    component = models.ForeignKey(Component, on_delete=models.CASCADE)
-    platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
-    os = models.ForeignKey(Os, on_delete=models.CASCADE)
-
-    public = models.BooleanField(default=False)
-    official = models.BooleanField(default=False)
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=['name', 'owner'],
-                name='unique_%(class)s_composite_constraint'
-            )
-        ]
-
-
-def xlsx() -> str:
-    root = Path(settings.MEDIA_ROOT)
-    return str(root / 'xlsx')
-
-
-class JobStatus(models.TextChoices):
-    PENDING = 'pending'
-    FAILED = 'failed'
-    DONE = 'done'
-
-
-class ImportJob(models.Model):
-    status = models.CharField(
-        max_length=7,
-        choices=JobStatus.choices,
-        default=JobStatus.PENDING
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
-    path = models.FilePathField(path=xlsx)
-    force_run = models.BooleanField(default=False)
-    force_item = models.BooleanField(default=False)
-    site_url = models.CharField(max_length=255)
-
-
-class MergeJob(models.Model):
-    status = models.CharField(
-        max_length=7,
-        choices=JobStatus.choices,
-        default=JobStatus.PENDING
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
-    validation_name = models.CharField(max_length=255)
-    notes = models.TextField(null=True, blank=True)
-    site_url = models.CharField(max_length=255)
-    strategy = models.CharField(max_length=255)
-
-
-class CloneJob(models.Model):
-    status = models.CharField(
-        max_length=7,
-        choices=JobStatus.choices,
-        default=JobStatus.PENDING
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    requester = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT)
-    validation_name = models.CharField(max_length=255)
-    notes = models.TextField(null=True, blank=True)
-    site_url = models.CharField(max_length=255)
-
-
-class Issues(models.Model):
-    objects = BulkUpdateOrCreateQuerySet.as_manager()
-    name = models.CharField(max_length=50, unique=True, primary_key=True)
-    self_url = models.CharField(max_length=255, null=True)
-    summary = models.CharField(max_length=255, null=True)
-    description = models.TextField(null=True, blank=True)
-    status = models.CharField(max_length=255, null=True)
-    updated = models.DateTimeField(null=True)
-    product = models.CharField(max_length=255, null=True)
-    closed_reason = models.CharField(max_length=255, null=True)
-    root_cause = models.TextField(null=True, blank=True)
-    oses = models.JSONField()
-    exposure = models.CharField(max_length=255, null=True)
-    components = models.JSONField()
-    platforms = models.JSONField()

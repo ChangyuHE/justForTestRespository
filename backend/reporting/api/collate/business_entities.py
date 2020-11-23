@@ -30,7 +30,10 @@ class AbstractRequestDTO(ABC):
     def _get_list(request, field_name, fallback_value=None):
         if fallback_value is None:
             fallback_value = []
-
+        # request.data is a dict when the it is comes from frontend
+        if isinstance(request.data, dict):
+            return request.data[field_name]
+        # request.data can be a QueryDict when it is comes from raw api call
         return request.data.getlist(field_name, fallback_value)
 
     @classmethod

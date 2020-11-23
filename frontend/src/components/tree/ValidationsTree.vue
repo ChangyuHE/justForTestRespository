@@ -84,15 +84,17 @@
                     <!-- UNCOMMENT WHEN REQUIRED -->
                     <!-- Validations actions buttons -->
                     <div class="mt-2 d-flex justify-end">
-                        <!-- <v-btn
+                        <v-btn
                             v-if="showValActions"
                             x-small
                             color="blue-grey lighten-4"
                             class="ml-1"
-                            :disabled="!(validations.length && validations.length != 1)"
+                            :disabled="!(validations.length && validations.length > 1 && selectedNodesInOneBranch)"
+                            v-show="showValActions"
+                            @click="showMergeDialog = true"
                         >
                             Merge
-                        </v-btn> -->
+                        </v-btn>
                         <v-btn
                             v-if="showValActions"
                             x-small
@@ -307,6 +309,13 @@
             @close="showCloneDialog = false"
         >
         </validation-clone>
+
+        <validation-merge
+            v-if="showMergeDialog"
+            :selectedNodes="selectedNodes"
+            @close="showMergeDialog = false"
+        >
+        </validation-merge>
     </div>
 </template>
 <script>
@@ -319,6 +328,7 @@
     import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
     import { alterHistory } from '@/utils/history-management.js'
     import ValidationClone from '@/components/tree/ValidationClone'
+    import ValidationMerge from '@/components/tree/ValidationMerge'
     import { getTextColorFromStatus } from '@/utils/styling.js'
 
     // get branch as list of nodes for clicked node
@@ -375,7 +385,8 @@
         name: 'ValidationsTree',
         components: {
             VJstree,
-            ValidationClone
+            ValidationClone,
+            ValidationMerge
         },
         data() {
             return {
@@ -394,6 +405,7 @@
                 showValActions: false,
                 usersData: [],
                 showCloneDialog: false,
+                showMergeDialog: false,
 
                 // date slider
                 enableDates: false,
@@ -427,16 +439,26 @@
             },
             // first of selected nodes
             selectedNode() {
-                let selectedNode = null
+                return this.selectedNodes.length ? this.selectedNodes[0] : null
+            },
+            selectedNodes() {
+                let selectedNodes = []
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                         node => {
-                            if (typeof node.model != 'undefined' && node.model.id == this.validations[0]) {
-                                selectedNode = node
+                            if (typeof node.model != 'undefined' && this.validations.includes(node.model.id)) {
+                                selectedNodes.push(node)
                             }
                         }
                 )
-                return selectedNode
+                return selectedNodes
             },
+            selectedNodesInOneBranch() {
+                if (!this.selectedNodes.length) return false
+
+                // make array of unique values from array of childs of all selected nodes
+                let allChilds = this._.flatten(this.selectedNodes.map(node => node.$parent.$children))
+                return this._.uniq(allChilds).length === this.selectedNodes[0].$parent.$children.length
+            }
         },
         watch: {
             'selectors.validation': function(value) {

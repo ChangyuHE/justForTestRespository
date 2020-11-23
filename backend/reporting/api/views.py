@@ -24,23 +24,19 @@ from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django_filters import rest_framework as django_filters
 
-
 from rest_framework import generics, status
 from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-
 import anytree.search
 from anytree import Node
 from anytree.exporter import JsonExporter
 
-
 from sqlalchemy import and_
 from sqlalchemy.orm import Query
 from sqlalchemy.sql import func
-
 
 from openpyxl.writer.excel import save_virtual_workbook
 
@@ -93,6 +89,7 @@ class ValidationsFilter(django_filters.FilterSet):
     class Meta:
         model = get_user_model()
         fields = ['validations']
+
 
 # Users block
 class UserList(LoggingMixin, generics.ListAPIView):
@@ -684,7 +681,8 @@ class ValidationsStructureView(LoggingMixin, APIView):
 
 
 class ReportBestView(LoggingMixin, APIView):
-    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None, *args, **kwargs) -> Response:
+    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None,
+            *args, **kwargs) -> Response:
         if fmt_pks is None:
             fmt_pks = []
         do_excel = False
@@ -785,7 +783,8 @@ class ReportBestView(LoggingMixin, APIView):
 
 
 class ReportLastView(LoggingMixin, APIView):
-    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None, *args, **kwargs) -> Response:
+    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None,
+            *args, **kwargs) -> Response:
         if fmt_pks is None:
             fmt_pks = []
         do_excel = False
@@ -1022,7 +1021,8 @@ def validation_statuses(validation_ids: List[int], fmt_pks: List[int]) -> pd.Dat
 
 
 class ReportCompareView(LoggingMixin, APIView):
-    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None, *args, **kwargs) -> Response:
+    def get(self, request: HttpRequest, val_pks: List[int], fmt_pks: Optional[List[int]] = None,
+            *args, **kwargs) -> Response:
         if fmt_pks is None:
             fmt_pks = []
 
@@ -1048,7 +1048,8 @@ class ReportCompareView(LoggingMixin, APIView):
             result_ids = result_ids[mask]
         elif hide_passed:
             # drop rows with only passed statuses
-            mask = statuses.apply(lambda row: (len(row.loc[val_pks].unique()) > 1 or 'Passed' not in row.loc[val_pks].unique()), axis=1)
+            mask = statuses.apply(
+                lambda row: (len(row.loc[val_pks].unique()) > 1 or 'Passed' not in row.loc[val_pks].unique()), axis=1)
             statuses = statuses[mask]
             result_ids = result_ids[mask]
 
@@ -1088,8 +1089,8 @@ class ExtraDataView(LoggingMixin, APIView):
                 datum['vinfo'] = {
                     'validation': val.name,
                     'platform': val.platform.short_name,
-                    'os':  val.os.name,
-                    'env':  val.env.name
+                    'os': val.os.name,
+                    'env': val.env.name
                 }
             else:
                 res = get_object_or_404(Result, pk=int(res_pk))
@@ -1098,8 +1099,8 @@ class ExtraDataView(LoggingMixin, APIView):
                 datum['vinfo'] = {
                     'validation': val.name,
                     'platform': val.platform.short_name,
-                    'os':  val.os.name,
-                    'env':  val.env.name
+                    'os': val.os.name,
+                    'env': val.env.name
                 }
                 additional_parameters = {
                     'avg_psnr': '',
@@ -1141,7 +1142,8 @@ class ExtraDataView(LoggingMixin, APIView):
         })
 
 
-def _calculate_metric_diff(extra_data: List[Dict]) -> List[Dict]:
+def _calculate_metric_diff(
+        extra_data: List[Dict[str, Dict[str, str]]]) -> List[Dict[str, Dict[str, str]]]:
     """
     Calculate difference for extra data view between numeric metrics
     :param extra_data: result data of all compared validations
@@ -1150,29 +1152,43 @@ def _calculate_metric_diff(extra_data: List[Dict]) -> List[Dict]:
     if len(extra_data) < 2:
         return extra_data
 
+    def _is_digit(value: str) -> bool:
+        if value.isdigit() or value.replace('.', '', 1).isdigit():
+            return True
+        return False
+
     metrics_key = 'additional_parameters'
-    compared_data = extra_data[0][metrics_key]  # first selected validation as a base for comparison of metrics
-    for ti_data in extra_data[1:]:
-        if metrics_key not in ti_data:
+    for i, extra in enumerate(extra_data[:-1]):
+        if metrics_key not in extra:
             continue
-        for metric in ti_data[metrics_key]:
-            m = ti_data[metrics_key][metric]
-            if m:
-                # prepare metrics for calc: change comma to float point/drop byte 'B' suffix for diff
-                compared_m = compared_data[metric].replace(',', '.').replace('B', '').strip()
-                m = m.replace(',', '.').replace('B', '').strip()
-                if m.isdigit() or m.replace('.', '', 1).isdigit():
-                    diff: float = float(m) - float(compared_m)
-                    if diff == 0.0:
-                        diff: str = ''
-                    elif diff.is_integer():
-                        diff: int = int(diff)
-                        diff: str = f' ({diff:+})'
-                    else:
-                        diff: str = f' ({diff:+.6f})'
-                        # remove trailing zeroes for floating values if exist
-                        diff: str = re.sub(r'(0+)\)$', ')', diff)
-                    ti_data[metrics_key][metric] += diff
+        # first filled selected validation as a base for comparison of metrics
+        compared_data = extra_data[i][metrics_key]
+
+        # next others full-filled to compare
+        for ti_data in extra_data[i + 1:]:
+            if metrics_key not in ti_data:
+                continue
+            for metric, m in ti_data[metrics_key].items():
+                if m and metric in compared_data:
+                    # prepare metrics for calc:
+                    # change comma to float point / drop byte 'B' suffix for diff
+                    compared_m = compared_data[metric].replace(',', '.').replace('B', '').strip()
+                    m = m.replace(',', '.').replace('B', '').strip()
+                    if _is_digit(m) and _is_digit(compared_m):
+                        diff: float = float(m) - float(compared_m)
+                        if diff == 0.0:
+                            diff: str = ''
+                        elif diff.is_integer():
+                            diff: int = int(diff)
+                            diff: str = f' ({diff:+})'
+                        else:
+                            diff: str = f' ({diff:+.6f})'
+                            # remove trailing zeroes for floating values if exist
+                            diff: str = re.sub(r'(0+)\)$', ')', diff)
+                        ti_data[metrics_key][metric] += diff
+        if compared_data:
+            break
+
     return extra_data
 
 
@@ -1456,7 +1472,8 @@ class ReportIndicatorView(APIView):
             mapping_data = defaultdict(dict)
             mapping_total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': 0, 'total': 0}
 
-            for milestone, scenario_id, feature, ids, total_value in FeatureMappingRule.objects.filter(mapping_id=mapping.id) \
+            for milestone, scenario_id, feature, ids, total_value in FeatureMappingRule.objects \
+                    .filter(mapping_id=mapping.id) \
                     .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids', 'total'):
                 if mode == 'combined':
                     feature_name = f'{feature} ({mapping.codec.name})'
@@ -1466,7 +1483,8 @@ class ReportIndicatorView(APIView):
                 if ids is not None:
                     total_value = len(ids.split(','))
 
-                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': total_value, 'total': total_value}
+                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0,
+                                                         'not_run': total_value, 'total': total_value}
                 mapping_total['not_run'] += total_value
                 mapping_total['total'] += total_value
 
@@ -1476,7 +1494,8 @@ class ReportIndicatorView(APIView):
                             .values_list('status__test_status', flat=True):
                         update_status(mapping_data[milestone][feature_name], mapping_total, status)
                 else:
-                    for status in results.filter(item__scenario_id=scenario_id).values_list('status__test_status', flat=True):
+                    for status in results.filter(item__scenario_id=scenario_id).values_list('status__test_status',
+                                                                                            flat=True):
                         update_status(mapping_data[milestone][feature_name], mapping_total, status)
 
             if mode == 'single' and do_excel:
@@ -1623,6 +1642,8 @@ class ComponentView(LoggingMixin, generics.ListAPIView):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filterset_class = ComponentFilter
+
+
 class ReportIssuesView(LoggingMixin, APIView):
     def get(self, request: HttpRequest, pk: int, *args, **kwargs):
         do_excel = False
@@ -1673,4 +1694,3 @@ class ReportIssuesView(LoggingMixin, APIView):
         response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
-

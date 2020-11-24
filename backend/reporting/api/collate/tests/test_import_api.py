@@ -188,6 +188,25 @@ class ImportFileIntegrationTest(DramatiqFixture):
                          f'Expected HTTP 200 Ok, actual {response.status_code} {response.data}')
         self.assertImportSuccess(response.data)
 
+    def test_replace_unknown_os_success(self):
+        self.set_file('import_ok_unknown_os.json')
+        client = Client()
+
+        response = client.post(reverse('collate:import'), self.request)
+        self.assertEqual(response.status_code, 200,
+                         f'Expected HTTP 200, actual {response.status_code} {response.data}')
+        self.assertEquals(response.data.get('success', None), True,
+                          f'Expected import success, actual {response.status_code} {response.data}')
+
+        self.assertImportSuccess(response.data)
+
+    def test_replace_unknown_os_failure(self):
+        self.set_file('import_err_unknown_os.json')
+        client = Client()
+
+        response = client.post(reverse('collate:import'), self.request)
+        self.assertContains(response, 'ERR_AMBIGUOUS_COLUMN', status_code=422)
+
 
 class ImportDatetimeParserTest(DramatiqFixture):
     def test_invalid_date(self):

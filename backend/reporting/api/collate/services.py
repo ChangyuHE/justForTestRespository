@@ -70,6 +70,9 @@ def verify_file(context):
     queryset_cache.clear()
     new_objects_ids.clear()
 
+    # Replace 'unknown' Os if possible
+    replace_unknown_os(context)
+
     # Create Validation entity
     if not _build_validation(context):
         # Resume file content validation to collect all other possible warnings
@@ -104,6 +107,37 @@ def verify_file(context):
 
             log.error(message)
 
+def replace_unknown_os(context):
+    ''' Sometimes Os column may contain 'unknown' value amongst valid Os values.
+        If only one kind of known Os is presented, the 'unknown' values should be
+        changed to that value.
+    '''
+
+    is_unknown_os = lambda name: name.strip().lower() == 'unknown'
+    os_column_index = context.mapping.column_mapping['osVersion']
+    distinct_values = set(context.mapping.get_column_values(index=os_column_index))
+
+    # Only one distinct Os name is present, so Os replacement is not required.
+    if len(distinct_values) == 1:
+        return
+
+    # Filter out 'unknown' Os names
+    distinct_values = [x for x in distinct_values if not is_unknown_os(x)]
+
+    # All Oses are unknown or several non-unknown Oses present in table,
+    # so fall back to default behavior.
+    if len(distinct_values) != 1:
+        return
+
+    known_os = distinct_values[0]
+
+    for row in non_empty_row(context.mapping.sheet.rows):
+        os_cell = row[os_column_index]
+
+        if (os_cell is not None
+                and os_cell.value is not None
+                and is_unknown_os(os_cell.value)):
+            os_cell.value = known_os
 
 def _find_existing_entity(reference):
     try:

@@ -17,6 +17,7 @@ from api.collate.business_entities import ValidationDTO
 from api.collate.excel_utils import open_excel_file
 from api.collate.excel_utils import non_empty_row
 from api.collate.services import RecordBuilder
+from api.collate.services import replace_unknown_os
 from reporting.settings import production, AUTH_USER_MODEL
 
 log = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]]
 
         # Get necessary data from workbook
         context.mapping.set_from_workbook(workbook, outcome)
+        replace_unknown_os(context)
         changes = Changes()
         rows = context.mapping.sheet.rows
         next(rows)

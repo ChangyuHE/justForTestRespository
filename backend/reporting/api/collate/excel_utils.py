@@ -73,11 +73,17 @@ class SheetMapping:
         self._notify_missing_columns(outcome)
         return False
 
-    def get_column_values(self, column_name):
+    def get_column_values(self, column_name=None, index=None):
+        if column_name == index == None:
+            return []
+
         rows = self.sheet.rows
         next(rows)
 
-        return [row[self.column_mapping[column_name]].value for row in non_empty_row(rows)]
+        if index is None:
+            index = self.column_mapping[column_name]
+
+        return [row[index].value for row in non_empty_row(rows)]
 
     def _notify_missing_columns(self, outcome):
         existing_columns = set(self.column_mapping.keys())

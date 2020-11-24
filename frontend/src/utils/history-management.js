@@ -13,7 +13,7 @@ function composeQueryString(params, toDelete) {
 
     if (!_.isEqual(initial, merged)) {
         // save url params to store
-        store.commit('SET_URL_PARAMS', merged)
+        store.dispatch('setUrlParams', merged)
         // return value to write to history
         return qs.stringify(merged, {arrayFormat: 'comma'})
     } else {

@@ -38,35 +38,17 @@
             </v-btn>
             <v-spacer></v-spacer>
 
-            <v-dialog
-                v-model="userDialog"
-                max-width="50%"
+            <!-- User button -->
+            <v-btn
+                text
+                class="mr-n2 px-2"
+                style="text-transform: none"
+                @click="usedCardRequired = true"
             >
-                <template v-slot:activator="{ on }">
-                    <v-btn text class="mr-n2 px-2" style="text-transform: none">
-                    <!-- <v-btn v-on="on" text class="mr-n2 px-2" style="text-transform: none"> -->
-                        <v-icon title="Account data">mdi-badge-account-horizontal-outline</v-icon>
-                        <span class="ml-2">{{ userName }}</span>
-                    </v-btn>
-                </template>
-
-                <v-card>
-                    <v-card-title>
-                        User data placeholder
-                    </v-card-title>
-                    <v-card-text class="d-flex flex-column">
-                        <span v-for="(value, key) in userData" :key="key"
-                            class="subtitle-1"
-                        >
-                            <b>{{ key }}</b>: {{ value }}
-                        </span>
-                    </v-card-text>
-                    <v-card-actions>
-                        <v-spacer></v-spacer>
-                        <v-btn color="red" text @click="userDialog = false">Close</v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-dialog>
+                <v-icon title="User account data">mdi-badge-account-horizontal-outline</v-icon>
+                <span class="ml-2">{{ userName }}</span>
+            </v-btn>
+            <user-card v-if="usedCardRequired" @close="usedCardRequired = false"></user-card>
         </v-app-bar>
 
         <v-main>
@@ -93,15 +75,20 @@
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
     import { alterHistory } from '@/utils/history-management.js'
+    import userCard from '@/components/UserCard.vue'
 
     import { mapState, mapGetters } from 'vuex'
 
     export default {
+        components: {
+            userCard
+        },
         data() {
             return {
                 drawer: false,
                 userDialog: false,
                 showScroll: false,
+                usedCardRequired: false,
                 routeDataMap: [
                     { name: 'home', show: 'Validations' },
                     { name: 'import', show: 'Import' },

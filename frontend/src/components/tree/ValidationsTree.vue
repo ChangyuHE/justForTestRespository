@@ -46,10 +46,8 @@
             <v-spacer></v-spacer>
             <!-- Clean and actions buttons -->
             <div>
-                <!-- UNCOMMENT WHEN REQUIRED -->
                 <div style="position: fixed; margin-left: -295px; z-index: 1">
                     <div class="d-flex justify-end">
-                        <!-- UNCOMMENT WHEN REQUIRED -->
                         <!-- Validations actions show/hide button -->
                         <v-btn
                             text x-small
@@ -84,38 +82,46 @@
                     <!-- UNCOMMENT WHEN REQUIRED -->
                     <!-- Validations actions buttons -->
                     <div class="mt-2 d-flex justify-end">
-                        <v-btn
-                            v-if="showValActions"
-                            x-small
-                            color="blue-grey lighten-4"
-                            class="ml-1"
+                        <template v-if="showValActions">
+                            <v-btn
+                                x-small
+                                color="blue-grey lighten-4"
+                                class="ml-1"
+                                :disabled="!badgeFilterCount && !enableDates"
+                                @click="userFiltersDialog = true"
+                            >
+                                Save filters
+                            </v-btn>
+                            <v-btn
+                                x-small
+                                color="blue-grey lighten-4"
+                                class="ml-1"
                             :disabled="!(validations.length && validations.length > 1 && selectedNodesInOneBranch)"
                             v-show="showValActions"
                             @click="showMergeDialog = true"
-                        >
-                            Merge
-                        </v-btn>
-                        <v-btn
-                            v-if="showValActions"
-                            x-small
-                            color="blue-grey lighten-4"
-                            class="ml-1"
-                            :disabled="!(validations.length && validations.length == 1)"
-                            v-show="showValActions"
-                            @click="showCloneDialog = true"
-                        >
-                            Clone
-                        </v-btn>
-                        <!-- <v-btn
-                            v-if="showValActions"
-                            x-small
-                            color="blue-grey lighten-4"
-                            class="ml-1"
-                            :disabled="!(validations.length && validations.length == 1)"
-                            v-show="showValActions"
-                        >
-                            Lock
-                        </v-btn> -->
+                            >
+                                Merge
+                            </v-btn>
+                            <v-btn
+                                x-small
+                                color="blue-grey lighten-4"
+                                class="ml-1"
+                                :disabled="!(validations.length && validations.length == 1)"
+                                v-show="showValActions"
+                                @click="showCloneDialog = true"
+                            >
+                                Clone
+                            </v-btn>
+                            <!-- <v-btn
+                                x-small
+                                color="blue-grey lighten-4"
+                                class="ml-1"
+                                :disabled="!(validations.length && validations.length == 1)"
+                                v-show="showValActions"
+                            >
+                                Lock
+                            </v-btn> -->
+                        </template>
                     </div>
                 </div>
             </div>
@@ -127,7 +133,7 @@
                 <v-col cols="6" class="py-0">
                     <!-- Validations searchbox -->
                     <v-text-field
-                        v-debounce:500ms="onValidatonFilter"
+                        v-debounce:500ms="filterByValidation"
                         v-model="selectors.validation"
                         color="blue-grey" class="ml-4 my-3 pt-1 filter-validation"
                         clearable dense hide-details
@@ -152,12 +158,11 @@
                         item-color="blue-grey"
                         clear-icon="mdi-close"
                         item-text="name"
-                        item-value="id"
-                        multiple clearable small-chips deletable-chips hide-details
+                        multiple clearable small-chips deletable-chips hide-details return-object
                         :menu-props="{closeOnContentClick: true}"
                         :items="usersData"
-                        v-model="selectors.users"
-                        @change="onSelectorChange($event, 'users')"
+                        v-model="selectors.user"
+                        @change="filterBySelector($event, 'user')"
                     >
                         <template v-slot:label>
                             <span class="blue-grey--text text--darken-2">User</span>
@@ -166,7 +171,7 @@
                     <v-btn-toggle
                         class="align-center" color="teal darken-1"
                         v-model="showMyValidations"
-                        @change="onMyValidationsChange"
+                        @change="filterMyValidations"
                     >
                         <v-btn :value="true" x-small>my</v-btn>
                     </v-btn-toggle>
@@ -180,50 +185,15 @@
                         color="blue-grey"
                         item-color="blue-grey"
                         clear-icon="mdi-close"
+                        :item-text="filterItemText(selector.level)"
                         return-object multiple clearable small-chips deletable-chips hide-details
                         :menu-props="{closeOnContentClick: true}"
                         :items="selector.items"
                         v-model="selectors[selector.level]"
-                        @change="onSelectorChange($event, selector.level)"
+                        @change="filterBySelector($event, selector.level)"
                     >
                         <template v-slot:label>
                             <span class="blue-grey--text text--darken-2" v-text="selector.label"></span>
-                        </template>
-                    </v-autocomplete>
-                </v-col>
-                <v-col cols="6" class="py-0 d-flex">
-                    <v-autocomplete class="ml-4 my-2 pt-1 filter-select"
-                        color="blue-grey"
-                        item-color="blue-grey"
-                        clear-icon="mdi-close"
-                        item-text="name"
-                        item-value="id"
-                        multiple clearable small-chips deletable-chips hide-details
-                        :menu-props="{closeOnContentClick: true}"
-                        :items="components"
-                        v-model="selectors.components"
-                        @change="onSelectorChange($event, 'components')"
-                    >
-                        <template v-slot:label>
-                            <span class="blue-grey--text text--darken-2">Component</span>
-                        </template>
-                    </v-autocomplete>
-                </v-col>
-                <v-col cols="6" class="py-0 d-flex">
-                    <v-autocomplete class="ml-4 my-2 pt-1 filter-select"
-                        color="blue-grey"
-                        item-color="blue-grey"
-                        clear-icon="mdi-close"
-                        item-text="name"
-                        item-value="id"
-                        multiple clearable small-chips deletable-chips hide-details
-                        :menu-props="{closeOnContentClick: true}"
-                        :items="features"
-                        v-model="selectors.features"
-                        @change="onSelectorChange($event, 'features')"
-                    >
-                        <template v-slot:label>
-                            <span class="blue-grey--text text--darken-2">Feature</span>
                         </template>
                     </v-autocomplete>
                 </v-col>
@@ -257,7 +227,7 @@
                     <v-btn-toggle
                         class="ml-2 mt-2" color="teal darken-1"
                         v-model="sliderButtonValue"
-                        @change="onSliderButtonClick"
+                        @change="setDateRange"
                     >
                         <v-btn small v-for="b_item in sliderButtons" :key="b_item.months" :disabled="!enableDates">
                             {{ b_item.text }}
@@ -307,29 +277,38 @@
             v-if="showCloneDialog"
             :selectedNode="selectedNode"
             @close="showCloneDialog = false"
-        >
-        </validation-clone>
+        ></validation-clone>
 
         <validation-merge
             v-if="showMergeDialog"
             :selectedNodes="selectedNodes"
             @close="showMergeDialog = false"
-        >
-        </validation-merge>
+        ></validation-merge>
+
+        <!-- Save filters to profile as user default -->
+        <filters-save-dialog v-if="userFiltersDialog"
+            :selectors="selectors"
+            :dates="{enabled: enableDates, sliderRange: sliderValue, sliderButton: sliderButtonValue}"
+            @close="userFiltersDialog = false">
+        </filters-save-dialog>
     </div>
 </template>
 <script>
-    import { mapState } from 'vuex'
+    import { mapState, mapGetters } from 'vuex'
     import { EventBus } from '@/event-bus.js'
 
     import qs from 'query-string'
-    import VJstree from 'vue-jstree'
     import server from '@/server.js'
-    import { monthData, monthLabels, lastDaysData, maxMonthsShown } from './dates.js'
+    import { monthLabels, lastDaysData, maxMonthsShown, sliderButtons, dateStart, dateEnd } from './dates.js'
     import { alterHistory } from '@/utils/history-management.js'
+    import { getTextColorFromStatus } from '@/utils/styling.js'
+    import rules from '@/utils/form-rules.js'
+    import { isIDsFilter, filterItemText } from './common.js'
+
+    import VJstree from 'vue-jstree'
+    import filtersSaveDialog from './TheFiltersSaveDialog.vue'
     import ValidationClone from '@/components/tree/ValidationClone'
     import ValidationMerge from '@/components/tree/ValidationMerge'
-    import { getTextColorFromStatus } from '@/utils/styling.js'
 
     // get branch as list of nodes for clicked node
     function getBranchForLeaf(node) {
@@ -374,11 +353,22 @@
         }
     }
 
-    function isStringFilter(name) {
-        return ['validation'].includes(name)
-    }
-    function isIDsFilter(name) {
-        return ['users', 'components', 'features'].includes(name)
+    // push Filters params to url or delete if empty
+    function addFiltersToUrl(value, level) {
+        let key = `treeFilter-${level}`
+        if (isIDsFilter(level)) {
+            if (value === null || !value.length) {
+                alterHistory('push', {}, [key])
+            } else if (value.length) {
+                alterHistory('push', {[key]: value.map(e => e.id)})
+            }
+        } else {
+            if (value) {
+                alterHistory('push', {[key]: value})
+            } else {
+                alterHistory('push', {}, [key])
+            }
+        }
     }
 
     export default {
@@ -386,7 +376,8 @@
         components: {
             VJstree,
             ValidationClone,
-            ValidationMerge
+            ValidationMerge,
+	    filtersSaveDialog
         },
         data() {
             return {
@@ -394,9 +385,9 @@
                 data: [],
 
                 // filtering
-                selectors: {validation: '', users: [], components: [], features: []},
+                selectors: {validation: '', user: [], gen: [], os: [], os_group: [], platform: [], component: [], feature: []},
                 showMyValidations: undefined,
-                // objectsData: {},
+
                 treeStructure: null,
                 treeFilterLoading: false,
                 showFilters: undefined,
@@ -412,27 +403,20 @@
                 showDateSlider: undefined,
                 sliderValue: [6, 11],
                 ticksLabels: monthLabels,
-                sliderButtons: [
-                    {'months': 0, 'text': '1 m'},
-                    {'months': 2, 'text': '3 m'},
-                    {'months': 5, 'text': '6 m'},
-                    {'months': 11, 'text': '1 y'},
-                ],
+                sliderButtons: sliderButtons,
                 sliderButtonValue: null,
 
-                // components and features
-                components: [],
-                features: [],
+                userFiltersDialog: false
             }
         },
         computed: {
             ...mapState(['userData']),
             ...mapState('tree', ['treeLoading', 'validations']),
             dateStart() {
-                return monthData[this.sliderValue[0]] + '-1'
+                return dateStart(this.sliderValue[0])
             },
             dateEnd() {
-                return monthData[this.sliderValue[1]] + '-' + lastDaysData[this.sliderValue[1]]
+                return dateEnd(this.sliderValue[1])
             },
             disableClearFilters() {
                 return !this.enableDates && this._.every(this._.values(this.selectors), this._.isEmpty)
@@ -461,16 +445,20 @@
             }
         },
         watch: {
+            /**
+             * watch for validation filter change to null
+             * required due to debounce in text field is not fired in case of field clear by cross click)
+             */
             'selectors.validation': function(value) {
                 if (!value && this.badgeFilterCount > 0) {
                     this.badgeFilterCount--
-                    alterHistory('push', {}, ['treeFilter-validation'])
+                    addFiltersToUrl(this.selectors.validation, 'validation')
                     this.doFilter()
                 }
             },
-            'selectors.users': function(value) {
-                if (value && value.length) {
-                    if (value.includes(this.userData.id)) {
+            'selectors.user': function(value) {
+                if (!this._.isEmpty(value)) {
+                    if (this._.map(value, 'id').includes(this.userData.id)) {
                         this.showMyValidations = true
                     } else {
                         this.showMyValidations = undefined
@@ -498,52 +486,20 @@
             }
         },
         methods: {
-            onMyValidationsChange(value) {
+            filterItemText(model) {
+                return filterItemText(model)
+            },
+            filterMyValidations(value) {
                 if (value) {
-                    if ('users' in this.selectors) {
-                        if (!this.selectors.users.includes(this.userData.id)) {
-                            let users = this._.clone(this.selectors.users)
-                            users.unshift(this.userData.id)
-                            this.selectors.users = users
-                        }
-                    } else {
-                        this.selectors.users = [this.userData.id]
-                    }
+                    this.selectors.user.unshift(this.usersData.find(e => e.id == this.userData.id))
                 } else {
-                    let users = this._.clone(this.selectors.users)
-                    this._.pull(users, this.userData.id)
-                    this.selectors.users = users
+                    this.selectors.user = this.selectors.user.filter(e => this.userData.id !== e.id)
                 }
-                this.addFiltersToUrl(this.selectors.users, 'users')
+                addFiltersToUrl(this.selectors.user, 'user')
                 this.doFilter()
             },
-            // set no validations and branches in store
-            clearValidations() {
-                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] })
-            },
-            // wipe out all filters
-            clearFilters() {
-                // date
-                this.enableDates = false
-                this.sliderButtonValue = null
-                this.sliderValue = [6, 11]
-                // tree
-                this.selectors = {validation: '', users: [], components: [], features: []}
-                // close panels
-                this.showFilters = undefined
-                this.showDateSlider = undefined
-                // clear URL params
-                alterHistory(
-                    'push',
-                    {},
-                    ['treeDates-button', 'treeDates-range',
-                     'treeFilter-gen', 'treeFilter-os', 'treeFilter-os_group',
-                     'treeFilter-platform', 'treeFilter-validation',
-                     'treeFilter-users', 'treeFilter-components', 'treeFilter-features']
-                )
-            },
             // set range according to clicked group button
-            onSliderButtonClick() {
+            setDateRange() {
                 if (this.sliderButtonValue !== undefined) {
                     let rangeL = this.sliderButtons[this.sliderButtonValue]['months']
                     let start = maxMonthsShown-1-rangeL
@@ -553,30 +509,13 @@
                     alterHistory('push', {}, ['treeDates-button'])
                 }
             },
-            onSelectorChange(selected, level) {
-                this.addFiltersToUrl(selected, level)
+            filterBySelector(selected, level) {
+                addFiltersToUrl(selected, level)
                 this.doFilter()
             },
-            onValidatonFilter() {
-                this.addFiltersToUrl(this.selectors.validation, 'validation')
+            filterByValidation() {
+                addFiltersToUrl(this.selectors.validation, 'validation')
                 this.doFilter()
-            },
-            // push Filters params to url
-            addFiltersToUrl(value, level) {
-                let key = `treeFilter-${level}`
-                if (typeof value == 'string') {
-                    if (value) {
-                        alterHistory('push', {[key]: value})
-                    } else {
-                        alterHistory('push', {}, [key])
-                    }
-                } else {
-                    if (value === null || !value.length) {
-                        alterHistory('push', {}, [key])
-                    } else if (value.length) {
-                        alterHistory('push', {[key]: value})
-                    }
-                }
             },
             // push Dates params to url
             addDatesToUrl(sliderValues, buttonValue) {
@@ -609,11 +548,11 @@
                 // fill Filters data to send
                 for (let [k, v] of Object.entries(this.selectors)) {
                     if (!this._.isEmpty(v)) {
-                        if (!isStringFilter(k)) {
-                            data.push({'level': k, 'text': v})
+                        if (isIDsFilter(k)) {
+                            data.push({'level': k, 'value': this._.map(v, 'id')})
                             this.badgeFilterCount += v.length
                         } else {
-                            data.push({'level': k, 'text': v})
+                            data.push({'level': k, 'value': v})
                             this.badgeFilterCount++
                         }
                     }
@@ -704,24 +643,9 @@
                 return this._.map(branches, b => { return this._.map(b, n => n.model.text_flat ).reverse() })
             },
             /**
-             * Uncheck all validations in tree and update url query
-             */
-            clearTree() {
-                if (this.$refs.tree !== undefined) {
-                    this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
-                        node => {
-                            if (typeof node.model != 'undefined' && node.model.selected) {
-                                node.model.selected = false
-                            }
-                        }
-                    )
-                    alterHistory('push', {}, ['selected'])
-                }
-            },
-            /**
              * Get params from URL and set validations and branches
              */
-            passURLParamsToStore() {
+            validationsAndBranchestoStore() {
                 // parse URL
                 let parsed = qs.parse(location.search, {arrayFormat: 'comma'})
                 if (this._.isEmpty(parsed)) {
@@ -772,21 +696,26 @@
                 }
             },
             fillSelector(level, value) {
-                if (this._.isEmpty(value)) {
-                    return
-                }
-                let selected = value
-                if (!isStringFilter(level)) {
-                    if (typeof value == 'object') {
-                        selected = this._.values(value)
-                    } else {
-                        selected = [value]
-                    }
-                }
                 if (isIDsFilter(level)) {
-                    selected = this._.map(selected, this._.toNumber)
+                    let selectedIds
+                    if (typeof value == 'object') {
+                        selectedIds = this._.values(value)
+                    } else {
+                        selectedIds = [value]
+                    }
+                    selectedIds = this._.map(selectedIds, this._.toNumber)
+                    // get available objects for our level
+                    let levelObjects
+                    if (level !== 'user') {
+                        levelObjects = this.treeStructure.find(e => e.level == level).items
+                    } else {
+                        levelObjects = this.usersData
+                    }
+                    // filter them by selected ids
+                    this.selectors[level] = levelObjects.filter(e => selectedIds.includes(e.id))
+                } else {
+                    this.selectors[level] = value
                 }
-                this.selectors[level] = selected
             },
             fillDate(key, value) {
                 if (this._.isEmpty(value)) {
@@ -797,6 +726,47 @@
                 } else if (key == 'button') {
                     this.sliderButtonValue = +value
                 }
+            },
+            /**
+             * Clear methods
+             */
+            // Uncheck all validations in tree and update url query
+            clearTree() {
+                if (this.$refs.tree !== undefined) {
+                    this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                        node => {
+                            if (typeof node.model != 'undefined' && node.model.selected) {
+                                node.model.selected = false
+                            }
+                        }
+                    )
+                    alterHistory('push', {}, ['selected'])
+                }
+            },
+            // Set no validations and branches in store
+            clearValidations() {
+                this.$store.dispatch('tree/setSelected', { validations: [], branches: [] })
+            },
+            // Wipe out all filters
+            clearFilters() {
+                // date
+                this.enableDates = false
+                this.sliderButtonValue = null
+                this.sliderValue = [6, 11]
+                // tree
+                this.selectors = {validation: '', user: [], gen: [], os: [], os_group: [], platform: [], component: [], feature: []}
+                // close panels
+                this.showFilters = undefined
+                this.showDateSlider = undefined
+                // clear URL params
+                alterHistory(
+                    'push',
+                    {},
+                    ['treeDates-button', 'treeDates-range',
+                     'treeFilter-gen', 'treeFilter-os', 'treeFilter-os_group',
+                     'treeFilter-platform', 'treeFilter-validation',
+                     'treeFilter-user', 'treeFilter-component', 'treeFilter-feature']
+                )
             },
             getStatusColor(status) {
                 return getTextColorFromStatus(status)
@@ -861,8 +831,10 @@
                             })
                         }
                         this.$nextTick(() => {
-                            this.passURLParamsToStore()
+                            this.validationsAndBranchestoStore()
                             this.applyUrlFilterParams()
+                            // set url params to store
+                            this.$store.dispatch('setUrlParams', qs.parse(location.search, {arrayFormat: 'comma'}))
                         })
                     })
                     .catch(error => {
@@ -876,7 +848,7 @@
             }
         },
         beforeCreate() {
-            // Variants of nodes values for filters
+            // Get users with validations
             let url = 'api/users/?validations=true'
             server
                 .get(url)
@@ -894,61 +866,38 @@
                         this.$toasted.global.alert_error(error)
                     }
                 })
-                .finally(() => {
-                    this.initialTreeLoad()
-                })
 
-            // Variants of nodes values for filters
+            // Variants of filters dropdowns
             url = 'api/validations/structure'
             server
                 .get(url)
                 .then(response => {
                     this.treeStructure = response.data
+                    return server.get('api/component/?active=True')
                 })
-                .catch(error => {
-                    if (error.handleGlobally) {
-                        error.handleGlobally('Failed to get validations tree available node data', url)
-                    } else {
-                        this.$toasted.global.alert_error(error)
-                    }
-                })
-
-            // Load components
-            url = 'api/component/?active=True'
-            server
-                .get(url)
                 .then(response => {
-                    this.components = response.data
+                    this.treeStructure.push({items: response.data, label: 'Component', level: 'component'})
+                    return server.get('api/result_feature/?active=True')
                 })
-                .catch(error => {
-                    if (error.handleGlobally) {
-                        error.handleGlobally('Failed to get Components data', url)
-                    } else {
-                        this.$toasted.global.alert_error(error)
-                    }
-                })
-
-            // Load Features
-            url = 'api/result_feature/?active=True'
-            server
-                .get(url)
                 .then(response => {
-                    this.features = response.data
+                    this.treeStructure.push({items: response.data, label: 'Feature', level: 'feature'})
                 })
                 .catch(error => {
                     if (error.handleGlobally) {
-                        error.handleGlobally('Failed to get Features data', url)
+                        error.handleGlobally('Failed to get validations tree filters available items', url)
                     } else {
                         this.$toasted.global.alert_error(error)
                     }
                 })
-
+                .finally(() => {
+                    this.initialTreeLoad()
+                })
         },
         mounted() {
             EventBus.$on('update-counters', payload => {
                 this.updateStatusCounters(payload.old, payload.new, payload.validation)
             })
-         }
+        }
     }
 </script>
 <style>

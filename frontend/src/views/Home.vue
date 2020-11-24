@@ -118,6 +118,8 @@
 
     import { mapState, mapGetters } from 'vuex'
     import { alterHistory } from '@/utils/history-management.js'
+    import { isIDsFilter } from '@/components/tree/common.js'
+    import qs from 'query-string'
 
     export default {
         components: {
@@ -141,8 +143,10 @@
             }
         },
         computed: {
+            ...mapState(['urlParams']),
             ...mapState('tree', ['validations', 'treeLoading']),
             ...mapState('reports', ['showReport', 'reportLoading', 'reportType']),
+            ...mapGetters(['activeProfile']),
             ...mapGetters('tree', ['branches']),
             reportName() {
                 return `${this.reportType}-report`
@@ -200,8 +204,27 @@
         },
         created() {
             // get report type from query string
-            if (this.$route.query.rtype)
+            if (this.$route.query.rtype) {
                 this.reportType = this.$route.query.rtype
+            }
+
+            // Apply filters from active profile
+            if (this._.isEmpty(qs.parse(location.search)) && this._.isEmpty(this.urlParams)) {
+                // get values from active profile
+                let params = {}
+                this._.each(this.activeProfile.data, (obj, key) => {
+                    let name = key.split('-')[1]
+                    if (isIDsFilter(name)) {
+                        params[key] = this._.map(obj.value, 'id')
+                    } else {
+                        params[key] = obj.value
+                    }
+                })
+                if (!this._.isEmpty(params)) {
+                    alterHistory('replace', params)
+                    this.$toasted.info(`Default filters applied from active "${this.activeProfile.name}" profile`)
+                }
+            }
         }
     }
 </script>

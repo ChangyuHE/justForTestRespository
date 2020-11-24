@@ -20,12 +20,11 @@ export default new Vuex.Store({
         urlParams: {}
     },
     getters: {
-        importErrors: (state) => state.importErrors,
-        userName: (state) => state.userData.username
+        importErrors: state => state.importErrors,
+        userName: state => state.userData.username,
+        activeProfile: state => state.userData.profiles.find(p => p.active === true)
     },
     mutations: {
-        SET_URL_PARAMS: (state, payload) => state.urlParams = payload,
-        SET_IMPORT_ERRORS: (state, payload) => state.importErrors = payload,
         DELETE_IMPORT_ERROR: (state, {id, priority, errorCode}) => {
             state.importErrors[priority][errorCode] = state.importErrors[priority][errorCode].filter(e => { return e.ID != id })
         },
@@ -42,11 +41,11 @@ export default new Vuex.Store({
                     Vue.delete(state.importErrors, priority)
             }
         },
-        SET_USER_DATA: (state, payload) => state.userData = payload,
+        SET_STATE: (state, payload) => Object.assign(state, payload)
     },
     actions: {
         setImportErrors: ({ commit }, payload) => {
-            commit('SET_IMPORT_ERRORS', payload)
+            commit('SET_STATE', {importErrors: payload})
         },
         deleteImportError: ({ commit }, payload) => {
             commit('DELETE_IMPORT_ERROR', payload)
@@ -61,14 +60,17 @@ export default new Vuex.Store({
             return server
                 .get(url)
                 .then(response => {
-                    commit('SET_USER_DATA', response.data)
+                    commit('SET_STATE', {userData: response.data})
                 })
                 .catch(error => {
                     error.handleGlobally('Could not get current user data', url)
                 })
         },
+        setUserDataManually: ({ commit }, payload) => {
+            commit('SET_STATE', {userData: payload})
+        },
         setUrlParams: ({ commit }, payload) => {
-            commit('SET_URL_PARAMS', payload)
+            commit('SET_STATE', {urlParams: payload})
         }
     },
     strict: process.env.NODE_ENV !== 'production'

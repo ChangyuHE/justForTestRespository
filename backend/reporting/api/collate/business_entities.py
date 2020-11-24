@@ -10,6 +10,7 @@ from utils import api_logging
 from django.utils import timezone
 from django.db.models import Model
 from django.contrib.auth.models import User
+from django.core.files import File
 
 from api import models as api_models
 from api.collate.excel_utils import SheetMapping
@@ -44,7 +45,8 @@ class AbstractRequestDTO(ABC):
 
 
 class ImportRequestDTO(AbstractRequestDTO):
-    file: 'django.core.files.File'
+    file: File
+    is_url_import: bool
     validation_id: int
     name: str
     notes: str
@@ -61,6 +63,7 @@ class ImportRequestDTO(AbstractRequestDTO):
         dto = cls()
 
         dto.file = cls._get_field(request, 'file')
+        dto.is_url_import = cls._extract_boolean(request, 'is_url_import')
         dto.validation_id = cls.__extract_validation_id(request)
         dto.name = cls._get_field(request, 'validation_name')
         dto.notes = cls._get_field(request, 'notes')

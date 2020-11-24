@@ -2,7 +2,7 @@
     <v-container fluid>
         <v-row class="d-flex justify-center">
             <v-col cols="6" class="pt-0">
-                <!-- Import type buttons group -->
+              <!-- Import type buttons group -->
                 <v-btn-toggle
                     color="teal" mandatory
                     v-model="importType"
@@ -15,19 +15,42 @@
                     </v-btn>
                 </v-btn-toggle>
 
-                <!-- File input controller -->
-                <dnd-frame @file-drop="onFileDrop">
-                    <v-file-input
-                        label="Select File to import"
-                        full-width show-size counter truncate-length="100"
-                        class="pt-0" color="blue-grey"
-                        accept=".xlsx"
-                        v-model="file"
-                        @change="onFileSelect"
-                        :disabled="uploading"
-                    ></v-file-input>
-                </dnd-frame>
-                </div>
+                <v-tabs>
+                    <!-- URL input controller -->
+                    <v-tab>from Comparison View</v-tab>
+                        <v-tab-item>
+                            <v-text-field
+                                prepend-icon="mdi-link-box-variant"
+                                label="URL"
+                                placeholder="https://gta.intel.com/#/reports/comparison-view.."
+                                hint="Paste a link of Comparison View results"
+                                v-model="url"
+                                :value="url"
+                                :disabled="uploading"
+                                :rules="[rules.CompViewLinkFormatRules(url)]"
+                                @change="onImportDataFill"
+                                @click:clear="onImportDataClear"
+                                autofocus
+                                clearable
+                            ></v-text-field>
+                        </v-tab-item>
+                    <!-- File input controller -->
+                    <v-tab>File</v-tab>
+                        <v-tab-item>
+                            <dnd-frame @file-drop="onFileDrop">
+                                 <v-file-input
+                                      label="Select File to import"
+                                      full-width show-size counter truncate-length="100"
+                                      class="pt-0" color="blue-grey"
+                                      accept=".xlsx"
+                                      v-model="file"
+                                      :disabled="uploading"
+                                      @change="onImportDataFill"
+                                      @click:clear="onImportDataClear"
+                                  ></v-file-input>
+                            </dnd-frame>
+                        </v-tab-item>
+                </v-tabs>
             </v-col>
         </v-row>
 
@@ -66,9 +89,9 @@
                         color="blue-grey"
                         label="Validation name"
                         hint="At least 10 symbols"
-                        clearable
                         v-model="valName"
                         :disabled="uploading"
+                        clearable
                     ></v-text-field>
                 </v-col>
                 <v-col cols="2" class="pt-0 d-flex">
@@ -131,7 +154,9 @@
                                         <!-- iterating over error codes -->
                                         <div v-for="(items, eCode) in edata" :key="eCode">
                                             <div v-for="(errors, modelName) in items" :key="modelName">
-                                                <issue-card v-if="(modelName == 'Item' || modelName == 'ResultFeature') && eCode == 'ERR_MISSING_ENTITY'"
+                                                <issue-card v-if="(modelName == 'Item' ||
+                                                                   modelName == 'ResultFeature') &&
+                                                                   eCode == 'ERR_MISSING_ENTITY'"
                                                     :error-data="errors"
                                                     :priority="priority"
                                                     :error-code="eCode" />
@@ -161,7 +186,11 @@
                             </v-container>
                             <v-spacer></v-spacer>
                             <v-btn color="red" text @click="errorsDialog = false; reason = ''">Close</v-btn>
-                            <v-btn color="cyan darken-2" text @click="onUploadFromDialog" :disabled="uploadFromDialogDisabled">Import</v-btn>
+                            <v-btn
+                                color="cyan darken-2"
+                                text @click="onUploadFromDialog"
+                                :disabled="uploadFromDialogDisabled"
+                            >Import</v-btn>
                         </v-card-actions>
                     </v-card>
                 </v-dialog>
@@ -170,9 +199,7 @@
                     :disabled="uploadDisabled"
                     :loading="uploading"
                     @click="onUpload"
-                >
-                    Upload
-                </v-btn>
+                >Upload</v-btn>
             </v-col>
         </v-row>
     </v-container>
@@ -182,8 +209,12 @@
     import server from '@/server'
     import issueCard from '@/components/IssueCard'
     import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
+    import { mapGetters } from 'vuex'
 
-    import { mapState, mapGetters } from 'vuex'
+    import axios from 'axios'
+
+    const GTA_API_USER = process.env.VUE_APP_GTA_API_USER
+    const GTA_API_PASSWORD = process.env.VUE_APP_GTA_API_PASSWORD
 
     function getUniqueID() {
         return Math.random().toString(36).slice(2)
@@ -197,6 +228,7 @@
         data() {
             return {
                 file: null,
+                url: null,
 
                 // validations autocomplete selector
                 descriptionLimit: 100,
@@ -213,17 +245,32 @@
                         if (value.length < 5)
                             return 'At least 5 symbols'
                         return true
-                    }
+                    },
+                    CompViewLinkFormatRules(value) {
+                        let fullLinkFormat = new RegExp('(?=.*?)(https://gta\\.intel\\.com/#/reports/comparison-view)' +
+                            '(.*testRun.+?=\\d+)(.*builds+[%\\d\\w]+name)')
+                        if (value && !(fullLinkFormat.test(value))) {
+                            return 'Link has incorrect format.\ ' +
+                                'Please paste Comparison View results link or fix current one'
+                        }
+                        return true
+                    },
                 },
                 valid: true,
 
                 // upload
                 uploading: false,
 
-                //
                 errorsDialog: false,
                 priority: {
-                    'blocking': ['ERR_EXISTING_VALIDATION', 'ERR_INVALID_VALIDATION_ID', 'ERR_MISSING_COLUMNS', 'ERR_WORKBOOK_EXCEPTION', 'ERR_DATE_FORMAT', 'ERR_AMBIGUOUS_COLUMN'],
+                    'blocking': [
+                        'ERR_EXISTING_VALIDATION',
+                        'ERR_INVALID_VALIDATION_ID',
+                        'ERR_MISSING_COLUMNS',
+                        'ERR_WORKBOOK_EXCEPTION',
+                        'ERR_DATE_FORMAT',
+                        'ERR_AMBIGUOUS_COLUMN'
+                    ],
                     'high': ['ERR_MISSING_ENTITY'],
                     'medium': ['ERR_ITEM_CHANGED'],
                     'low': ['ERR_EXISTING_RUN']
@@ -232,19 +279,29 @@
 
                 importType: 'new',
                 valDate: null,
+                valDateDefault: null,
                 menu: null,
                 valName: '',
+                valNameDefault: '',
                 valNotes: '',
                 reason: '',
             }
         },
         computed: {
             ...mapGetters(['importErrors']),
+            ...mapGetters(['userName']),
+
             uploadDisabled() {
-                if (this.importType == 'existing') {
-                    return !(Boolean(this.file) && this.selected && 'id' in this.selected && this.selected.id != 0)
+                let inputType = null
+                if (this.url) {
+                    inputType = this.url
                 } else {
-                    return !(Boolean(this.file) && this.valDate && this.valName ? this.valName.length >= 10 : false)
+                    inputType = this.file
+                }
+                if (this.importType == 'existing') {
+                    return !(Boolean(inputType) && this.selected && 'id' in this.selected && this.selected.id !== 0)
+                } else {
+                    return !(Boolean(inputType) && this.valDate && this.valName ? this.valName.length >= 10 : false)
                 }
             },
             /**
@@ -268,7 +325,9 @@
                 return tabs
             },
             uploadFromDialogDisabled() {
-                return 'blocking' in this.importErrors || 'high' in this.importErrors || (this.importType == 'existing' && !this.valid)
+                return 'blocking' in this.importErrors ||
+                       'high' in this.importErrors ||
+                       (this.importType === 'existing' && !this.valid)
             },
             today() {
                 let date = new Date()
@@ -312,15 +371,157 @@
             },
         },
         methods: {
-            onFileSelect() {
-                if (this.file != null) {
-                    if (this._.isEmpty(this.valName)) {
-                        let fn = this.file.name
-                        this.valName = fn.substring(0, fn.lastIndexOf('.'))
+            parseReportURL(url) {
+                let uri = ''
+                let testRun = new RegExp('testRun.+?=(\\d+)')
+                let buildVersion = new RegExp('builds\\[.+\\[name]=(\\S+)')
+                try {
+                    uri = decodeURI(url)
+                    // expected output: "..[]=results&complexFilters[0][testRun][]=123456"
+                } catch (error) {
+                    // catches a malformed URI
+                    throw Error(`URL is broken: ${error}`)
+                }
+                for (let reportSetting of uri.split('&')) {
+                    if (reportSetting.match(testRun)) {
+                        testRun = RegExp.$1
                     }
+                    if (reportSetting.match(buildVersion)) {
+                        buildVersion = RegExp.$1
+                    }
+                }
+                // build payload for excel preparing request
+                return {
+                    'use_api': true,
+                    'export_labels': [buildVersion],
+                    'custom_fields': [{
+                            // Additional custom fields from data for exported results
+                            'display_name': 'Custom Errors',
+                            'json_path': 'result.custom.tests_errors'
+                        },
+                        {
+                            'display_name': 'Kernel Version',
+                            'json_path': 'execution.machine.properties.kernel_version_full.value'
+                        }],
+                    'query': {
+                        'columns': [
+                            // The fields which will be included to exported data
+                            'itemName', 'args', 'os', 'osFamily', 'platform', 'buildName',
+                            'tags', 'milestones', 'reason', 'status', 'submitter',
+                            'testSession', 'testRun', 'testRunUrl', 'tpUrl',
+                            'vertical', 'mappedComponent', 'component', 'features',
+                            'executionType', 'testType', 'resultType', 'resultKey',
+                            'gtaxJobsetSessionId', 'gtaxTestRunId', 'gtaxJobId',
+                            'sourceInstance', 'rootNamespace',
+                            'executionTimeInSeconds',
+                            'executionStartTimestamp',
+                            'executionEndTimestamp',
+                            'bucketName', 'isBest', 'isFirst', 'isLast', 'isWorst'
+                        ],
+                        'filterGroups': [{
+                            'mode': 'DNF',
+                            'filters': [{
+                                'build': [{
+                                    'name': buildVersion
+                                }],
+                                // The filter tags which control range of included data
+                                'tagsAnyOf':[],
+                                'tagsExcept': ['notAnIssue', 'obsoleted', 'iteration', 'isolation'],
+                                'tagsAllOf':[],
+                                'testRun': [testRun],
+                            }],
+                            'customColumnsFilters': {}
+                        }],
+                        'globalFilterId': null,
+                        'customColumns': [
+                            'result.custom.tests_errors',
+                            'execution.machine.properties.kernel_version_full.value',
+                        ],
+                        'compareOn': ['compareIdentifier'],
+                        'grouped': true,
+                        'skipMissing': false,
+                        'diffOnly': false
+                    }
+                }
+            },
+            async getFromCompViewLink() {
+                function excelExportRequest(payload) {
+                    return axios
+                          .post('/api/results/v1/results_sql/export',
+                              payload,
+                              {auth: {username: GTA_API_USER, password: GTA_API_PASSWORD}})
+                          .then(response => {
+                              return {'data': response.data}
+                          })
+                }
+                function getFileURLRequest(resultKey) {
+                    return axios
+                          .get(`/api/results/v1/tasks/${resultKey}`,
+                              {auth: {username: GTA_API_USER, password: GTA_API_PASSWORD}})
+                          .then (response => {
+                              if (response.data.status === 'SUCCESS') {
+                                  return {'data': response.data, 'url': response.data.result.uri}
+                              }
+                              if (response.data.status === 'FAILURE') {
+                                  return {'data': response.data, 'url': 'FAILURE'}
+                              } else {
+                                  // return pending state if results still unprepared
+                                  return {'data': response.data, 'url': 'PENDING'}
+                              }
+                          })
+                }
 
+               // make queries
+               let responseData = '' // common response data of made query
+               try {
+                  let resultKey = null // key to generated data in database
+                  let payload = this.parseReportURL(this.url)
+
+                  await excelExportRequest(payload)
+                      .then(response => {
+                          resultKey = responseData = response.data
+                  })
+                  let excelUrl = null // link to remote excel file on Artifactory
+                  this.$toasted.success('Retrieving data from GTA...<br>\n' +
+                                        'Please wait for a while.', { duration: 12000 })
+                  do {
+                      await getFileURLRequest(resultKey)
+                          .then(response => {
+                              responseData = response.data
+                              excelUrl = response.url
+                      })
+                      if (excelUrl === 'FAILURE') {
+                          throw 'Link is broken or data does not exist for the results'
+                      }
+                  } while (excelUrl === 'PENDING')
+
+                  this.$toasted.success('Retrieving completed<br>\n', { duration: 4000 })
+                  return excelUrl
+               } catch (error) {
+                     this.$toasted.global.alert_error_detailed({
+                         'header': '<strong>Error during retrieving data from GTA</strong><br>\n\n \
+                                   It might be a network issue or GTA API results currently unreachable.\n \
+                                   Please copy error data to clipboard if you want to send it to admins<br>\n\n',
+                         'message': `<strong>${error}</strong><br>Response Data:<br>${JSON.stringify(responseData)}`
+                     })
+               }
+            },
+            onImportDataFill() {
+                let inputType = null
+                if (this.url) {
+                    this.file = null
+                    inputType = this.url
+                }
+                if (this.file) {
+                    this.url = null
+                    inputType = this.file
+                }
+                if (inputType !== null) {
                     if (this._.isEmpty(this.valDate)) {
-                        let valDate = new Date(this.file.lastModified)
+                        let valDate = new Date()
+                        if (inputType === this.file) {
+                            valDate = new Date(this.file.lastModified)
+                        }
                         let month = valDate.getMonth() + 1
                         if (month < 10) {
                             month = `0${month}`
@@ -329,13 +530,30 @@
                         if (date < 10) {
                             date = `0${date}`
                         }
-                        this.valDate = `${valDate.getFullYear()}-${month}-${date}`
+                        this.valDateDefault = this.valDate = `${valDate.getFullYear()}-${month}-${date}`
                     }
+                    if (this._.isEmpty(this.valName)) {
+                        if (inputType === this.file) {
+                            let fn = this.file.name
+                            this.valName = fn.substring(0, fn.lastIndexOf('.'))
+                        } else {
+                            this.valName = `${this.valDate}_${this.userName}`
+                        }
+                        this.valNameDefault = this.valName
+                    }
+                }
+            },
+            onImportDataClear() {
+                if (this.valName === this.valNameDefault) {
+                    this.valName = null
+                }
+                if (this.valDate === this.valDateDefault) {
+                    this.valDate = null
                 }
             },
             onFileDrop(event) {
                 this.file = event
-                this.onFileSelect()
+                this.onImportDataFill()
             },
             onUploadFromDialog() {
                 this.errorsDialog = false
@@ -349,7 +567,7 @@
                     extra['force_item'] = true
                 this.onUpload(extra)
             },
-            onUpload(extra) {
+            async onUpload(extra) {
                 let eData = {}
                 Object.keys(this.priority).forEach(p => eData[p] = {})     // blocking: {}, high: {}, ...
 
@@ -361,9 +579,17 @@
 
                 // FormData filling
                 let formData = new FormData()
-                formData.append('file', this.file)
+                let file = this.file
 
-                if (this.importType == 'new') {
+                if (this.url) {
+                    file = await this.getFromCompViewLink()
+                    formData.append('is_url_import', 'true')
+                } else {
+                    formData.append('is_url_import', 'false')
+                }
+
+                formData.append('file', file)
+                if (this.importType === 'new') {
                     formData.append('validation_name', this.valName)
                     formData.append('validation_date', this.valDate)
                 } else {
@@ -378,12 +604,13 @@
                     formData.append('import_reason', this.reason)
                 }
 
-                // post it
+                this.$toasted.success('Starting initial checks of importing data<br>\n' +
+                                        'Please wait for a while...', { duration: 12000 })
                 const url = 'api/import/'
                 server.post(url, formData, {
                     headers: {'Content-Type': 'multipart/form-data'}
                 })
-                .then(response => {
+                .then(() => {
                     this.$toasted.success('Import started in the background.<br>\n' +
                                           'You will be notified by email at the end.', { duration: 4000 })
                 })
@@ -416,9 +643,13 @@
                                                 if (!(e.entity.model in eData[p][e.code]))
                                                     eData[p][e.code][e.entity.model] = []
 
-                                                eData[p][e.code][e.entity.model].push(
-                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID()}
-                                                )
+                                                eData[p][e.code][e.entity.model].push({
+                                                   'message': e.message,
+                                                   'entity': e.entity,
+                                                   'column': e.column,
+                                                   'values': e.values,
+                                                   'ID': getUniqueID()
+                                                })
                                             } else {
                                                 // global (no-model) errors
                                                 if (!('no-model' in eData[p][e.code]))
@@ -426,10 +657,17 @@
 
                                                 // append amount data from warnings
                                                 if (e.message in data.warnings)
-                                                    e.message = `${e.message} (${data.warnings[e.message]} item${data.warnings[e.message] > 1 ? 's' : ''})`
-                                                eData[p][e.code]['no-model'].push(
-                                                    {'message': e.message, 'entity': e.entity, 'column': e.column, 'values': e.values, 'ID': getUniqueID(), 'details': e.details}
-                                                )
+                                                    e.message =
+                                                        `${e.message} (${data.warnings[e.message]} \
+                                                        item${data.warnings[e.message] > 1 ? 's' : ''})`
+                                                eData[p][e.code]['no-model'].push({
+                                                    'message': e.message,
+                                                    'entity': e.entity,
+                                                    'column': e.column,
+                                                    'values': e.values,
+                                                    'ID': getUniqueID(),
+                                                    'details': e.details
+                                                })
                                             }
                                         }
                                     }

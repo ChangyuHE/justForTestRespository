@@ -17,13 +17,14 @@ module.exports = {
     devServer: {
         historyApiFallback: true,
         proxy: {
-            '^/api/': {
-                target: publicApiPathUrl + '/api/',
+            '/api/results/v1': {
+                target: 'https://gta.intel.com/',
+                'changeOrigin': true,
+                'secure': false
             }
         }
     },
     chainWebpack: config => {
-
         config.optimization
             .splitChunks(false)
 

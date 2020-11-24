@@ -37,8 +37,11 @@ if True:
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'azn@lvr77l5%_yj=zylpj6-8abzm!g)p0zy+7*#vgm=k79w4+f'
 
-GTA_API_USER = "aobolens-api"
-GTA_API_PASSWORD = "BDD1D46EB3E6C044F536BC150E074B886B6A12AE741F00EFAA0649660B8A44DF"
+GTA_API_USER = 'sys_reporter-api'
+GTA_API_PASSWORD = 'F503358D064A63BFBEF94F793A824D5460922213EBEB80106DAED0F6E45777F8'
+
+ARTIFACTORY_API_USER = 'sys_reporter'
+ARTIFACTORY_API_PASSWORD = 'AKCp8hz3kb8ENDdv92jKk2bzYxGA8aZau6LxMnwXocEk7TTF4XKNiG8iruyrieQvpKxXobrvh'
 
 JIRA_SERVER = 'https://jira.devtools.intel.com'
 JIRA_AUTH = ('lab_msdkjira', 'pelnq82@*')

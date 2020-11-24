@@ -9,6 +9,7 @@ from api.collate.services import get_temp_name
 from api.serializers import create_serializer
 from api.models import ImportJob
 from api.collate.tasks.task_import import do_import
+from api.collate.excel_utils import open_remote_excel_file
 
 log = logging.getLogger(__name__)
 
@@ -30,8 +31,12 @@ def import_results(request_dto):
 def _store_results(context):
     tmp_name = get_temp_name()
     with default_storage.open(tmp_name, 'wb+') as destination:
-        for chunk in context.request.file.chunks():
-            destination.write(chunk)
+        if context.request.is_url_import:
+            file = open_remote_excel_file(context.request.file)
+            file.save(destination)
+        else:
+            for chunk in context.request.file.chunks():
+                destination.write(chunk)
 
     obj = ImportJob.objects.create(
         path=tmp_name,

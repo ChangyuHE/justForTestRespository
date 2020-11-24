@@ -1,7 +1,13 @@
 import logging
+import requests
 
-from typing import Dict
-from openpyxl import load_workbook
+from io import BytesIO
+from typing import Any, Union, Dict
+from requests.auth import HTTPBasicAuth
+
+from django.conf import settings
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 log = logging.getLogger(__name__)
@@ -31,8 +37,12 @@ NAME_MAPPING = {
 REVERSE_NAME_MAPPING = {value: key for key, value in NAME_MAPPING.items()}
 
 
-def open_excel_file(path, outcome=None):
+def open_excel_file(path: Union[str, InMemoryUploadedFile], outcome: Any = None) -> Workbook:
     try:
+        if (isinstance(path, str)
+                and path.startswith('http')
+                and 'artifactory/gta-results/excel' in path):
+            return open_remote_excel_file(path)
         return load_workbook(path)
     except Exception as e:
         message = f"Failed to open workbook: {getattr(e, 'message', repr(e))}"
@@ -40,6 +50,18 @@ def open_excel_file(path, outcome=None):
         log.warning(message)
         if outcome:
             outcome.add_workbook_error(message)
+
+
+def open_remote_excel_file(url_path: str) -> Workbook:
+    """
+    Open remote excel file as workbook by url from buffer data
+    :param url_path: artifactory location of the exel report
+    :return: encoded excel workbook
+    """
+    raw_data = requests.get(url=url_path,
+                            auth=HTTPBasicAuth(settings.ARTIFACTORY_API_USER,
+                                               settings.ARTIFACTORY_API_PASSWORD))
+    return load_workbook(BytesIO(raw_data.content))
 
 
 # generator that stops row iteration on first empty row
@@ -88,7 +110,7 @@ class SheetMapping:
     def _notify_missing_columns(self, outcome):
         existing_columns = set(self.column_mapping.keys())
         missing_columns = ', '.join(
-            key for key, value in NAME_MAPPING.items() if value not in existing_columns
+                key for key, value in NAME_MAPPING.items() if value not in existing_columns
         )
 
         outcome.add_missing_columns_error(missing_columns)

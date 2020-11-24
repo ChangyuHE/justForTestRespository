@@ -13,7 +13,7 @@ import pandas as pd
 import numpy as np
 import dateutil.parser
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Case, When, Q
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
@@ -44,13 +44,13 @@ from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, ResultFeature, \
     Status, Os, OsGroup, Validation, Action, \
     Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
-    FeatureMapping, FeatureMappingRule, Feature
+    FeatureMapping, FeatureMappingRule, Feature, Profile
 from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
     FeatureMappingSerializer, BulkResultSerializer, \
     ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
-    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer
+    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer, ProfileSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -75,11 +75,16 @@ class PassToVue(TemplateView):
         return render(request, 'api/index.html', {})
 
 
-class ValidationsFilter(django_filters.FilterSet):
+class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
+    pass
+
+
+class UserSpecificFilterSet(django_filters.FilterSet):
     validations = django_filters.BooleanFilter(
         field_name='validations',
         method='validations_empty'
     )
+    ids__in = NumberInFilter(field_name='id', lookup_expr='in')
 
     def validations_empty(self, queryset, name, value):
         # construct the full lookup expression.
@@ -88,7 +93,8 @@ class ValidationsFilter(django_filters.FilterSet):
 
     class Meta:
         model = get_user_model()
-        fields = ['validations']
+        fields = ['validations', 'is_staff', 'username', 'ids__in']
+
 
 
 # Users block
@@ -96,8 +102,7 @@ class UserList(LoggingMixin, generics.ListAPIView):
     """ List Users """
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
-    filterset_class = ValidationsFilter
-    filterset_fields = ('is_staff', 'username', 'validations')
+    filterset_class = UserSpecificFilterSet
 
 
 class CurrentUser(LoggingMixin, APIView):
@@ -106,6 +111,49 @@ class CurrentUser(LoggingMixin, APIView):
         user_object = get_user_object(request)
         user_data = UserSerializer(user_object).data
         return Response(user_data)
+
+
+class ProfileView(LoggingMixin, APIView):
+    def post(self, request):
+        user = get_user_object(request)
+        serializer = ProfileSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                profile = serializer.save(user=user)
+            except IntegrityError:
+                raise ValidationError({'integrity error': 'Duplicate creation attempt'})
+            except Exception as e:
+                raise ValidationError({'detail': e})
+            else:
+                user.profiles.add(profile)
+                return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+
+    def update(self, request, *args, **kwargs):
+        to_activate = False
+        if 'to_activate' in request.data:
+            to_activate = True
+            del request.data['to_activate']
+
+        response = super().update(request, *args, **kwargs)
+        user = get_user_object(request)
+        if to_activate:
+            profile_data = response.data
+            # set 'active' to false for other profiles
+            user.profiles.exclude(id=profile_data['id']).update(active=False)
+
+        # return User data with just updated profile
+        return Response(UserSerializer(user).data)
+
+    def delete(self, request, *args, **kwargs):
+        super().delete(request, *args, **kwargs)
+        user = get_user_object(request)
+        return Response(UserSerializer(user).data)
 
 
 # Common data block
@@ -172,6 +220,7 @@ class OsTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
         return get_datatable_json(self, actions=False, exclude=['group', 'weight'])
 
 
+# Component
 class ComponentTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     """ Component table view formatted for DataTable """
     queryset = Component.objects.all()
@@ -258,7 +307,7 @@ class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
 
 
 class StatusFilter(django_filters.FilterSet):
-    test_status__in = CharInFilter(field_name="test_status", lookup_expr='in')
+    test_status__in = CharInFilter(field_name='test_status', lookup_expr='in')
 
     class Meta:
         model = Status
@@ -308,7 +357,7 @@ class AbstractAssetView(LoggingMixin, generics.ListAPIView, CreateWOutputApiView
             path = parsed_url.path if not parsed_url.path.startswith('/') else parsed_url.path[1:]
             path_components = path.split('/')
             if not parsed_url.scheme or not parsed_url.netloc or not path_components[0]:
-                raise ParseError("Cannot parse url scheme or server")
+                raise ParseError('Cannot parse url scheme or server')
             if len(path_components) < 3:
                 raise ParseError("The path should contains '/artifactory/', asset name and version")
             root = urlunparse((parsed_url.scheme, parsed_url.netloc, path_components[0], '', '', ''))
@@ -368,7 +417,7 @@ class ResultBulkListUpdateView(LoggingMixin, generics.ListAPIView):
         if ids:
             instances = Result.objects.filter(id__in=ids)
         else:
-            raise ValidationError({"integrity error": 'No results for update'})
+            raise ValidationError({'integrity error': 'No results for update'})
 
         serializer = self.get_serializer(
             instances, data=request.data, partial=False, many=True
@@ -487,9 +536,9 @@ class ValidationsView(LoggingMixin, APIView):
         tree = Node('')
 
         validations_qs = Validation.objects.all() \
-           .select_related('os__group', 'platform__generation', 'env', 'owner')
-        for validation in validations_qs.order_by('-platform__generation__weight', 'platform__weight',
-                                                  'os__group__name',
+            .select_related('os__group', 'platform__generation', 'env', 'owner')
+        for validation in validations_qs.order_by('-platform__generation__weight',
+                                                  'platform__weight', 'os__group__name',
                                                   'os__name', 'env__name', 'name'):
             # shortcuts
             platform = validation.platform
@@ -520,23 +569,26 @@ class ValidationsView(LoggingMixin, APIView):
                             if node['level'] == f['level']:
                                 # validation name pattern check
                                 if f['level'] == 'validation':
-                                    if f['text'].lower() in node['name'].lower():
+                                    if f['value'].lower() in node['name'].lower():
                                         ok.append(True)
                                         break
                                 else:
-                                    if node['name'] in f['text']:
+                                    # filter by id
+                                    if node['obj'].id in f['value']:
                                         ok.append(True)
                                         break
 
                             # filter validation nodes by owner/component/feature
                             if node['level'] == 'validation':
-                                if f['level'] == 'users' and node['owner'] in f['text']:
+                                if f['level'] == 'user' and node['owner'] in f['value']:
                                     ok.append(True)
                                     break
-                                if f['level'] == 'components' and set(node['obj'].components) & set(f['text']):
+                                if f['level'] == 'component' and \
+                                        set(node['obj'].components) & set(f['value']):
                                     ok.append(True)
                                     break
-                                if f['level'] == 'features' and set(node['obj'].features) & set(f['text']):
+                                if f['level'] == 'feature' and \
+                                        set(node['obj'].features) & set(f['value']):
                                     ok.append(True)
                                     break
                         else:
@@ -668,15 +720,25 @@ class ValidationsStructureView(LoggingMixin, APIView):
             {'level': 'os_group', 'label': 'OS Family', 'items': []},
             {'level': 'os', 'label': 'OS', 'items': []}
         ]
+        gens = Generation.objects.filter(
+            id__in=Validation.objects.values_list('platform__generation', flat=True)
+                .order_by('-platform__generation__weight').distinct())
+        d[0]['items'] = GenerationSerializer(gens, many=True).data
 
-        d[0]['items'] = Validation.objects.all().values_list('platform__generation__name', flat=True) \
-            .order_by('-platform__generation__weight').distinct()
-        d[1]['items'] = Validation.objects.all().values_list('platform__short_name', flat=True) \
-            .order_by('-platform__weight').distinct()
-        d[2]['items'] = Validation.objects.all().values_list('os__group__name', flat=True) \
-            .order_by('os__group__name').distinct()
-        d[3]['items'] = Validation.objects.all().values_list('os__name', flat=True) \
-            .order_by('os__name').distinct()
+        platforms = Platform.objects.filter(
+            id__in=Validation.objects.values_list('platform', flat=True)
+                .order_by('-platform__weight').distinct())
+        d[1]['items'] = PlatformSerializer(platforms, many=True).data
+
+        os_groups = Os.objects.filter(
+            id__in=Validation.objects.values_list('os__group', flat=True)
+                .order_by('os__group__name').distinct())
+        d[2]['items'] = OsSerializer(os_groups, many=True).data
+
+        oses = Os.objects.filter(
+            id__in=Validation.objects.values_list('os', flat=True).order_by('os__name').distinct())
+        d[3]['items'] = OsSerializer(oses, many=True).data
+
         return Response(d)
 
 
@@ -777,8 +839,8 @@ class ReportBestView(LoggingMixin, APIView):
         workbook = excel.do_report(data=ct, extra=validations, report_name='Best status report')
 
         filename = f'best_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
 
@@ -867,8 +929,8 @@ class ReportLastView(LoggingMixin, APIView):
         workbook = excel.do_report(data=ct, extra=validations, report_name='Last status report')
 
         filename = f'last_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
 
@@ -969,7 +1031,7 @@ def update_feature_and_codec(row: pd.Series, df: pd.DataFrame) -> None:
 
 
 def replace_item_id(row: pd.Series, items_dict: Dict[int, str]) -> pd.Series:
-    row["Item name"] = items_dict[row["Item name"]]
+    row['Item name'] = items_dict[row['Item name']]
     return row
 
 
@@ -1063,7 +1125,7 @@ class ReportCompareView(LoggingMixin, APIView):
         )
         statuses.reset_index(inplace=True)
         statuses = statuses.apply(lambda row: replace_item_id(row, items_dict), axis=1)
-        statuses.set_index("Item name", inplace=True)
+        statuses.set_index('Item name', inplace=True)
 
         # If no excel report needed just finish here with json return
         if not do_excel:
@@ -1073,8 +1135,8 @@ class ReportCompareView(LoggingMixin, APIView):
         workbook = excel.do_comparison_report(statuses)
 
         filename = f'comparison_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
 
@@ -1302,16 +1364,16 @@ class ReportFromSearchView(LoggingMixin, APIView):
                 last_found_platform = part.platform
             else:
                 part.platform = last_found_platform
-            recognized_parts.append(f" {part.number} {part.env.lower()} {part.os.lower()} "
-                                    f"{platform_reverse_map[part.platform]}")
+            recognized_parts.append(f' {part.number} {part.env.lower()} {part.os.lower()} '
+                                    f'{platform_reverse_map[part.platform]}')
             part.validation_ids = \
                 Validation.objects.filter(
                     env__name__in=[part.env], platform__short_name__in=[part.platform], os__name__in=[part.os]
                 ).order_by('-date').values_list('id', flat=True)[:part.number]
 
             if not part.validation_ids:
-                hint = f"no validations found for query: {part.env.lower()} " \
-                       f"{platform_reverse_map[part.platform]} {part.os.lower()}"
+                hint = f'no validations found for query: {part.env.lower()} ' \
+                       f'{platform_reverse_map[part.platform]} {part.os.lower()}'
                 return Response(data=hint, status=status.HTTP_404_NOT_FOUND)
             validation_ids += part.validation_ids
         recognized_query += ' with'.join(recognized_parts)
@@ -1426,7 +1488,7 @@ class RequestModelCreation(APIView):
 
         # None in the from field means take sender from DEFAULT_FROM_EMAIL setting
         msg = EmailMessage(subject, msg, None, staff_emails, cc=[requester['email']])
-        msg.content_subtype = "html"
+        msg.content_subtype = 'html'
         try:
             msg.send()
             return Response()
@@ -1541,8 +1603,8 @@ class ReportIndicatorView(APIView):
                 excel_data = data
             workbook = excel.do_indicator_report(excel_data, validation, mappings, mode)
             filename = f'indicator_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-            response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
-            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
 
 
@@ -1637,7 +1699,7 @@ class ComponentFilter(django_filters.FilterSet):
         fields = ['active', 'name']
 
 
-class ComponentView(LoggingMixin, generics.ListAPIView):
+class ComponentView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     """ List of Component objects """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
@@ -1691,6 +1753,6 @@ class ReportIssuesView(LoggingMixin, APIView):
 
         workbook = excel.do_issues_report(pk, failed_groups, error_groups)
         filename = f'issues_report_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

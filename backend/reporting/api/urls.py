@@ -24,6 +24,8 @@ urlpatterns = [
     # Users
     path('api/users/current/', views.CurrentUser.as_view(), name='user-current'),
     path('api/users/', views.UserList.as_view(), name='user-list'),
+    path('api/users/current/profile/', views.ProfileView.as_view()),
+    path('api/users/current/profile/<int:pk>', views.ProfileDetailsView.as_view()),
 
     path('api/validations/', views.ValidationsView.as_view()),
     path('api/validations/flat/', views.ValidationsFlatView.as_view()),

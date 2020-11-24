@@ -15,7 +15,15 @@ from utils.api_helpers import model_cut_serializer, asset_serializer, asset_full
 log = logging.getLogger(__name__)
 
 
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Profile
+        fields = ['id', 'name', 'data', 'active']
+
+
 class UserSerializer(serializers.ModelSerializer):
+    profiles = ProfileSerializer(many=True)
+
     class Meta:
         model = get_user_model()
         fields = [
@@ -26,8 +34,15 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'email',
             'is_staff',
+            'profiles',
             'validations'
         ]
+
+    def update(self, instance, validated_data):
+        profile_data = validated_data.pop('profile')
+        instance.profile.data = profile_data['data']
+        instance.profile.save()
+        return instance
 
 
 class UserCutSerializer(serializers.ModelSerializer):

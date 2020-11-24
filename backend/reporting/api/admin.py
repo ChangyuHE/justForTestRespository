@@ -7,6 +7,13 @@ from api.models import *
 
 
 class CustomUserAdmin(UserAdmin):
+    class ProfileInline(admin.TabularInline):
+        model = Profile
+        can_delete = False
+        verbose_name_plural = 'Profile'
+
+    inlines = (ProfileInline,)
+
     list_display = ('username', 'first_name', 'last_name', 'email', 'last_login', 'is_staff')
     list_filter = ('is_staff', 'is_superuser', 'is_active')
     ordering = ('username',)

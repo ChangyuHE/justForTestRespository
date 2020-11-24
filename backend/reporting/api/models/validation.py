@@ -6,6 +6,8 @@ from django.conf import settings
 from django.db import models, transaction
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import UniqueConstraint, Q, Count
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from simple_history.models import HistoricalRecords
 
 from reporting.settings import AUTH_USER_MODEL
@@ -27,8 +29,33 @@ __all__ = [
     'Run',
     'Result',
     'Validation',
-    'ResultFeature'
+    'ResultFeature',
+    'Profile'
 ]
+
+
+class Profile(models.Model):
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='profiles')
+    name = models.CharField(max_length=255)
+    data = models.JSONField(null=True, blank=True)
+    active = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['name', 'user'],
+                name='unique_%(class)s_constraint'
+            )
+    ]
+
+    def __str__(self):
+        return f'{self.name} ({self.user.username})'
+
+
+@receiver(post_save, sender=AUTH_USER_MODEL)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(name='default', user=instance, active=True)
 
 
 class Generation(models.Model):

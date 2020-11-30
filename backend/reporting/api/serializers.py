@@ -316,7 +316,6 @@ FulsimAssetFullSerializer = asset_full_serializer(models.FulsimAsset)
 
 OsAssetSerializer = asset_serializer(models.OsAsset)
 
-
 # generate template cut serializers which contains 'id' and 'name' fields
 ValidationCutSerializer = model_cut_serializer(models.Validation)
 EnvCutSerializer = model_cut_serializer(models.Env)
@@ -386,10 +385,10 @@ class BulkUpdateListSerializer(serializers.ListSerializer):
 
 
 class BulkResultSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = models.Result
-        fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset', 'fulsim_asset', 'simics']
+        fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset', 'fulsim_asset',
+                  'simics']
         read_only_fields = ['id', 'item']
         list_serializer_class = BulkUpdateListSerializer
 

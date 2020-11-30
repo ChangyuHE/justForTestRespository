@@ -382,6 +382,7 @@ class ResultExtraData:
     simics: api_models.Simics = None
     additional_parameters: Any = None
     test_error: str = None
+    scenario_url: str = None
 
 
 class ResultData:

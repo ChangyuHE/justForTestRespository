@@ -275,6 +275,7 @@ class Result(DiffMixin, models.Model):
     simics = models.ForeignKey(Simics, null=True, blank=True, on_delete=models.CASCADE)
     additional_parameters = models.JSONField(null=True, blank=True)
     test_error = models.CharField(null=True, blank=True, max_length=1024)
+    scenario_url = models.CharField(null=True, blank=True, max_length=512)  # to download scenario
 
     exec_start = models.DateTimeField(null=True, blank=True)
     exec_end = models.DateTimeField(null=True, blank=True)

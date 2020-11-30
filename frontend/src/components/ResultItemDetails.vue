@@ -16,8 +16,17 @@
                 </v-card-title>
 
                 <v-row class="mx-3">
-                    <v-col v-for="field of fields.threeOnRow" :key="field" class="py-0 pl-2" cols="4">
+                    <v-col v-for="field of fields.threeOnRow" :key="field" class="py-0 pl-2" :cols="4">
+                        <template v-if="field === 'result_url'">
+                            <div class="pl-2 py-0 text-caption font-weight-light">{{ field }}</div>
+                            <div
+                                class="pl-2 mt-0 mb-2"
+                                v-html="`<a href='${resultItem[field]}' target='_blank'>${resultItem[field]}</a>`"
+                            ></div>
+                        </template>
+
                         <v-text-field
+                            v-else
                             color="blue-grey"
                             readonly
                             :append-icon="showEditIcon(field)"
@@ -37,27 +46,57 @@
                             </template>
                         </v-text-field>
                     </v-col>
-                    <v-col v-if="resultItem.item.scenario == null || resultItem.item.plugin == null" class="py-0 pl-2" cols="8">
+                </v-row>
+
+                <div class="mt-6 ml-7 text-subtitle-1 font-weight-light">
+                    Item details
+                </div>
+                <v-row class="mt-4 mx-3">
+                    <v-col v-for="field of fields.itemFields" :key="field" class="py-0 pl-2" :cols="field == 'args' ? 8 : 4">
+                        <template v-if="field == 'scenario'">
+                            <!-- Check if scenario is presented in Result Item's item details -->
+                            <template v-if="resultItem.item.scenario">
+                                <div class="pl-2 py-0 text-caption font-weight-light">{{ field }}</div>
+                                <div
+                                    class="pl-2 mt-0 mb-2"
+                                    v-html="`<a href='${resultItem.scenario_url}' target='_blank'>${resultItem.item.scenario.name}</a>`"
+                                ></div>
+                            </template>
+                        </template>
+
                         <v-text-field
+                            v-else-if="field == 'plugin' || field == 'args'"
                             color="blue-grey"
                             readonly
-                            label="args"
-                            :value="resultItem.item.args"
-                            class="pl-2 px-6 py-0"
+                            class="pl-2 py-0 px-6"
+                            :label="field"
+                            :value="field == 'plugin' ? (resultItem.item.plugin ? resultItem.item.plugin.name : 'null') : resultItem.item.args"
                         >
                         </v-text-field>
-                    </v-col>
-                    <v-col v-else v-for="field of ['scenario', 'plugin']" :key="field" class="py-0 pl-2" cols="4">
+
                         <v-text-field
+                            v-else
                             color="blue-grey"
                             readonly
+                            :append-icon="showEditIcon(field)"
+                            @click:append="openEditDialog(field)"
+                            class="pl-2 py-0"
+                            :class="fieldLastUpdate(field) ? 'pr-0' : 'px-6'"
                             :label="field"
-                            :value="resultItem.item[field].name"
-                            class="pl-2 px-6 py-0"
+                            :value="fieldValue(field, resultItem)"
                         >
+                            <template v-slot:append-outer v-if="fieldLastUpdate(field)">
+                                    <v-icon class="mx-0 px-0"
+                                        small :title="fieldLastUpdate(field)"
+                                        @click="openHistoryDialog(field)"
+                                    >
+                                        mdi-clock-outline
+                                    </v-icon>
+                            </template>
                         </v-text-field>
                     </v-col>
                 </v-row>
+
                 <v-row class="mt-11 mx-3">
                     <v-col v-for="asset of fields.assets" :key="asset" class="py-0" cols="6">
                         <v-text-field
@@ -355,6 +394,7 @@
                 showResultReasonDialog: false,
 
                 reason: '',
+                history: [],
                 changes: false,
                 resultItem: null,
                 resultItemCopy: null,
@@ -394,8 +434,9 @@
                     threeOnRow: ['validation', 'driver', 'exec_start',
                                 'platform', 'env', 'exec_end',
                                 'os', 'status', 'result_key',
-                                'component', 'run', 'result_url',
-                                'item'],
+                                'component', 'run', 'result_url'],
+                    itemFields: ['item', 'args',
+                                 'plugin', 'scenario'],
                     oneOnRow: ['result_reason', 'additional_parameters'],
                     assets: ['scenario_asset', 'msdk_asset',
                             'os_asset', 'lucas_asset',
@@ -661,7 +702,11 @@
                         // resultItemCopy is used to track changes
                         this.resultItemCopy = Object.assign({}, this.resultItem)
                         this.enableEditing = false
-                        this.loadHistory()
+                        if (this.resultItem._changed) {
+                            this.loadHistory()
+                        } else {
+                            this.showDetails = true
+                        }
                     })
                     .catch(error => {
                         if (error.handleGlobally) {

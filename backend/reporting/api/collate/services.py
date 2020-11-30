@@ -343,8 +343,11 @@ class RecordBuilder:
 
             constraint = self.__create_parser_constraint()
             url_list = self.__mapping.get_column_values('resultURL')
-
-            parser.fetch_from(*constraint, url_list)
+            scenario_name = self.__data.mandatory.item.scenario.name if self.__data.mandatory.item.scenario else ''
+            plugin_name = self.__data.mandatory.item.plugin.name if self.__data.mandatory.item.plugin else ''
+            item_name = self.__data.mandatory.item.name
+            item_args = self.__data.mandatory.item.args
+            parser.fetch_from(*constraint, url_list, scenario_name, plugin_name, item_name, item_args)
 
         if parser.is_cached(result_url):
             log.debug(f"using GTAFieldParser cached values: {result_url}")
@@ -360,6 +363,7 @@ class RecordBuilder:
             'mappedComponent',
             'vertical',
             'platformName',
+            'resultKey'
         ])
 
     def __set_model_fields(self, entity) -> List[ResultFeature]:

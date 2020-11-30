@@ -8,7 +8,7 @@ import os
 import re
 import traceback
 from dataclasses import InitVar, dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 from typing import Any
 
 import aiohttp
@@ -32,7 +32,10 @@ def custom_column(asset: str) -> Tuple[str, str]:
 
 
 def custom_column_os(asset: str) -> Tuple[str, str]:
-    return asset, f"execution.testRun.repro.value.tasks[?(@.name == 'setup')].items[?(@.['{asset}.asset.os_image.asset_version'])]"
+    return (asset,
+            f'execution.testRun.repro.value.'
+            f'tasks[?(@.name == "setup")].items[?(@.["{asset}.asset.os_image.asset_version"])]')
+
 
 def _extract_first_error(test_error: Any) -> str:
     if type(test_error) == str:
@@ -70,6 +73,8 @@ CUSTOM_COLUMNS_MAPPING = dict([
     ("kernel_date", "execution.machine.properties.kernel_version_full.updated_date"),
     ("test_errors", "result.custom.tests_errors"),
 ], **ADDITIONAL_PARAMS_MAPPING)
+
+TEST_MSDK_PLUGIN = 'test_msdk'
 
 
 @dataclass
@@ -196,14 +201,21 @@ class Simics:
 class GTAFieldParser:
     simics_re = re.compile(r'simics.asset.simics-([a-zA-Z0-9._-]*).asset_version.*', re.VERBOSE)
     lucas_version_cache = dict()
+    csv_link_cache = dict()
     test_run_id = None
     test_session_id = None
     mapped_component = None
     vertical = None
     platform = None
+    result_key = None
     url_list = None
+    scenario_name = None
+    plugin_name = None
+    item_name = None
+    item_args = None
     result = dict()
-    auth = aiohttp.BasicAuth(settings.GTA_API_USER, settings.GTA_API_PASSWORD)
+    credentials = (settings.GTA_API_USER, settings.GTA_API_PASSWORD)
+    auth = aiohttp.BasicAuth(*credentials)
 
     def __init__(self) -> None:
         # Do not use proxy
@@ -216,34 +228,105 @@ class GTAFieldParser:
                    mapped_component: str,
                    vertical: str,
                    platform: str,
-                   url_list: list):
+                   result_key: str,
+                   url_list: list,
+                   scenario_name: str,
+                   plugin_name: str,
+                   item_name: str,
+                   item_args: str):
 
         self.test_run_id = test_run_id
         self.test_session_id = test_session_id
         self.mapped_component = mapped_component
         self.vertical = vertical
         self.platform = platform
+        self.result_key = result_key
         self.url_list = url_list
+        self.scenario_name = scenario_name
+        self.plugin_name = plugin_name
+        self.item_name = item_name
+        self.item_args = item_args
 
         self.process()
 
-    def _patch_lucas_version(self, gta_instance_url: str):
+    @property
+    def base_requests_session(self) -> requests.Session:
+        session = requests.Session()
+        session.auth = self.credentials
+        return session
+
+    def task_number(self) -> int:
+        """
+        return: task number from result key
+                as example 1 from 'gtax_GTAX_GCMXD_FM_37672634_tests_1'
+        """
+        if found_task := re.search(r'tests_(?P<task_number>\d+)', self.result_key):
+            return int(found_task['task_number'])
+        return 0
+
+    def case_number(self) -> int:
+        """ Parse case number from item name and item args """
+        if case_number := (re.match(r'(?P<case>\d+)', self.item_name) or
+                           re.search(r'-i (?P<case>\d+)', self.item_args)):
+            return int(case_number['case'])
+        return 0
+
+    def _retrieve_job_details(self,
+                              gta_instance_url: str,
+                              job_id: str) -> Tuple[Optional[Dict[str, Any]], bool]:
+        s = self.base_requests_session
+        r = s.get(f'{gta_instance_url}/api/v1/jobs/{job_id}')
+        job_details, is_success = None, False
+        if r.status_code == 200:
+            job_details, is_success = r.json(), True
+        return job_details, is_success
+
+    def _retrieve_csv_link(self, gta_instance_url: str, job_id: str) -> str:
+        # If csv link is already retrieved for correct test run ID we return cached value
+        if self.test_run_id in self.csv_link_cache:
+            return self.csv_link_cache[self.test_run_id]
+        log.debug('Started retrieving csv link')
+        # Retrieve job details from get request to GTA
+        job_details, success = self._retrieve_job_details(gta_instance_url, job_id)
+        if not success:
+            self.csv_link_cache[self.test_run_id] = ''
+            log.warning('Csv link is not retrieved')
+            return self.csv_link_cache[self.test_run_id]
+        artifacts_path = job_details['artifacts_path']
+        task_number = self.task_number()
+
+        # to check which base logs storage should be used
+        if self.plugin_name == TEST_MSDK_PLUGIN:
+            # 'results/tests' (tests results GTA dir) logs storage will be used
+            case_number = self.case_number()
+            # The last url part ends with doubled .csv extension
+            # It is a specific feature of test system
+            scenario_url = f'{gta_instance_url}/logs/jobs/{artifacts_path}/' \
+                           f'results/tests/{task_number}/{self.scenario_name}/' \
+                           f'cases_{case_number}/{self.scenario_name}.csv'
+        else:
+            # 'logs/tests' (test logs GTA dir) logs storage will be used
+            scenario_url = f'{gta_instance_url}/logs/storage/{artifacts_path}/' \
+                           f'logs/tests/{task_number}/{self.scenario_name}'
+        self.csv_link_cache[self.test_run_id] = scenario_url
+        log.debug('Finished retrieving csv link')
+        return self.csv_link_cache[self.test_run_id]
+
+    def _patch_lucas_version(self, gta_instance_url: str, result_url: str, job_id: str) -> str:
         # If Lucas version is already retrieved for correct test run ID we return cached value
-        if self.test_run_id in self.lucas_version_cache.keys():
+        if self.test_run_id in self.lucas_version_cache:
             return self.lucas_version_cache[self.test_run_id]
-        s = requests.Session()
-        s.auth = (settings.GTA_API_USER, settings.GTA_API_PASSWORD)
-        log.debug("Started retrieving lucas version")
-        # Perform requests to get LucasLog.txt
-        r = s.get(f'{gta_instance_url}/api/v1/jobs/{self.test_run_id}')
-        if r.status_code != 200:
+        job_details, success = self._retrieve_job_details(gta_instance_url, job_id)
+        if not success:
             self.lucas_version_cache[self.test_run_id] = '0000'
             log.warning("Lucas version is not retrieved")
             return self.lucas_version_cache[self.test_run_id]
-        jsn = r.json()
-        artifacts_path = jsn['artifacts_path']
+        artifacts_path = job_details['artifacts_path']
         # Parse LucasLog
-        r = s.get(f'{gta_instance_url}/logs/storage/{artifacts_path}/logs/tests/0/LucasLog.txt')
+        task_number = self.task_number()
+
+        s = self.base_requests_session
+        r = s.get(f'{gta_instance_url}/logs/storage/{artifacts_path}/logs/tests/{task_number}/LucasLog.txt')
         if r.status_code != 200:
             self.lucas_version_cache[self.test_run_id] = '0000'
             log.warning("Lucas version is not retrieved")
@@ -399,7 +482,8 @@ class GTAFieldParser:
             kernel.updated_date = item[CUSTOM_COLUMNS_MAPPING['kernel_date']][0]
             os = item['os'][0]
             test_item_url = item['testRunUrl'][0]
-            # http://gtax-gcmxd-fm.intel.com/#/jobs/32416620#task_tests_0 -> http://gtax-gcmxd-fm.intel.com
+            # http://gtax-gcmxd-fm.intel.com/#/jobs/32416620#task_tests_0
+            # -> http://gtax-gcmxd-fm.intel.com
             gta_instance_url = '/'.join(test_item_url.split('/')[:3])
             lucas = LucasAsset(item)
             scenario = ScenarioAsset(item)
@@ -430,10 +514,12 @@ class GTAFieldParser:
                     r = self.simics_re.match(key)
                     if r:
                         simics.data[r.group(1)] = value
+            job_id = item['gtaxJobId'][0]
+            csv_link = self._retrieve_csv_link(gta_instance_url, job_id)
             # If Lucas version is not present in test item config
             # perform separate request to get Lucas version from LucasLog
             if lucas.version == '0000' or lucas.version == '':
-                lucas.version = self._patch_lucas_version(gta_instance_url)
+                lucas.version = self._patch_lucas_version(gta_instance_url, test_item_url, job_id)
                 if lucas.version == '0000':
                     lucas = LucasAsset(None)
             if msdk.version == '' or msdk.version == '0000':
@@ -461,6 +547,7 @@ class GTAFieldParser:
                 "simics": simics,
                 "kernel": kernel,
                 "test_error": test_error,
+                "scenario_url": csv_link,
                 "additional_params": add_params if add_params else None
             }
 
@@ -496,5 +583,6 @@ class GTAFieldParser:
 
         data.additional_parameters = cached_result_dict['additional_params']
         data.test_error = cached_result_dict['test_error']
+        data.scenario_url = cached_result_dict['scenario_url']
 
         return data

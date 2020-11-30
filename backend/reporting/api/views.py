@@ -1499,31 +1499,35 @@ class RequestModelCreation(APIView):
 class ReportIndicatorView(APIView):
     def get(self, request, id, *args, **kwargs):
         def update_status(data, total, status):
-            key_to_update = None
-            if status == 'Passed':
-                key_to_update = 'passed'
-            elif status == 'Failed':
-                key_to_update = 'failed'
-            elif status in ('Skipped', 'Blocked', 'Canceled', 'Error'):
-                key_to_update = 'blocked'
+            data[status.lower()] += 1
+            total[status.lower()] += 1
 
-            data[key_to_update] += 1
-            data['executed'] += 1
-            total[key_to_update] += 1
-            total['executed'] += 1
-
-            if key_to_update != 'blocked':
-                data['not_run'] -= 1
-                total['not_run'] -= 1
+            if status in ('Skipped', 'Blocked', 'Canceled'):
+                data['notrun'] += 1
+                total['notrun'] += 1
 
         mapping_ids = request.GET.get('fmt_id').split(',')
         mode = request.GET.get('mode')
+
         do_excel = False
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
 
         data = defaultdict(dict)
-        total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': 0, 'total': 0}
+        total_counters = {
+            'passed': 0,
+            'failed': 0,
+            'error': 0,
+            'blocked': 0,
+            'skipped': 0,
+            'canceled': 0,
+
+            'passrate': 0,
+            'execrate': 0,
+
+            'notrun': 0,
+            'total': 0
+        }
 
         results = Result.objects.filter(validation_id=id)
         # get mappings with preserved ids order from request
@@ -1532,10 +1536,22 @@ class ReportIndicatorView(APIView):
 
         for mapping in mappings:
             mapping_data = defaultdict(dict)
-            mapping_total = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0, 'not_run': 0, 'total': 0}
+            mapping_total = {
+                'passed': 0,
+                'failed': 0,
+                'error': 0,
+                'blocked': 0,
+                'skipped': 0,
+                'canceled': 0,
 
-            for milestone, scenario_id, feature, ids, total_value in FeatureMappingRule.objects \
-                    .filter(mapping_id=mapping.id) \
+                'passrate': 0,
+                'execrate': 0,
+
+                'notrun': 0,
+                'total': 0
+            }
+
+            for milestone, scenario_id, feature, ids, total_value in FeatureMappingRule.objects.filter(mapping_id=mapping.id) \
                     .values_list('milestone__name', 'scenario_id', 'feature__name', 'ids', 'total'):
                 if mode == 'combined':
                     feature_name = f'{feature} ({mapping.codec.name})'
@@ -1545,20 +1561,54 @@ class ReportIndicatorView(APIView):
                 if ids is not None:
                     total_value = len(ids.split(','))
 
-                mapping_data[milestone][feature_name] = {'executed': 0, 'passed': 0, 'failed': 0, 'blocked': 0,
-                                                         'not_run': total_value, 'total': total_value}
-                mapping_total['not_run'] += total_value
+                mapping_data[milestone][feature_name] = {
+                    'passed': 0,
+                    'failed': 0,
+                    'error': 0,
+                    'blocked': 0,
+                    'skipped': 0,
+                    'canceled': 0,
+
+                    'passrate': 0,
+                    'execrate': 0,
+
+                    'notrun': 0,
+                    'total': total_value
+                }
+
+                # show Indicator report even if FMT is incorrect i.e. it does
+                # not have total value set
+                if total_value is None:
+                    total_value = 0
+
                 mapping_total['total'] += total_value
 
                 if ids is not None:
                     ids = ids.split(',')
+                    executed = results.filter(item__scenario_id=scenario_id, item__test_id__in=ids).count()
                     for status in results.filter(item__scenario_id=scenario_id, item__test_id__in=ids) \
                             .values_list('status__test_status', flat=True):
                         update_status(mapping_data[milestone][feature_name], mapping_total, status)
                 else:
-                    for status in results.filter(item__scenario_id=scenario_id).values_list('status__test_status',
-                                                                                            flat=True):
+                    executed = results.filter(item__scenario_id=scenario_id).count()
+                    for status in results.filter(item__scenario_id=scenario_id) \
+                            .values_list('status__test_status', flat=True):
                         update_status(mapping_data[milestone][feature_name], mapping_total, status)
+
+                not_executed = total_value - executed
+
+                # protect ourselves from broken FMTs which have None
+                # in total column and total = 0
+                if not_executed > 0:
+                    mapping_data[milestone][feature_name]['notrun'] += not_executed
+                    mapping_total['notrun'] += not_executed
+
+                passed = mapping_data[milestone][feature_name]['passed']
+                total = mapping_data[milestone][feature_name]['total']
+                not_run = mapping_data[milestone][feature_name]['notrun']
+
+                mapping_data[milestone][feature_name]['passrate'] = passed / total
+                mapping_data[milestone][feature_name]['execrate'] = (total - not_run) / total
 
             if mode == 'single' and do_excel:
                 # split data by mappings
@@ -1569,8 +1619,19 @@ class ReportIndicatorView(APIView):
                 for key, value in mapping_data.items():
                     for subkey, subvalue in value.items():
                         data[key][subkey] = subvalue
-                for key in ['total', 'passed', 'failed', 'blocked', 'executed', 'not_run']:
-                    total[key] += mapping_total[key]
+
+                for key in ['total',
+                            'passed',
+                            'failed',
+                            'error',
+                            'blocked',
+                            'skipped',
+                            'canceled',
+                            'notrun']:
+                    total_counters[key] += mapping_total[key]
+
+                total_counters['passrate'] = total_counters['passed'] / total_counters['total']
+                total_counters['execrate'] = (total_counters['total'] - total_counters['notrun']) / total_counters['total']
 
         if not data:
             if do_excel:
@@ -1580,25 +1641,37 @@ class ReportIndicatorView(APIView):
         if not do_excel:
             # Data-table formatting
             headers, items = [], []
-            for label in ('milestone', 'feature', 'total', 'passed', 'failed', 'blocked', 'executed', 'not run'):
+            for label in ('Milestone',
+                          'Feature',
+                          'Total',
+                          'Passed',
+                          'Failed',
+                          'Error',
+                          'Blocked',
+                          'Skipped',
+                          'Canceled',
+                          'Not Run',
+                          'Pass Rate',
+                          'Exec Rate'):
                 headers.append({
-                    'text': label.capitalize(),
-                    'value': label,
-                    'groupable': True if label == 'milestone' else False,
-                    'width': 150 if label not in ('milestone', 'feature') else None,
+                    'text': label,
+                    'value': label.replace(' ', '').lower(),
+                    'groupable': True if label == 'Milestone' else False,
+                    'width': 140 if label not in ('Milestone', 'Feature') else None,
                 })
 
             for milestone, m_data in data.items():
                 for feature, f_data in m_data.items():
                     items.append({'milestone': milestone, 'feature': feature, **f_data})
-            items.append(total)
+            items.append(total_counters)
+
             return Response({'headers': headers, 'items': items})
         else:
             # Excel part
             validation = Validation.objects.get(id=id)
 
             if mode == 'combined':
-                excel_data = {'items': data, 'total': total}
+                excel_data = {'items': data, 'total': total_counters}
             else:
                 excel_data = data
             workbook = excel.do_indicator_report(excel_data, validation, mappings, mode)

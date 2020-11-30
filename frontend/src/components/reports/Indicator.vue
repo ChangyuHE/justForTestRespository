@@ -78,9 +78,36 @@
                     </v-toolbar>
                     <hr>
                 </template>
+                <template v-slot:header.passrate>
+                    Pass Rate
+                    <v-tooltip top v-model="showPassRateTooltip">
+                        <template v-slot:activator="{ on }">
+                            <v-icon size="20" @click="showPassRateTooltip = !showPassRateTooltip">mdi-help-circle</v-icon>
+                        </template>
+                        Pass Rate = Passed / Total * 100%
+                    </v-tooltip>
+                </template>
+                <template v-slot:header.execrate>
+                    Exec Rate
+                    <v-tooltip bottom v-model="showExecRateTooltip">
+                        <template v-slot:activator="{ on }">
+                            <v-icon size="20" @click="showExecRateTooltip = !showExecRateTooltip">mdi-help-circle</v-icon>
+                        </template>
+                        Exec Rate = (Total - Not Run) / Total * 100%
+                    </v-tooltip>
+                </template>
+                <template v-slot:header.notrun>
+                    Not Run
+                    <v-tooltip left v-model="showNotRunTooltip">
+                        <template v-slot:activator="{ on }">
+                            <v-icon size="20" @click="showNotRunTooltip = !showNotRunTooltip">mdi-help-circle</v-icon>
+                        </template>
+                        Not Run = Blocked + Skipped + Canceled + Not Executed
+                    </v-tooltip>
+                </template>
                 <template v-slot:group="{ group, items }">
                     <tr class="item-group">
-                        <td colspan="7">
+                        <td colspan="11">
                             <span class="milestone-header">{{ group }}</span>
                         </td>
                     </tr>
@@ -89,9 +116,13 @@
                         <td :key="i + 'total'">{{ item.total }}</td>
                         <td :key="i + 'passed'">{{ item.passed }}</td>
                         <td :key="i + 'failed'">{{ item.failed }}</td>
+                        <td :key="i + 'error'">{{ item.error }}</td>
                         <td :key="i + 'blocked'">{{ item.blocked }}</td>
-                        <td :key="i + 'executed'">{{ item.executed }}</td>
-                        <td :key="i + 'not_run'">{{ item.not_run }}</td>
+                        <td :key="i + 'skipped'">{{ item.skipped }}</td>
+                        <td :key="i + 'canceled'">{{ item.canceled }}</td>
+                        <td :key="i + 'notrun'">{{ item.notrun }}</td>
+                        <td :key="i + 'passrate'">{{ item.passrate.toLocaleString("en", {style: "percent"}) }}</td>
+                        <td :key="i + 'execrate'">{{ item.execrate.toLocaleString("en", {style: "percent"}) }}</td>
                     </tr>
                 </template>
                 <template slot="body.append">
@@ -100,9 +131,13 @@
                         <td>{{ total.total }}</td>
                         <td>{{ total.passed }}</td>
                         <td>{{ total.failed }}</td>
+                        <td>{{ total.error }}</td>
                         <td>{{ total.blocked }}</td>
-                        <td>{{ total.executed }}</td>
-                        <td>{{ total.not_run }}</td>
+                        <td>{{ total.skipped }}</td>
+                        <td>{{ total.canceled }}</td>
+                        <td>{{ total.notrun }}</td>
+                        <td>{{ total.passrate.toLocaleString("en", {style: "percent"}) }}</td>
+                        <td>{{ total.execrate.toLocaleString("en", {style: "percent"}) }}</td>
                     </tr>
                 </template>
             </v-data-table>
@@ -133,7 +168,10 @@
                 validationErrors: [],
                 loading: false,
                 mode: 'single',
-                singleItems: {}
+                singleItems: {},
+                showPassRateTooltip: false,
+                showExecRateTooltip: false,
+                showNotRunTooltip: false,
             }
         },
         computed: {

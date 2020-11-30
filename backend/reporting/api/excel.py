@@ -5,7 +5,7 @@ import pandas as pd
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl import Workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, numbers
 from openpyxl.styles.colors import WHITE
 from openpyxl.utils import get_column_letter as to_letter
 from django.template.defaultfilters import pluralize
@@ -161,7 +161,7 @@ def do_comparison_report(ct: pd.DataFrame) -> Workbook:
 
 
 def do_indicator_report(data, validation, mappings, mode):
-    statuses = ['total', 'passed', 'failed', 'blocked', 'executed', 'not_run']
+    statuses = ['total', 'passed', 'failed', 'error', 'blocked', 'skipped', 'canceled', 'notrun', 'passrate', 'execrate']
     wb = Workbook()
 
     def report_sheet(data, validation, mappings, mode):
@@ -201,7 +201,7 @@ def do_indicator_report(data, validation, mappings, mode):
         col_width = {}
 
         # Header row
-        headers = ['Feature', 'Total', 'Passed', 'Failed', 'Blocked', 'Executed', 'Not Run']
+        headers = ['Feature', 'Total', 'Passed', 'Failed', 'Error', 'Blocked', 'Skipped', 'Canceled', 'Not Run', 'Pass Rate', 'Exec Rate']
         for c_id, header in enumerate(headers, 1):
             # set width for columns except features
             if c_id > 1:
@@ -224,12 +224,17 @@ def do_indicator_report(data, validation, mappings, mode):
 
                 for c_id, key in enumerate(statuses, 2):
                     ws.cell(row=c_row, column=c_id, value=f_dict[key])
+                    if key in ('passrate', 'execrate'):
+                        ws.cell(row=c_row, column=c_id).number_format =  numbers.FORMAT_PERCENTAGE
+
                 c_row += 1
 
         # Total row
         ws.cell(row=c_row, column=1, value='Total').font = BOLD_FONT
         for c_id, key in enumerate(statuses, 2):
             ws.cell(row=c_row, column=c_id, value=data['total'][key])
+            if key in ('passrate', 'execrate'):
+                ws.cell(row=c_row, column=c_id).number_format = numbers.FORMAT_PERCENTAGE
 
         # set column width
         for col_ind in col_width:
@@ -241,7 +246,7 @@ def do_indicator_report(data, validation, mappings, mode):
         else:
             display_name = f'Single_{mappings[0].id}'
         table = Table(
-            ref=f'A{table_row_start}:G{table_row_start + table_row_end + 1}',
+            ref=f'A{table_row_start}:K{table_row_start + table_row_end + 1}',
             displayName=display_name, tableStyleInfo=MEDIUM_STYLE)
         ws.add_table(table)
 

@@ -52,10 +52,11 @@ class Changes:
             self.skipped += 1
 
 
-@actor
+@actor(time_limit=86400000)  # tasks can execute for up to a day
 @transaction.atomic
 def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]], reason: str) -> None:
     topic = 'Reporter: <unknown>'
+    text = ''
     to_emails = []
     validation_info = '<unknown>'
 

@@ -9,7 +9,8 @@
             <span class="subtitle-1">Object will be created using data shown below</span>
             <template v-for="(value, key) in modelObject.fields">
                 <v-text-field
-                    readonly filled color="blue-grey"
+                    readonly
+                    color="blue-grey"
                     :label="key"
                     :value="value"
                 ></v-text-field>
@@ -63,7 +64,7 @@
                         this.$toasted.success(`${this.modelObject.model} object was created`)
 
                         // remove error by ID from importErrors
-                        this.$store.dispatch('deleteImportError', {id: this.ID, priority: this.priority, errorCode: this.errorCode})
+                        this.$store.dispatch('deleteImportError', {id: this.ID, priority: this.priority, errorCode: this.errorCode, model: this.modelObject.model})
                             .then(() => { this.$emit('closeCreate') }
                         )
                     })

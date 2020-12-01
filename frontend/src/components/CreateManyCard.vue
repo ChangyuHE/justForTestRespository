@@ -6,14 +6,12 @@
             </span>
         </v-card-title>
         <v-card-text class="pb-0">
-            <div class="d-flex justify-space-between">
-                <span class="subtitle-1 d-flex align-self-center ">A number of object will be created using data shown below</span>
-                <div class="d-flex justify-end">
-                    <v-btn color="red" text :disabled="sending" @click="closeDialog">Close</v-btn>
-                    <v-btn color="cyan darken-2" text :loading="sending" @click="submit">Submit</v-btn>
-                </div>
-            </div>
-            <hr>
+            <v-card-subtitle
+                v-if="errors.length > 1"
+                class="text-subtitle-1"
+            >
+                A number of objects will be created using data shown below
+            </v-card-subtitle>
             <v-list dense>
                 <v-list-item v-for="(error, i) in errors" :key="i">
                     <v-list-item-content>
@@ -22,7 +20,6 @@
                     </v-list-item-content>
                 </v-list-item>
             </v-list>
-            <hr>
         </v-card-text>
         <v-card-actions>
             <v-spacer></v-spacer>

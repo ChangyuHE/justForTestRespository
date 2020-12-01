@@ -33,9 +33,12 @@
 
         <v-col class="d-flex justify-end">
             <!-- Create item dialog -->
-            <v-dialog v-if="canBeCreated"
+            <v-dialog
+                v-if="canBeCreated"
+                max-width="80%"
+                persistent
+                scrollable
                 v-model="createItemDialog"
-                persistent max-width="80%"
             >
                 <template v-slot:activator="{ on }">
                     <v-btn small v-on="on">Create</v-btn>

@@ -25,8 +25,9 @@ export default new Vuex.Store({
         activeProfile: state => state.userData.profiles.find(p => p.active === true)
     },
     mutations: {
-        DELETE_IMPORT_ERROR: (state, {id, priority, errorCode}) => {
-            state.importErrors[priority][errorCode] = state.importErrors[priority][errorCode].filter(e => { return e.ID != id })
+        DELETE_IMPORT_ERROR: (state, {id, priority, errorCode, model}) => {
+            state.importErrors[priority][errorCode][model] =
+                state.importErrors[priority][errorCode][model].filter(e => e.ID != id)
         },
         DELETE_IMPORT_ERRORS_GROUP: (state, {priority, errorCode, model}) => {
             Vue.delete(state.importErrors[priority][errorCode], model)

@@ -98,7 +98,7 @@
                             <v-list dense flat subheader class="ml-4" >
                                 <v-list-item v-for="(item, i) in branches" :key="i">
                                     <v-list-item-content class="py-0 my-1">
-                                        <v-list-item-title v-text="item"></v-list-item-title>
+                                        <v-list-item-title v-html="item"></v-list-item-title>
                                     </v-list-item-content>
                                 </v-list-item>
                             </v-list>
@@ -252,6 +252,13 @@
     .v-list-item--dense, .v-list--dense .v-list-item {
         min-height: 20px !important;
     }
+
+    .v-list-item span.gta_status {
+        cursor: pointer;
+        min-width: 2rem;
+        display: inline-flex;
+    }
+
     /* Panes splitting */
     .splitpanes__pane {
         background-color: #FFFFFF !important;

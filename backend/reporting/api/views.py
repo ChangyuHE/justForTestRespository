@@ -623,7 +623,9 @@ class ValidationsView(LoggingMixin, APIView):
                             error=validation.error,
                             blocked=validation.blocked,
                             skipped=validation.skipped,
-                            canceled=validation.canceled
+                            canceled=validation.canceled,
+                            owner=validation.owner.id,
+                            date=validation.date.strftime('%a %b %d %Y')
                         )
                     else:
                         node = Node(

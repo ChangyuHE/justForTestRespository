@@ -410,6 +410,7 @@
                 usersData: [],
                 showCloneDialog: false,
                 showMergeDialog: false,
+                userIdToName: {},
 
                 // date slider
                 enableDates: false,
@@ -653,7 +654,32 @@
                 alterHistory('push', {selected: this.validations})
             },
             prepareBranches(branches) {
-                return this._.map(branches, b => { return this._.map(b, n => n.model.text_flat ).reverse() })
+                let result = []
+                for (const branch of branches) {
+                    let levelResult = []
+                    for (const level of branch) {
+                        if (level.model.level != 'validation') {
+                            levelResult.push(level.model.text_flat)
+                        } else {
+                            levelResult.push(
+                                {
+                                    'text': level.model.text_flat,
+                                    'owner': this.userIdToName[level.model.owner],
+                                    'date': level.model.date,
+                                    'passed': level.model.passed,
+                                    'failed': level.model.failed,
+                                    'error': level.model.error,
+                                    'blocked': level.model.blocked,
+                                    'skipped': level.model.skipped,
+                                    'canceled': level.model.canceled,
+                                }
+                            )
+                        }
+                    }
+                    levelResult.reverse()
+                    result.push(levelResult)
+                }
+                return result
             },
             /**
              * Get params from URL and set validations and branches
@@ -871,6 +897,10 @@
                     this._.map(this.usersData, e => {
                         e.name = `${e.first_name} ${e.last_name} (${e.username})`
                     })
+                    // create mapping user id -> user name
+                    for (const user of this.usersData) {
+                        this.userIdToName[user.id] = user.name
+                    }
                 })
                 .catch(error => {
                     if (error.handleGlobally) {

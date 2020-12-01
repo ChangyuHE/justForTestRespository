@@ -1,4 +1,5 @@
 import _ from 'lodash'
+import { getTextColorFromStatus } from '@/utils/styling.js'
 
 export default {
     namespaced: true,
@@ -8,7 +9,17 @@ export default {
         treeLoading: true,
     },
     getters: {
-        branches: state => state.limbs.map(texted => `${texted[5]} (${texted[1]}, ${texted[3]}, ${texted[4]})`)
+        branches: state => state.limbs.map(lst => {
+            let statuses = ''
+            for (const status of ['passed', 'failed', 'error', 'blocked', 'skipped', 'canceled']) {
+                const cls = getTextColorFromStatus(status)
+                // trailing underscore required to remove conflict with standard Vue error class
+                statuses += `<span class='${cls} gta_status' title='${_.upperFirst(status)}'>${lst[5][status]}</span>`
+            }
+            const firstLine = `${statuses}${lst[5].text} (${lst[1]}, ${lst[3]}, ${lst[4]})`
+            const secondLine = `<span class='grey--text text--lighten-1'>at ${lst[5].date} by ${lst[5].owner}</span>`
+            return firstLine + '<br/>' + secondLine
+        })
     },
     mutations: {
         SET_SELECTED(state, { validations, branches }) {

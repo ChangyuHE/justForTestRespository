@@ -78,6 +78,17 @@
                                     Issues
                                 </v-btn>
                             </v-btn-toggle>
+
+                            <!-- Help icon -->
+                            <v-btn
+                                icon
+                                small
+                                href="https://wiki.ith.intel.com/display/MediaSDK/Reports"
+                                target="_blank"
+                                title="Reports documentation"
+                            >
+                                <v-icon size="20">mdi-help-circle-outline</v-icon>
+                            </v-btn>
                         </v-toolbar>
                         <!-- Selected validations -->
                         <template v-if="showValidationsList">

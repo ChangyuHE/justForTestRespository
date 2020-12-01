@@ -10,38 +10,51 @@
         </v-overlay>
 
         <v-row>
-            <!-- Show filters button -->
-            <v-btn-toggle
-                class="mt-2 ml-3"
-                v-model="showFilters"
-            >
-                <!-- Badge with filters amount -->
-                <v-badge class="filter-badge" color="teal darken-3"
-                    :content="badgeFilterCount"
-                    :value="badgeFilterCount"
-                    overlap
+            <div class="d-flex-inline">
+                <!-- Show filters button -->
+                <v-btn-toggle
+                    class="mt-2 ml-3"
+                    v-model="showFilters"
                 >
-                    <v-btn x-small color="blue-grey lighten-4" class="black--text">
-                        Tree filters
-                    </v-btn>
-                </v-badge>
-            </v-btn-toggle>
+                    <!-- Badge with filters amount -->
+                    <v-badge class="filter-badge" color="teal darken-3"
+                        :content="badgeFilterCount"
+                        :value="badgeFilterCount"
+                        overlap
+                    >
+                        <v-btn x-small color="blue-grey lighten-4" class="black--text">
+                            Tree filters
+                        </v-btn>
+                    </v-badge>
+                </v-btn-toggle>
 
-            <!-- Show date filters button -->
-            <v-btn-toggle
-                class="mt-2 ml-2 "
-                background-color="blue-grey" color="blue-grey darken-4"
-                v-model="showDateSlider"
-            >
-                <v-badge class="date-badge" color="teal darken-3"
-                    :value="enableDates"
-                    overlap
+                <!-- Show date filters button -->
+                <v-btn-toggle
+                    class="mt-2 ml-2"
+                    background-color="blue-grey" color="blue-grey darken-4"
+                    v-model="showDateSlider"
                 >
-                    <v-btn x-small color="blue-grey lighten-4" class="black--text">
-                        Date filter
-                    </v-btn>
-                </v-badge>
-            </v-btn-toggle>
+                    <v-badge class="date-badge" color="teal darken-3"
+                        :value="enableDates"
+                        overlap
+                    >
+                        <v-btn x-small color="blue-grey lighten-4" class="black--text">
+                            Date filter
+                        </v-btn>
+                    </v-badge>
+                </v-btn-toggle>
+
+                <!-- Help icon -->
+                <v-btn
+                    icon
+                    small
+                    href="https://wiki.ith.intel.com/display/MediaSDK/List+of+available+validations"
+                    target="_blank"
+                    title="Validations list documentation"
+                >
+                    <v-icon size="20">mdi-help-circle-outline</v-icon>
+                </v-btn>
+            </div>
 
             <v-spacer></v-spacer>
             <!-- Clean and actions buttons -->

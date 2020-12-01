@@ -6,7 +6,21 @@
                 expand class="pa-4" elevation="3"
                 v-resize="onResize" :height="maxHeight" style="overflow-y: auto"
             >
-                <v-list-group
+                <!-- Help icon -->
+                <div class="d-flex justify-end ma-n3">
+                    <v-btn
+                        icon
+                        small
+                        href="https://wiki.ith.intel.com/display/MediaSDK/Master+Data"
+                        target="_blank"
+                        title="Master Data documentation"
+                    >
+                        <v-icon size="20">mdi-help-circle-outline</v-icon>
+                    </v-btn>
+                </div>
+
+               <!-- Lists -->
+               <v-list-group
                     v-for="group in groups" :key="group.name"
                     dense
                     v-model="openedGroups[group.name]"
@@ -149,7 +163,7 @@
                     </v-data-table>
             </v-card>
         </v-col>
-        <!-- Import errors dialog -->
+        <!-- Errors dialog -->
         <v-dialog v-model="errorsDialog" max-width="50%">
             <v-card>
                 <v-card-title class="gradient-warning-bottom">

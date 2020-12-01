@@ -2,18 +2,32 @@
     <v-container fluid>
         <v-row justify="center">
             <v-col md="12" lg="8" class="pt-0">
-                <v-btn-toggle
-                    color="teal" mandatory
-                    v-model="showType"
-                    @change="showTypeChange"
-                >
-                    <v-btn small class="outlined" value="show" :loading="loading">
-                        Show
+                <div class="d-flex justify-space-between">
+                    <v-btn-toggle
+                        color="teal" mandatory
+                        v-model="showType"
+                        @change="showTypeChange"
+                    >
+                        <v-btn small class="outlined" value="show" :loading="loading">
+                            Show
+                        </v-btn>
+                        <v-btn small class="outlined" value="import">
+                            Upload
+                        </v-btn>
+                    </v-btn-toggle>
+
+                    <!-- Help icon -->
+                    <v-btn
+                        icon
+                        small
+                        class="mx-1"
+                        href="https://wiki.ith.intel.com/display/MediaSDK/Feature+Mapping+Tables"
+                        target="_blank"
+                        title="Feature Mapping Tables documentation"
+                    >
+                        <v-icon size="20">mdi-help-circle-outline</v-icon>
                     </v-btn>
-                    <v-btn small class="outlined" value="import">
-                        Upload
-                    </v-btn>
-                </v-btn-toggle>
+                </div>
             </v-col>
         </v-row>
 

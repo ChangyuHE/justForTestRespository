@@ -1,7 +1,7 @@
 <template>
     <div>
         <v-row class="d-flex justify-center">
-            <v-col cols="8" class="pt-0">
+            <v-col md="12" lg="8" class="pt-0">
                 <!-- File input controller -->
                 <dnd-frame @file-drop="file = $event">
                     <v-file-input
@@ -39,7 +39,7 @@
 
         <!-- Import parameters Platform, Os, Component -->
         <v-row class="d-flex justify-center">
-            <v-col cols="8" class="px-4 pt-0 d-flex">
+            <v-col md="12" lg="8" class="px-4 pt-0 d-flex">
                 <v-text-field
                     color="blue-grey" class="py-1 my-0"
                     clearable
@@ -49,7 +49,7 @@
             </v-col>
         </v-row>
         <v-row class="d-flex justify-center">
-            <v-col cols="2" class="px-4 pt-0 d-flex" v-for="_, modelName in importBindings" :key="modelName">
+            <v-col md="3" lg="2" class="px-4 pt-0 d-flex" v-for="_, modelName in importBindings" :key="modelName">
                 <api-auto-complete v-if="modelName != 'os'"
                     color="blue-grey" class="py-0 my-0"
                     type="defined"
@@ -69,7 +69,7 @@
             </v-col>
         </v-row>
         <v-row class="d-flex justify-center">
-            <v-col cols="8">
+            <v-col md="12" lg="8">
                 <v-btn
                     color="teal" class="white--text"
                     :disabled="uploadDisabled"

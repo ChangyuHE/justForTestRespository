@@ -3,17 +3,30 @@
         <v-row class="d-flex justify-center">
             <v-col cols="6" class="pt-0">
               <!-- Import type buttons group -->
-                <v-btn-toggle
-                    color="teal" mandatory
-                    v-model="importType"
-                >
-                    <v-btn small class="outlined" value="new">
-                        New
+                <div class="d-flex justify-space-between">
+                    <v-btn-toggle
+                        color="teal" mandatory
+                        v-model="importType"
+                    >
+                        <v-btn small class="outlined" value="new">
+                            New
+                        </v-btn>
+                        <v-btn small class="outlined" value="existing">
+                            Existing
+                        </v-btn>
+                    </v-btn-toggle>
+
+                    <!-- Help icon -->
+                    <v-btn
+                        icon
+                        small
+                        href="https://wiki.ith.intel.com/display/MediaSDK/Import+validation+into+Reporter"
+                        target="_blank"
+                        title="Validations import documentation"
+                    >
+                        <v-icon size="20">mdi-help-circle-outline</v-icon>
                     </v-btn>
-                    <v-btn small class="outlined" value="existing">
-                        Existing
-                    </v-btn>
-                </v-btn-toggle>
+                </div>
 
                 <v-tabs>
                     <!-- URL input controller -->

@@ -38,6 +38,16 @@
             </v-btn>
             <v-spacer></v-spacer>
 
+            <!-- Help icon -->
+            <v-btn
+                icon
+                href="https://wiki.ith.intel.com/display/MediaSDK/Reporter"
+                target="_blank"
+                title="Wiki documentation"
+            >
+                <v-icon>mdi-help-circle-outline</v-icon>
+            </v-btn>
+
             <!-- User button -->
             <v-btn
                 text
@@ -45,7 +55,7 @@
                 style="text-transform: none"
                 @click="usedCardRequired = true"
             >
-                <v-icon title="User account data">mdi-badge-account-horizontal-outline</v-icon>
+                <v-icon>mdi-badge-account-horizontal-outline</v-icon>
                 <span class="ml-2">{{ userName }}</span>
             </v-btn>
             <user-card v-if="usedCardRequired" @close="usedCardRequired = false"></user-card>

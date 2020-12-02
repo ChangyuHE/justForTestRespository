@@ -119,6 +119,7 @@ class Driver(models.Model):
             )
         ]
 
+
 class Plugin(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
@@ -387,6 +388,12 @@ class ComponentsAndFeatures:
 
         return f'components: {components}; features: {features}'
 
+
+class AliveManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted__isnull=True)
+
+
 class Validation(models.Model):
     name = models.CharField(max_length=255)
     env = models.ForeignKey(Env, on_delete=models.CASCADE)
@@ -397,7 +404,7 @@ class Validation(models.Model):
     source_file = models.TextField(null=True, blank=True)
     date = models.DateTimeField(null=True, blank=True)
 
-    ignore = models.BooleanField(default=False)
+    deleted = models.DateTimeField(null=True, blank=True)
     hash_last = models.CharField(max_length=40, null=True, blank=True)
     owner = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='validations')
 
@@ -424,6 +431,9 @@ class Validation(models.Model):
 
     components = ArrayField(models.IntegerField(), default=list)
     features = ArrayField(models.IntegerField(), default=list)
+
+    objects = models.Manager()
+    alive_objects = AliveManager()
 
     def get_by_status(self, status: str) -> int:
         return getattr(self, status.lower())
@@ -468,9 +478,14 @@ class Validation(models.Model):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=['name', 'env', 'platform', 'os'],
+                fields=['name', 'env', 'platform', 'os', 'deleted'],
                 name='unique_%(class)s_composite_constraint'
             ),
+            # without deletion date
+            UniqueConstraint(
+                fields=['name', 'env', 'platform', 'os'], condition=Q(deleted=None),
+                name='unique_%(class)s_composite_constraint_w_empty_deleted'
+            )
         ]
 
     def __str__(self):

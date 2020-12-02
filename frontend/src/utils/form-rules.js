@@ -6,9 +6,11 @@ export default {
         return !!value || 'Required'
     },
     isLongEnough(value, limit=5) {
-        if (value.length < limit)
+        if (value && value.length > limit) {
+            return true
+        } else {
             return `At least ${limit} symbols`
-        return true
+        }
     },
     isValidJson(value, model) {
         if ((model == 'additional_parameters' && value != '') || model == 'simics') {
@@ -19,5 +21,8 @@ export default {
             }
         }
         return true
+    },
+    uniqueNameInBranch(value, neighbours) {
+        return neighbours.includes(value) ? 'Already exists in current branch \u2014 please take another' : true
     }
 }

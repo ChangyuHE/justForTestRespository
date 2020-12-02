@@ -27,7 +27,7 @@ from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django_filters import rest_framework as django_filters
 
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.exceptions import ParseError, ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -48,18 +48,19 @@ from api.models import Generation, Platform, Env, Component, Item, Kernel, Drive
     Status, Os, OsGroup, Validation, Action, \
     Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
     FeatureMapping, FeatureMappingRule, Feature, Profile
-from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
+from api.serializers import UserSerializer, UserCutSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
     FeatureMappingSerializer, BulkResultSerializer, \
     ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
-    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer, ProfileSerializer
+    KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer, ProfileSerializer, \
+    ValidationSerializer, ValidationUpdateSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
 from utils.api_logging import get_user_object, LoggingMixin
-from utils.api_helpers import get_datatable_json, DefaultNameOrdering, CreateWOutputApiView, asset_view, \
-    UpdateWOutputAPIView
+from utils.api_helpers import get_datatable_json, DefaultNameOrdering, CreateWOutputApiView,\
+    UpdateWOutputAPIView, asset_view
 
 
 @never_cache
@@ -252,6 +253,7 @@ class EnvTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
         return get_datatable_json(self, actions=False)
 
 
+# Codec
 class CodecView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
     """
         get: List Codec objects
@@ -279,6 +281,7 @@ class CodecTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
         return get_datatable_json(self)
 
 
+# Result
 class ResultView(LoggingMixin, generics.RetrieveAPIView):
     """ List of Result objects """
     queryset = Result.objects.all()
@@ -538,7 +541,7 @@ class ValidationsView(LoggingMixin, APIView):
 
         tree = Node('')
 
-        validations_qs = Validation.objects.all() \
+        validations_qs = Validation.alive_objects.all() \
             .select_related('os__group', 'platform__generation', 'env', 'owner')
         for validation in validations_qs.order_by('-platform__generation__weight',
                                                   'platform__weight', 'os__group__name',
@@ -612,31 +615,36 @@ class ValidationsView(LoggingMixin, APIView):
                     icon = icon_map
                 name = node_data['name']
 
+                node_main_params = {
+                    'parent': parent,
+                    'name': name,
+                    'text': name,
+                    'text_flat': name,
+                    'selected': False,
+                    'opened': True,
+                    'level': node_data['level'],
+                    'id': node_data['obj'].id,
+                    'klass': type(node_data['obj']).__name__,
+                    'icon': f'{icon} mdi tree-icon'
+                }
+                node_validation_params = {
+                    'passed': validation.passed,
+                    'failed': validation.failed,
+                    'error': validation.error,
+                    'blocked': validation.blocked,
+                    'skipped': validation.skipped,
+                    'canceled': validation.canceled,
+                    'owner': validation.owner.id,
+                    'date': validation.date.strftime('%a %b %d %Y')
+                }
+
                 # find node by name and level, if not create new one
                 node = anytree.search.find(parent, lambda n: n.name == name and n.level == node_data['level'])
                 if not node:
                     if node_data['level'] == 'validation':
-                        node = Node(
-                            parent=parent, name=name, text=name, text_flat=name,
-                            selected=False, opened=True,
-                            level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
-                            icon=f'{icon} mdi tree-icon',
-                            passed=validation.passed,
-                            failed=validation.failed,
-                            error=validation.error,
-                            blocked=validation.blocked,
-                            skipped=validation.skipped,
-                            canceled=validation.canceled,
-                            owner=validation.owner.id,
-                            date=validation.date.strftime('%a %b %d %Y')
-                        )
+                        node = Node(**node_main_params, **node_validation_params)
                     else:
-                        node = Node(
-                            parent=parent, name=name, text=name, text_flat=name,
-                            selected=False, opened=True,
-                            level=node_data['level'], id=node_data['obj'].id, klass=type(node_data['obj']).__name__,
-                            icon=f'{icon} mdi tree-icon'
-                        )
+                        node = Node(**node_main_params)
                 parent = node
 
         exporter = JsonExporter()
@@ -647,8 +655,44 @@ class ValidationsView(LoggingMixin, APIView):
         return Response(d)
 
 
+class IsAdminOrOwner(permissions.BasePermission):
+    message = 'Validation owner or admin can perform this action only'
+
+    def has_object_permission(self, request, view, obj):
+        user = get_user_object(request)
+
+        if obj.owner == user or user.is_staff:
+            return True
+        return False
+
+
+class ValidationDetailsView(LoggingMixin, generics.RetrieveAPIView):
+    """ Retrieve validation object """
+
+    queryset = Validation.alive_objects.all()
+    serializer_class = ValidationSerializer
+
+
+class ValidationUpdateDeleteView(LoggingMixin, generics.UpdateAPIView, generics.DestroyAPIView):
+    """
+        patch: Update Validation object
+        put: Update Validation object
+        delete: Soft-delete of validation object
+    """
+
+    queryset = Validation.alive_objects.all()
+    serializer_class = ValidationUpdateSerializer
+    permission_classes = [IsAdminOrOwner]
+
+    # soft-delete
+    def perform_destroy(self, instance):
+        instance.deleted = datetime.now()
+        instance.save()
+
+
 class ValidationsDeleteByIdView(LoggingMixin, generics.DestroyAPIView):
     queryset = Validation.objects.all()
+    permission_classes = [IsAdminOrOwner]
 
     @transaction.atomic
     def perform_destroy(self, instance):
@@ -670,9 +714,9 @@ class ValidationsFlatView(LoggingMixin, APIView):
         ids = request.GET.get('ids', '')
         if ids:
             id_list = ids.split(',')
-            validations_qs = Validation.objects.filter(id__in=id_list).order_by('-id')
+            validations_qs = Validation.alive_objects.filter(id__in=id_list).order_by('-id')
         else:
-            validations_qs = Validation.objects.all().order_by('-id')
+            validations_qs = Validation.alive_objects.all().order_by('-id')
         for v in validations_qs:
             d.append({
                 'name': f'{v.name} ({v.platform.name}, {v.env.name}, {v.os.name})',
@@ -706,9 +750,9 @@ class ValidationMappings(LoggingMixin, generics.GenericAPIView):
         ids = self.request.query_params.get('ids', None)
         if ids is not None:
             ids = [int(x) for x in ids.split(',')]
-            return Validation.objects.filter(pk__in=ids)
+            return Validation.alive_objects.filter(pk__in=ids)
         else:
-            return Validation.objects.all()
+            return Validation.alive_objects.all()
 
     def get(self, request, *args, **kwargs):
         validations = self.get_queryset()
@@ -726,22 +770,22 @@ class ValidationsStructureView(LoggingMixin, APIView):
             {'level': 'os', 'label': 'OS', 'items': []}
         ]
         gens = Generation.objects.filter(
-            id__in=Validation.objects.values_list('platform__generation', flat=True)
+            id__in=Validation.alive_objects.values_list('platform__generation', flat=True)
                 .order_by('-platform__generation__weight').distinct())
         d[0]['items'] = GenerationSerializer(gens, many=True).data
 
         platforms = Platform.objects.filter(
-            id__in=Validation.objects.values_list('platform', flat=True)
+            id__in=Validation.alive_objects.values_list('platform', flat=True)
                 .order_by('-platform__weight').distinct())
         d[1]['items'] = PlatformSerializer(platforms, many=True).data
 
         os_groups = Os.objects.filter(
-            id__in=Validation.objects.values_list('os__group', flat=True)
+            id__in=Validation.alive_objects.values_list('os__group', flat=True)
                 .order_by('os__group__name').distinct())
         d[2]['items'] = OsSerializer(os_groups, many=True).data
 
         oses = Os.objects.filter(
-            id__in=Validation.objects.values_list('os', flat=True).order_by('os__name').distinct())
+            id__in=Validation.alive_objects.values_list('os', flat=True).order_by('os__name').distinct())
         d[3]['items'] = OsSerializer(oses, many=True).data
 
         return Response(d)
@@ -756,7 +800,7 @@ class ReportBestView(LoggingMixin, APIView):
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
         grouping = request.GET.get('group-by', 'feature')
-        validations = Validation.objects.filter(pk__in=val_pks)
+        validations = Validation.alive_objects.filter(pk__in=val_pks)
 
         # Looking for best items in target validations
         ibest = Result.sa \
@@ -858,7 +902,7 @@ class ReportLastView(LoggingMixin, APIView):
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
         grouping = request.GET.get('group-by', 'feature')
-        validations = Validation.objects.filter(pk__in=val_pks)
+        validations = Validation.alive_objects.filter(pk__in=val_pks)
         # Looking for last items in target validations with best status priority
         ilast = Result.sa \
             .query(Result.sa.item_id, func.max(Validation.sa.date).label('last_validation_date'),
@@ -983,7 +1027,7 @@ def fmt_rules(fmt_pks: Optional[List[int]] = None) -> Query:
 
 def validation_id_to_name(validation_ids: List[int]) -> Dict[int, str]:
     result = {}
-    for v in Validation.objects.filter(id__in=validation_ids):
+    for v in Validation.alive_objects.filter(id__in=validation_ids):
         result[int(v.id)] = f'{v.name}\n({v.platform.short_name}, {v.env.name}, {v.os.name})'
     return result
 
@@ -1372,8 +1416,10 @@ class ReportFromSearchView(LoggingMixin, APIView):
             recognized_parts.append(f' {part.number} {part.env.lower()} {part.os.lower()} '
                                     f'{platform_reverse_map[part.platform]}')
             part.validation_ids = \
-                Validation.objects.filter(
-                    env__name__in=[part.env], platform__short_name__in=[part.platform], os__name__in=[part.os]
+                Validation.alive_objects.filter(
+                    env__name__in=[part.env],
+                    platform__short_name__in=[part.platform],
+                    os__name__in=[part.os]
                 ).order_by('-date').values_list('id', flat=True)[:part.number]
 
             if not part.validation_ids:
@@ -1387,7 +1433,7 @@ class ReportFromSearchView(LoggingMixin, APIView):
             return Response(data=hint, status=status.HTTP_404_NOT_FOUND)
 
         original_order = Case(*[When(pk=pk, then=position) for position, pk in enumerate(validation_ids)])
-        validation_data = Validation.objects.filter(pk__in=validation_ids) \
+        validation_data = Validation.alive_objects.filter(pk__in=validation_ids) \
             .values_list(
                 'platform__generation__name', 'platform__short_name', 'os__group__name', 'os__name', 'env__name', 'name'
             ).order_by(original_order)
@@ -1454,7 +1500,7 @@ class ReportFromSearchView(LoggingMixin, APIView):
                     found_oses.append(os_group_.lower())
             if os:  # os group is found in query
                 os_group_id = Os.objects.filter(name__in=[os]).values_list('id', flat=True)
-                existed_oses = Validation.objects \
+                existed_oses = Validation.alive_objects \
                     .filter(env__name__in=[env], platform__short_name__in=[platform]) \
                     .values_list('os', flat=True).distinct()
                 os = os_group
@@ -1673,7 +1719,7 @@ class ReportIndicatorView(APIView):
             return Response({'headers': headers, 'items': items})
         else:
             # Excel part
-            validation = Validation.objects.get(id=id)
+            validation = Validation.alive_objects.get(id=id)
 
             if mode == 'combined':
                 excel_data = {'items': data, 'total': total_counters}
@@ -1732,7 +1778,7 @@ class ResultFeatureFilter(django_filters.FilterSet):
             # flatten list of lists
             itertools.chain.from_iterable(
                 list(
-                    Validation.objects.values_list(
+                    Validation.alive_objects.values_list(
                         'features',
                         flat=True).distinct()
                     )
@@ -1764,7 +1810,7 @@ class ComponentFilter(django_filters.FilterSet):
             # flatten list of lists
             itertools.chain.from_iterable(
                 list(
-                    Validation.objects.values_list(
+                    Validation.alive_objects.values_list(
                         'components',
                         flat=True).distinct()
                     )

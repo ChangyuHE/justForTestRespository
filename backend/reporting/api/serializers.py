@@ -22,6 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    fullname = serializers.CharField(source='get_full_name', read_only=True)
     profiles = ProfileSerializer(many=True)
 
     class Meta:
@@ -32,6 +33,7 @@ class UserSerializer(serializers.ModelSerializer):
             'username',
             'first_name',
             'last_name',
+            'fullname',
             'email',
             'is_staff',
             'profiles',
@@ -321,6 +323,7 @@ ValidationCutSerializer = model_cut_serializer(models.Validation)
 EnvCutSerializer = model_cut_serializer(models.Env)
 ComponentCutSerializer = model_cut_serializer(models.Component)
 OsCutSerializer = model_cut_serializer(models.Os)
+ResultFeatureSerializer = model_cut_serializer(models.ResultFeature)
 
 
 class PlatformCutSerializer(serializers.ModelSerializer):
@@ -366,7 +369,6 @@ class ResultCutSerializer(serializers.ModelSerializer):
 
 
 class BulkUpdateListSerializer(serializers.ListSerializer):
-
     def update(self, instances, validated_data):
         result = [self.child.update(instance, attrs) for instance, attrs in zip(instances, validated_data)]
 
@@ -387,14 +389,28 @@ class BulkUpdateListSerializer(serializers.ListSerializer):
 class BulkResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Result
-        fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset', 'fulsim_asset',
-                  'simics']
+        fields = ['id', 'item', 'status', 'driver', 'scenario_asset', 'lucas_asset', 'msdk_asset',
+                  'fulsim_asset', 'simics']
         read_only_fields = ['id', 'item']
         list_serializer_class = BulkUpdateListSerializer
 
 
-class ResultFeatureSerializer(serializers.ModelSerializer):
+class ValidationSerializer(serializers.ModelSerializer):
+    os = OsSerializer()
+    env = EnvSerializer()
+    platform = PlatformSerializer()
+    owner = UserSerializer()
+    date = fields.DateTimeField(format='%Y-%m-%d', read_only=True)
 
     class Meta:
-        model = models.ResultFeature
-        fields = ['id', 'name']
+        model = models.Validation
+        fields = ['id', 'name', 'notes', 'owner', 'date', 'os', 'env', 'platform',
+                  'components', 'features']
+
+
+class ValidationUpdateSerializer(serializers.ModelSerializer):
+    date = fields.DateTimeField(input_formats=['%Y-%m-%d'], format='%Y-%m-%d')
+
+    class Meta:
+        model = models.Validation
+        fields = ['name', 'date', 'notes']

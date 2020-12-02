@@ -77,6 +77,9 @@
         >
             <v-icon class="d-inline">mdi-apple-keyboard-control</v-icon>
         </v-btn>
+
+        <!-- Universal confirmation dialog -->
+        <confirmation ref="confirm"></confirmation>
     </v-app>
 </template>
 
@@ -86,12 +89,14 @@
     import 'splitpanes/dist/splitpanes.css'
     import { alterHistory } from '@/utils/history-management.js'
     import userCard from '@/components/UserCard.vue'
+    import confirmation from '@/components/TheConfirmationDialog.vue'
 
     import { mapState, mapGetters } from 'vuex'
 
     export default {
         components: {
-            userCard
+            userCard,
+            confirmation
         },
         data() {
             return {
@@ -147,6 +152,9 @@
                 if (currentPath == this.$route.path)
                     location.reload()
             }
+        },
+        mounted() {
+           this.$root.$confirm = this.$refs.confirm.open
         }
     }
 </script>

@@ -162,7 +162,7 @@ def _build_validation(context):
 
     # Use existing validation if validation_id was provided
     if validation_id is not None:
-        validation = Validation.objects.filter(pk=validation_id).first()
+        validation = Validation.alive_objects.filter(pk=validation_id).first()
 
         if validation is None:
             outcome.add_invalid_validation_error(f'Validation with id {validation_id} does not exist.')
@@ -202,7 +202,7 @@ def _build_validation(context):
     )
 
     # Validation record must have unique group of fields
-    if Validation.objects.filter(**query_filter).exists():
+    if Validation.alive_objects.filter(**query_filter).exists():
         parameters = ", ".join(f"{key}: '{value}'" for (key, value) in query_filter.items())
         message = 'Validation with such parameters already exists'
         outcome.add_existing_validation_error(message, query_filter.items())

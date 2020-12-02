@@ -8,3 +8,15 @@ export function filterItemText(model) {
         }
         return 'name'
 }
+
+// get branch as list of nodes starting from leaf
+export function getBranchForLeaf(node) {
+    let branch = [node]
+    if (node.$children.length == 0) {   // is leaf
+        while (node.$parent.model !== undefined) {      // is root
+            node = node.$parent
+            branch.push(node)
+        }
+    }
+    return branch
+}

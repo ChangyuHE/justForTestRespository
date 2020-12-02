@@ -30,7 +30,9 @@ urlpatterns = [
     path('api/validations/', views.ValidationsView.as_view()),
     path('api/validations/flat/', views.ValidationsFlatView.as_view()),
     path('api/validations/structure', views.ValidationsStructureView.as_view()),
-    path('api/validations/hard_delete/<int:pk>', views.ValidationsDeleteByIdView.as_view()),
+    path('api/validations/hard_delete/<int:pk>/', views.ValidationsDeleteByIdView.as_view()),
+    path('api/validations/update/<int:pk>/', views.ValidationUpdateDeleteView.as_view()),
+    path('api/validations/<int:pk>/', views.ValidationDetailsView.as_view()),
 
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 

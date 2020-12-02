@@ -268,16 +268,31 @@
                 <div style="display: inherit;" @click.exact="itemClick(_.vm, _.model, $event)">
                 <i :class="_.vm.themeIconClasses" role="presentation" v-if="!_.model.loading"></i>
                     <span v-html="_.model.text"></span>
-                    <span v-if="_.model.level == 'validation' && hasAnyStatus(_.model)"> &mdash; </span>
-                    <template v-for="status in ['passed', 'failed', 'error', 'blocked', 'skipped', 'canceled']">
-                        <span v-if="_.model[status] != 0"
-                            :key="status"
-                            class="mr-1"
-                            :class="getStatusColor(status)"
-                            :title="status"
-                        >
-                            <small>{{ _.model[status] }}</small>
-                        </span>
+                    <template v-if="_.model.level == 'validation'">
+                        <span v-if="hasAnyStatus(_.model)"> &mdash; </span>
+                        <template v-for="status in ['passed', 'failed', 'error', 'blocked', 'skipped', 'canceled']">
+                            <span v-if="_.model[status] != 0"
+                                :key="status"
+                                class="mr-1"
+                                :class="getStatusColor(status)"
+                                :title="status"
+                            >
+                                <small>{{ _.model[status] }}</small>
+                            </span>
+                        </template>
+                        <!-- Validation params -->
+                        <i
+                            title="Validation properties"
+                            class="v-icon mdi mdi-text-box-outline theme--light validation-action-icon"
+                            @click.stop="editValidation(_.model.id)"
+                        ></i>
+                        <!-- Validation actions -->
+                        <i
+                            title="Delete validation"
+                            v-if="_.model.owner == userData.id"
+                            class="v-icon mdi mdi-delete theme--light validation-action-icon delete"
+                            @click.stop="deleteValidation(_.model)"
+                        ></i>
                     </template>
                 </div>
             </template>
@@ -286,24 +301,32 @@
             <v-card-text class="text-center text-h6 grey--text">No data to show</v-card-text>
         </v-card>
 
-        <validation-clone
+        <validation-clone-dialog
             v-if="showCloneDialog"
-            :selectedNode="selectedNode"
+            :selected-node="selectedNode"
             @close="showCloneDialog = false"
-        ></validation-clone>
+        ></validation-clone-dialog>
 
-        <validation-merge
+        <validation-merge-dialog
             v-if="showMergeDialog"
-            :selectedNodes="selectedNodes"
+            :selected-nodes="selectedNodes"
             @close="showMergeDialog = false"
-        ></validation-merge>
+        ></validation-merge-dialog>
 
         <!-- Save filters to profile as user default -->
-        <filters-save-dialog v-if="userFiltersDialog"
+        <filters-save-dialog
+            v-if="userFiltersDialog"
             :selectors="selectors"
             :dates="{enabled: enableDates, sliderRange: sliderValue, sliderButton: sliderButtonValue}"
-            @close="userFiltersDialog = false">
-        </filters-save-dialog>
+            @close="userFiltersDialog = false"
+        ></filters-save-dialog>
+
+        <validation-edit-dialog
+            v-if="editValidationDialog"
+            :node="editedNode"
+            :tree-structure="treeStructure"
+            @close="editValidationDialog = false"
+        ></validation-edit-dialog>
     </div>
 </template>
 <script>
@@ -316,35 +339,14 @@
     import { alterHistory } from '@/utils/history-management.js'
     import { getTextColorFromStatus } from '@/utils/styling.js'
     import rules from '@/utils/form-rules.js'
-    import { isIDsFilter, filterItemText } from './common.js'
+    import { isIDsFilter, filterItemText, getBranchForLeaf } from './common.js'
 
     import VJstree from 'vue-jstree'
-    import filtersSaveDialog from './TheFiltersSaveDialog.vue'
-    import ValidationClone from '@/components/tree/ValidationClone'
-    import ValidationMerge from '@/components/tree/ValidationMerge'
+    import FiltersSaveDialog from './TheFiltersSaveDialog.vue'
+    import ValidationEditDialog from './TheValidationEditDialog.vue'
+    import ValidationCloneDialog from './TheValidationCloneDialog.vue'
+    import ValidationMergeDialog from './TheValidationMergeDialog.vue'
 
-    // get branch as list of nodes for clicked node
-    function getBranchForLeaf(node) {
-        let branch = [node]
-        if (node.$children.length == 0) {   // is leaf
-            while (node.$parent.model !== undefined) {      // is root
-                node = node.$parent
-                branch.push(node)
-            }
-        }
-        return branch
-    }
-
-    function getAvailableNodes(tree) {
-        let nodes = []
-        tree.handleRecursionNodeChilds(tree,
-            node => {
-                if (typeof node.model !='undefined' && node.$children.length == 0)
-                    nodes.push(node)
-            }
-        )
-        return nodes
-    }
     // update tree data with selected validations data
     function setSelectedInData(searchObj, validations) {
         for (let prop in searchObj) {
@@ -388,9 +390,10 @@
         name: 'ValidationsTree',
         components: {
             VJstree,
-            ValidationClone,
-            ValidationMerge,
-	    filtersSaveDialog
+            ValidationCloneDialog,
+            ValidationMergeDialog,
+            FiltersSaveDialog,
+            ValidationEditDialog
         },
         data() {
             return {
@@ -420,7 +423,9 @@
                 sliderButtons: sliderButtons,
                 sliderButtonValue: null,
 
-                userFiltersDialog: false
+                userFiltersDialog: false,
+                editValidationDialog: false,
+                editedNode: undefined,
             }
         },
         computed: {
@@ -443,7 +448,7 @@
                 let selectedNodes = []
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                         node => {
-                            if (typeof node.model != 'undefined' && this.validations.includes(node.model.id)) {
+                            if (typeof node.model != 'undefined' && !node.$children.length && this.validations.includes(node.model.id)) {
                                 selectedNodes.push(node)
                             }
                         }
@@ -686,7 +691,7 @@
              */
             validationsAndBranchestoStore() {
                 // parse URL
-                let parsed = qs.parse(location.search, {arrayFormat: 'comma'})
+                let parsed = qs.parse(location.search, { arrayFormat: 'comma' })
                 if (this._.isEmpty(parsed)) {
                     return
                 }
@@ -702,7 +707,7 @@
 
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                     node => {
-                        if (typeof node.model != 'undefined' && node.model.selected && node.$children.length == 0 && validations.includes(node.model.id)) {
+                        if (typeof node.model != 'undefined' && node.model.selected && !node.$children.length && validations.includes(node.model.id)) {
                             let index = validations.indexOf(node.model.id)
                             if (index !== -1) {
                                 branches.splice(index, 1, getBranchForLeaf(node))
@@ -733,6 +738,7 @@
                 if (this.showFilters !== undefined || this.showDateSlider !== undefined) {
                     this.doFilter()
                 }
+                this.$store.dispatch('setUrlParams', qs.parse(location.search, { arrayFormat: 'comma' }))
             },
             fillSelector(level, value) {
                 if (isIDsFilter(level)) {
@@ -816,7 +822,7 @@
             updateStatusCounters(oldStatuses, newStatus, validation_id) {
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
                     node => {
-                        if (typeof node.model != 'undefined' && node.model.selected && node.model.id === validation_id) {
+                        if (typeof node.model != 'undefined' && node.model.selected && !node.$children.length && node.model.id === validation_id) {
                             for (const [status, number] of Object.entries(oldStatuses)) {
                                 if (number != 0) {
                                     node.model[status.toLowerCase()] -= number
@@ -828,6 +834,43 @@
                         }
                     }
                 )
+            },
+            editValidation(id) {
+                this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
+                    node => {
+                        if (typeof node.model != 'undefined' && !node.$children.length && node.model.id == id) {
+                            this.editedNode = node
+                        }
+                    }
+                )
+                this.editValidationDialog = true
+            },
+            async deleteValidation(model) {
+                if (
+                    await this.$root.$confirm(
+                        'Delete validation',
+                        `Are you sure you want to delete "${model.name}" validation?`,
+                        { color: 'red' }
+                    )
+                ) {
+                    const url = `/api/validations/update/${model.id}/`
+                    server
+                        .delete(url)
+                        .then(response => {
+                            // remove from selected validations/braches
+                            alterHistory('replace', { selected: this._.without(this.validations, model.id) })
+                            // update validations and branches
+                            this.validationsAndBranchestoStore()
+                            // set url params to store
+                            this.$store.dispatch('setUrlParams', qs.parse(location.search, {arrayFormat: 'comma'}))
+                            window.location.reload()
+
+                            this.$toasted.success('Successfully deleted')
+                        })
+                        .catch(error => {
+                            error.handleGlobally && error.handleGlobally('Could not delete validation', url)
+                        })
+                }
             },
             initialTreeLoad() {
                 // Initial tree data
@@ -866,14 +909,19 @@
                             // update tree data with selected ids
                             selectedIds.forEach(id => {
                                 let nodeData = getObject(this.data, 'id', id)
-                                nodeData.selected = true
+                                if (nodeData !== undefined) {
+                                    nodeData.selected = true
+                                } else {
+                                    // no such validation in tree - remove from url
+                                    alterHistory('replace', { selected: this._.without(selectedIds, id) })
+                                }
                             })
                         }
                         this.$nextTick(() => {
                             this.validationsAndBranchestoStore()
                             this.applyUrlFilterParams()
                             // set url params to store
-                            this.$store.dispatch('setUrlParams', qs.parse(location.search, {arrayFormat: 'comma'}))
+                            this.$store.dispatch('setUrlParams', qs.parse(location.search, { arrayFormat: 'comma' }))
                         })
                     })
                     .catch(error => {
@@ -1026,5 +1074,18 @@
     }
     .highlighted-text {
         color: #E64A19;
+    }
+</style>
+
+<style scoped>
+    .validation-action-icon {
+        font-size: 16px;
+        color: #E0E0E0;
+    }
+    .validation-action-icon:hover {
+        color: #00796B;
+    }
+    .validation-action-icon.delete:hover {
+        color: #D32F2F;
     }
 </style>

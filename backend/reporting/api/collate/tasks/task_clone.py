@@ -39,7 +39,7 @@ def do_clone(job_id: int, validation_id: int):
 
 
 def _send_clone_notification(job: CloneJob, validation: Validation, validation_id: int):
-    cloned_validation = Validation.objects.get(pk=validation_id)
+    cloned_validation = Validation.alive_objects.get(pk=validation_id)
 
     context = dict(
         site_url=job.site_url,

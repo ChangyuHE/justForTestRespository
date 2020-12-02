@@ -22,7 +22,7 @@
         <v-list dense flat class="mt-4 ml-4">
             <v-list-item v-for="(item, i) in branches" :key="i">
                 <v-list-item-content class="py-0 my-1">
-                    <v-list-item-title v-text="item"></v-list-item-title>
+                    <v-list-item-title v-html="item"></v-list-item-title>
                 </v-list-item-content>
             </v-list-item>
         </v-list>

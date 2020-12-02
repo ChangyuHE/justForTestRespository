@@ -2,12 +2,14 @@ import json
 import re
 import copy
 import itertools
+import requests
 import urllib.parse
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Tuple, List, Optional
 from datetime import datetime
+from typing import Dict, Tuple, List, Optional
 from urllib.parse import urlparse, urlunparse
+from requests.auth import HTTPBasicAuth
 
 import pandas as pd
 import numpy as np
@@ -15,6 +17,7 @@ import dateutil.parser
 
 from django.db import transaction, IntegrityError
 from django.db.models import Case, When, Q
+from django.conf import settings
 from django.core.mail import EmailMessage
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse, HttpRequest
@@ -96,7 +99,6 @@ class UserSpecificFilterSet(django_filters.FilterSet):
         fields = ['validations', 'is_staff', 'username', 'ids__in']
 
 
-
 # Users block
 class UserList(LoggingMixin, generics.ListAPIView):
     """ List Users """
@@ -107,6 +109,7 @@ class UserList(LoggingMixin, generics.ListAPIView):
 
 class CurrentUser(LoggingMixin, APIView):
     """ User's details """
+
     def get(self, request):
         user_object = get_user_object(request)
         user_data = UserSerializer(user_object).data
@@ -1766,7 +1769,7 @@ class ComponentFilter(django_filters.FilterSet):
                         flat=True).distinct()
                     )
                 )
-            )
+        )
         return queryset.filter(id__in=sorted(components))
 
     class Meta:
@@ -1831,3 +1834,19 @@ class ReportIssuesView(LoggingMixin, APIView):
         response = HttpResponse(save_virtual_workbook(workbook), content_type='application/ms-excel')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+
+class ParseShortUrlView(LoggingMixin, APIView):
+    """Parse full Comparison View url location from its short version"""
+
+    def post(self, request):
+        short_url: str = request.data['short_url']
+        if 'https' in short_url:
+            # change to HTTP and related port to skip ssl verification
+            short_url = short_url.replace('https://gta.intel.com/', 'http://gta.intel.com:80/')
+        r = requests.get(short_url, allow_redirects=False,
+                         auth=HTTPBasicAuth(settings.GTA_API_USER,
+                                            settings.GTA_API_PASSWORD))
+        if r.status_code == 302:
+            return Response(data=r.headers['Location'], status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_404_NOT_FOUND)

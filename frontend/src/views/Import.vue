@@ -35,8 +35,8 @@
                             <v-text-field
                                 prepend-icon="mdi-link-box-variant"
                                 label="URL"
-                                placeholder="https://gta.intel.com/#/reports/comparison-view.."
-                                hint="Paste a link of Comparison View results"
+                                placeholder="example: https://gta.intel.com/#/reports/comparison-view.."
+                                hint="Paste a full or short link of Comparison View results"
                                 v-model="url"
                                 :value="url"
                                 :disabled="uploading"
@@ -260,11 +260,14 @@
                         return true
                     },
                     CompViewLinkFormatRules(value) {
-                        let fullLinkFormat = new RegExp('(?=.*?)(https://gta\\.intel\\.com/#/reports/comparison-view)' +
-                            '(.*testRun.+?=\\d+)(.*builds+[%\\d\\w]+name)')
-                        if (value && !(fullLinkFormat.test(value))) {
+                        const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
+                        const fullLinkFormat = new RegExp('(https://gta\\.intel\\.com/#/reports/comparison-view)' +
+                              '(.*testRun.+?=\\d+)(.*builds+[%\\d\\w]+name)')
+
+                        if (value && !(shortLinkFormat.test(value) || fullLinkFormat.test(value))) {
                             return 'Link has incorrect format.\ ' +
-                                'Please paste Comparison View results link or fix current one'
+                                'Please paste existing Comparison View results link ' +
+                                'or fix current one to the related formats'
                         }
                         return true
                     },
@@ -384,10 +387,37 @@
             },
         },
         methods: {
-            parseReportURL(url) {
+            parseShortReportURL(url) {
+                let formData = new FormData()
+                formData.append('short_url', url)
+
+                // retrieve full CV report url from its short version
+                const request_url = 'api/import/gta-short-url/'
+                return server
+                      .post(request_url, formData, {
+                          headers: {'Content-Type': 'multipart/form-data'}
+                      })
+                      .then(response => {
+                          return response.data
+                      })
+                      .catch(error => {
+                          this.$toasted.global.alert_error_detailed({
+                              'header': 'Error getting info from short link<br>\n' +
+                                        'GTA API results currently unreachable or link is invalid<br>\n',
+                              'message': `<strong>${error}</strong><br>`
+                              })
+                          return null
+                      })
+            },
+            async parseReportURL(url) {
+                // retrieve full url if its a short link
+                const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
+                if (shortLinkFormat.test(url)) {
+                    url = await this.parseShortReportURL(url)
+                }
+
+                // decode url to uri format
                 let uri = ''
-                let testRun = new RegExp('testRun.+?=(\\d+)')
-                let buildVersion = new RegExp('builds\\[.+\\[name]=(\\S+)')
                 try {
                     uri = decodeURI(url)
                     // expected output: "..[]=results&complexFilters[0][testRun][]=123456"
@@ -395,6 +425,10 @@
                     // catches a malformed URI
                     throw Error(`URL is broken: ${error}`)
                 }
+
+                // parse needed info from decoded uri
+                let testRun = new RegExp('testRun.+?=(\\d+)')
+                let buildVersion = new RegExp('builds\\[.+\\[name]=(\\S+)')
                 for (let reportSetting of uri.split('&')) {
                     if (reportSetting.match(testRun)) {
                         testRun = RegExp.$1
@@ -488,8 +522,11 @@
                let responseData = '' // common response data of made query
                try {
                   let resultKey = null // key to generated data in database
-                  let payload = this.parseReportURL(this.url)
+                  let payload = await this.parseReportURL(this.url)
 
+                  if (!payload) {
+                      throw 'Link is broken or data does not exist for the results'
+                  }
                   await excelExportRequest(payload)
                       .then(response => {
                           resultKey = responseData = response.data

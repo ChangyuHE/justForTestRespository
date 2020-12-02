@@ -35,45 +35,99 @@ urlpatterns = [
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 
     # Reports
-    path('api/report/best/<int_list:val_pks>//', views.ReportBestView.as_view(), name="best-report-special"),  # optional param "report=excel"
-    path('api/report/best/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportBestView.as_view(), name="best-report"),  # optional param "report=excel"
-    path('api/report/last/<int_list:val_pks>//', views.ReportLastView.as_view(), name="last-report-special"),  # optional param "report=excel"
-    path('api/report/last/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportLastView.as_view(), name="last-report"),  # optional param "report=excel"
-    re_path(r'^api/report/search/$', views.ReportFromSearchView.as_view()),  # mandatory param "query"
-    path('api/report/indicator/<int:id>/', views.ReportIndicatorView.as_view()),
-    path('api/report/compare/<int_list:val_pks>//', views.ReportCompareView.as_view(), name="cmp-view-special"),  # optional param "report=excel"
-    path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/', views.ReportCompareView.as_view(), name="cmp-view"),  # optional param "report=excel"
-    path('api/report/extra-data/<list:ti_pks>/', views.ExtraDataView.as_view(), name='api-extra-data'),
-    path('api/report/issues/<int:pk>/', views.ReportIssuesView.as_view(), name="issues-report"),  # optional param "report=excel"
+    path('api/report/best/<int_list:val_pks>//',
+         views.ReportBestView.as_view(),
+         name='best-report-special'),  # optional param 'report=excel'
+
+    path('api/report/best/<int_list:val_pks>/<int_list:fmt_pks>/',
+         views.ReportBestView.as_view(),
+         name='best-report'),  # optional param 'report=excel'
+
+    path('api/report/last/<int_list:val_pks>//',
+         views.ReportLastView.as_view(),
+         name='last-report-special'),  # optional param 'report=excel'
+
+    path('api/report/last/<int_list:val_pks>/<int_list:fmt_pks>/',
+         views.ReportLastView.as_view(),
+         name='last-report'),  # optional param 'report=excel'
+
+    re_path(r'^api/report/search/$',
+            views.ReportFromSearchView.as_view()),  # mandatory param 'query'
+
+    path('api/report/indicator/<int:id>/',
+         views.ReportIndicatorView.as_view()),
+
+    path('api/report/compare/<int_list:val_pks>//',
+         views.ReportCompareView.as_view(),
+         name='cmp-view-special'),  # optional param 'report=excel'
+
+    path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/',
+         views.ReportCompareView.as_view(), 
+         name='cmp-view'),  # optional param 'report=excel'
+
+    path('api/report/extra-data/<list:ti_pks>/',
+         views.ExtraDataView.as_view(), 
+         name='api-extra-data'),
+
+    path('api/report/issues/<int:pk>/',
+         views.ReportIssuesView.as_view(),
+         name='issues-report'),  # optional param 'report=excel'
 
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester
     path('api/objects/request-creation/', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
+    path('api/import/gta-short-url/', views.ParseShortUrlView.as_view(), name='gta-short-url'),
 
     # Feature mapping
     # .. import
     path('api/feature_mapping/form/', feature_mapping.feature_mapping_form),   # debug only
-    path('api/feature_mapping/import/', feature_mapping.FeatureMappingPostView.as_view(), name='fmt-import'),
+
+    path('api/feature_mapping/import/',
+         feature_mapping.FeatureMappingPostView.as_view(),
+         name='fmt-import'),
 
     # .. mappings
-    path('api/feature_mapping/table/', feature_mapping.FeatureMappingTableView.as_view()),
-    path('api/feature_mapping/<int:pk>/', feature_mapping.FeatureMappingDetailsView.as_view()),
-    path('api/feature_mapping/clone/<int:pk>/', feature_mapping.FeatureMappingCloneView.as_view()),
-    path('api/feature_mapping/export/<int:pk>/', feature_mapping.FeatureMappingExportView.as_view()),
-    path('api/feature_mapping/', feature_mapping.FeatureMappingListView.as_view()),
-    path('api/feature_mapping/conflicts/', feature_mapping.FeatureMappingConflictCheckView.as_view()),
-    path('api/feature_mapping/<int:pk>/rules_conflicts/', feature_mapping.FeatureMappingRulesConflictCheckView.as_view()),
+    path('api/feature_mapping/table/',
+         feature_mapping.FeatureMappingTableView.as_view()),
+
+    path('api/feature_mapping/<int:pk>/',
+         feature_mapping.FeatureMappingDetailsView.as_view()),
+
+    path('api/feature_mapping/clone/<int:pk>/',
+         feature_mapping.FeatureMappingCloneView.as_view()),
+
+    path('api/feature_mapping/export/<int:pk>/',
+         feature_mapping.FeatureMappingExportView.as_view()),
+
+    path('api/feature_mapping/',
+         feature_mapping.FeatureMappingListView.as_view()),
+
+    path('api/feature_mapping/conflicts/',
+         feature_mapping.FeatureMappingConflictCheckView.as_view()),
+
+    path('api/feature_mapping/<int:pk>/rules_conflicts/',
+         feature_mapping.FeatureMappingRulesConflictCheckView.as_view()),
 
     # .. rules
-    path('api/feature_mapping/rules/table/', feature_mapping.FeatureMappingRuleTableView.as_view()),
-    path('api/feature_mapping/rules/<int:pk>/', feature_mapping.FeatureMappingRuleDetailsView.as_view()),
-    path('api/feature_mapping/rules/', feature_mapping.FeatureMappingRuleView.as_view()),
+    path('api/feature_mapping/rules/table/',
+         feature_mapping.FeatureMappingRuleTableView.as_view()),
+
+    path('api/feature_mapping/rules/<int:pk>/',
+         feature_mapping.FeatureMappingRuleDetailsView.as_view()),
+
+    path('api/feature_mapping/rules/',
+         feature_mapping.FeatureMappingRuleView.as_view()),
 
     # .. rules components
-    path('api/milestone/table/', feature_mapping.FeatureMappingMilestoneTableView.as_view()),
-    path('api/milestone/<int:pk>/', feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
-    path('api/milestone/', feature_mapping.FeatureMappingMilestoneView.as_view()),
+    path('api/milestone/table/',
+         feature_mapping.FeatureMappingMilestoneTableView.as_view()),
+
+    path('api/milestone/<int:pk>/',
+         feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
+
+    path('api/milestone/',
+         feature_mapping.FeatureMappingMilestoneView.as_view()),
 
     path('api/feature/table/', feature_mapping.FeatureMappingFeatureTableView.as_view()),
     path('api/feature/<int:pk>/', feature_mapping.FeatureMappingFeatureDetailsView.as_view()),

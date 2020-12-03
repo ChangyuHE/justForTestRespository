@@ -93,6 +93,28 @@
 
     import { mapState, mapGetters } from 'vuex'
 
+    import snow from '@/utils/snow.js'
+    import Chance from 'chance'
+
+    const IDLE = 15000
+    function snowing() {
+        const chance = Chance()
+        const now = new Date()
+        // the closer to YYYY-12-31 the bigger chance to see snow on idle
+        const lucky = chance.bool({ likelihood: Math.round((now.getDate() / 31 * 100)) })
+        if (now.getMonth() == 11 && lucky) {
+            console.log('Let it snow!')
+            let timeoutId = null
+            timeoutId = setTimeout(() => snow(true), IDLE)
+
+            window.addEventListener('mousemove', function() {
+                clearTimeout(timeoutId)
+                snow(false)
+                timeoutId = setTimeout(() => snow(true), IDLE)
+            })
+        }
+    }
+
     export default {
         components: {
             userCard,
@@ -155,6 +177,8 @@
         },
         mounted() {
            this.$root.$confirm = this.$refs.confirm.open
+
+           snowing()
         }
     }
 </script>

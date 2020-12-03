@@ -88,7 +88,7 @@ class ImportRequestDTO(AbstractRequestDTO):
 
     @classmethod
     def __extract_date(cls, request):
-        date = cls._get_field(request, 'validation_date')
+        date = cls._get_field(request, 'validation_date', fallback_value='')
 
         if str(date).strip() == '':
             date = datetime.now()

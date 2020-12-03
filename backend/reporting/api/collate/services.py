@@ -1,6 +1,5 @@
 import dataclasses
 import logging
-import re
 
 from typing import List, Tuple, Optional
 from pathlib import Path
@@ -107,11 +106,12 @@ def verify_file(context):
 
             log.error(message)
 
+
 def replace_unknown_os(context):
-    ''' Sometimes Os column may contain 'unknown' value amongst valid Os values.
+    """ Sometimes Os column may contain 'unknown' value amongst valid Os values.
         If only one kind of known Os is presented, the 'unknown' values should be
         changed to that value.
-    '''
+    """
 
     is_unknown_os = lambda name: name.strip().lower() == 'unknown'
     os_column_index = context.mapping.column_mapping['osVersion']
@@ -138,6 +138,7 @@ def replace_unknown_os(context):
                 and os_cell.value is not None
                 and is_unknown_os(os_cell.value)):
             os_cell.value = known_os
+
 
 def _find_existing_entity(reference):
     try:
@@ -228,7 +229,7 @@ class RecordBuilder:
         self.__mapping = context.mapping
         self.__row = row
         self.__columns = dict((key, row[index].value)
-                for key, index in self.__mapping.column_mapping.items())
+                              for key, index in self.__mapping.column_mapping.items())
         self.validation = context.validation
         self.__outcome = context.outcome
         self.__data = ResultData()
@@ -240,13 +241,19 @@ class RecordBuilder:
         record.validation = self.validation
         record.env = self._find_object(Env, name=columns['envName'])
         record.component = self._find_object(Component, name=columns['componentName'])
-        record.item = self._find_testitem_object(name=columns['itemName'], args=columns['itemArgs'])
+
+        # str needed in case of numerical item name, numbers treated as ints by openpyxl
+        record.item = self._find_testitem_object(
+            name=str(columns['itemName']), args=columns['itemArgs']
+        )
         record.features.extend(self._find_features(name=columns['feature']))
         record.status = self._find_object(Status, test_status=columns['status'])
         record.platform = self._find_with_alias(Platform, columns['platformName'])
 
         record.os = self._find_with_alias(Os, columns['osVersion'])
-        record.run = self.__get_and_verify_run(force_run, name=columns['testRun'], session=columns['testSession'])
+        record.run = self.__get_and_verify_run(
+            force_run, name=columns['testRun'], session=columns['testSession']
+        )
 
         self.__verify_item(force_item)
 
@@ -397,7 +404,6 @@ class RecordBuilder:
 
             setattr(entity, attribute, date)
 
-
     def __update_if_exists(self, entity) -> Result:
         # [MDP-63316] Check if same test from test scenario name and test id combination.
         # Update existing test result in this case.
@@ -448,7 +454,6 @@ class RecordBuilder:
                     feature_objs.append(obj)
 
         return feature_objs
-
 
     def _find_with_alias(self, cls, alias, ignore_warnings=False):
         if alias is None:

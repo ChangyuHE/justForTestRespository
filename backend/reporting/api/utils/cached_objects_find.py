@@ -73,9 +73,11 @@ def __iterate_aliases(aliases):
 
 
 TEST_ITEM_EXTRAS = {
-    'plugin': {'class': Plugin, 'pattern': re.compile(r'^(test_\w+)')},
-    'scenario': {'class': TestScenario, 'pattern': re.compile(r'-s (\S+)')},
-    'test_id': {'class': None, 'pattern': re.compile(r'-[it] (\S+)')},
+    'plugin': {'class': Plugin, 'patterns': [re.compile(r'^(test_\w+)')]},
+    'scenario': {
+        'class': TestScenario,
+        'patterns': [re.compile(r'-s (\S+)'), re.compile(r'test_hlk\s.*/name:([^#\s]+).*')]
+    }
 }
 
 
@@ -86,22 +88,26 @@ def parse_item_args(params) -> Tuple[dict, dict]:
     full_params = {**params}
     non_existing = {}
 
-    for name, extra in TEST_ITEM_EXTRAS.items():
-        m = extra['pattern'].search(params['args'])
-        matched = m.group(1) if m else None
+    if m := re.search(r'-[it] (\S+)', params['args']):
+        full_params['test_id'] = m[1]
 
-        if extra['class'] is not None:
-            # trying to find object by name using match
-            if matched is not None:
-                found_object = find_object(cls=extra['class'], name=matched)
-                if found_object:
-                    full_params[f'{name}_id'] = found_object.id
+    for name, extra in TEST_ITEM_EXTRAS.items():
+        name_id = f'{name}_id'
+
+        for pattern in extra['patterns']:
+            m = pattern.search(params['args'])
+
+            if not m:
+                # do not null if found in previous pattern
+                if full_params.get(name_id) is None:
+                    full_params[name_id] = None
+            else:
+                # trying to find object by name using match
+                obj = find_object(cls=extra['class'], name=m[1])
+                if obj:
+                    full_params[name_id] = obj.id
                 else:
                     # add key value pair to create later
-                    non_existing[name] = matched
-            else:
-                full_params[f'{name}_id'] = None
-        else:
-            full_params[name] = matched
+                    non_existing[name] = m[1]
 
     return full_params, non_existing

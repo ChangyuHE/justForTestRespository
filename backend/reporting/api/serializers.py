@@ -120,6 +120,9 @@ class ItemSerializer(serializers.ModelSerializer):
         validated_data, non_existing = parse_item_args(validated_data)
         for k, v in non_existing.items():
             validated_data[f'{k}__name'] = v
+            # remove empty <field>_id key in case of non_existing field
+            if f'{k}_id' in validated_data:
+                del validated_data[f'{k}_id']
 
         return validated_data
 
@@ -127,7 +130,8 @@ class ItemSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Create Item object using data format produced in to_internal_value
-        To create non-existing scenario/plugin "*__name" fields used, then after relations creation their fk ids
+        To create non-existing scenario/plugin "*__name" fields used,
+        then after relations creation their fks are used
         """
         params_to_create = {}
         relations_params = {}

@@ -6,7 +6,7 @@ import requests
 import urllib.parse
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Tuple, List, Optional
 from urllib.parse import urlparse, urlunparse
 from requests.auth import HTTPBasicAuth
@@ -686,7 +686,7 @@ class ValidationUpdateDeleteView(LoggingMixin, generics.UpdateAPIView, generics.
 
     # soft-delete
     def perform_destroy(self, instance):
-        instance.deleted = datetime.now()
+        instance.deleted = datetime.now(timezone.utc)
         instance.save()
 
 

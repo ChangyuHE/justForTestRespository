@@ -47,14 +47,14 @@ from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, ResultFeature, \
     Status, Os, OsGroup, Validation, Action, \
     Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
-    FeatureMapping, FeatureMappingRule, Feature, Profile
+    FeatureMapping, FeatureMappingRule, Feature, Profile, ValidationType, DEFAULT_VAL_TYPE_NAME
 from api.serializers import UserSerializer, UserCutSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
     FeatureMappingSerializer, BulkResultSerializer, \
     ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
     KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer, ProfileSerializer, \
-    ValidationSerializer, ValidationUpdateSerializer
+    ValidationSerializer, ValidationUpdateSerializer, ValidationTypeSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -1828,6 +1828,27 @@ class ComponentView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filterset_class = ComponentFilter
+
+
+class ValidationTypeView(LoggingMixin, generics.ListAPIView):
+    """ List of ValidationType objects """
+    queryset = ValidationType.objects.all()
+    serializer_class = ValidationTypeSerializer
+    filterset_fields = ['name']
+
+
+class ValidationTypeWithDefaultView(LoggingMixin, generics.ListAPIView):
+    """ List of ValidationType objects and default validation type name
+        return: {'items': [all_valtypes], 'default': DEFAULT_VAL_TYPE_NAME}
+    """
+    queryset = ValidationType.objects.all()
+    serializer_class = ValidationTypeSerializer
+    filterset_fields = ['name']
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = ValidationTypeSerializer(queryset, many=True)
+        return Response({'items': serializer.data, 'default': DEFAULT_VAL_TYPE_NAME})
 
 
 class ReportIssuesView(LoggingMixin, APIView):

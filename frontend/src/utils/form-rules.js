@@ -5,6 +5,11 @@ export default {
     required(value) {
         return !!value || 'Required'
     },
+    lengthRange(value, min, max) {
+        if (!value || value.length < min || value.length > max)
+            return `Must be between ${min} and ${max} symbols`
+        return true
+    },
     isLongEnough(value, limit=5) {
         if (value && value.length > limit) {
             return true

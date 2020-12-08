@@ -54,7 +54,9 @@ class Changes:
 
 @actor(time_limit=86400000)  # tasks can execute for up to a day
 @transaction.atomic
-def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]], reason: str) -> None:
+def do_import(job_id: int,
+              validation_dict: Dict[str, Optional[Union[str, int]]],
+              reason: str) -> None:
     topic = 'Reporter: <unknown>'
     text = ''
     to_emails = []
@@ -112,6 +114,7 @@ def do_import(job_id: int, validation_dict: Dict[str, Optional[Union[str, int]]]
         log.info('  Item statuses: %s', vstats.__format__('full'))
         log.info('  Components: %s', c_and_f.components_as_str())
         log.info('  Features: %s', c_and_f.features_as_str())
+        log.info('  Type: %s', context.validation.type.name if context.validation.type else None)
 
         log.debug('Removing temporary xlsx: %s', job.path)
         xlsx = Path(job.path)

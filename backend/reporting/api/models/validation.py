@@ -30,8 +30,12 @@ __all__ = [
     'Result',
     'Validation',
     'ResultFeature',
-    'Profile'
+    'Profile',
+    'ValidationType',
+    'DEFAULT_VAL_TYPE_NAME'
 ]
+
+DEFAULT_VAL_TYPE_NAME = 'other'
 
 
 class Profile(models.Model):
@@ -69,7 +73,8 @@ class Generation(models.Model):
 
 class Platform(models.Model):
     name = models.CharField(max_length=32)
-    generation = models.ForeignKey(Generation, null=True, blank=True, on_delete=models.CASCADE, related_name='gen')
+    generation = models.ForeignKey(Generation, null=True, blank=True,
+                                   on_delete=models.CASCADE, related_name='gen')
     aliases = models.CharField(max_length=255, null=True, blank=True)
     short_name = models.CharField(max_length=16, null=True, blank=True)
     weight = models.IntegerField(default=0, null=True, blank=True)
@@ -140,7 +145,8 @@ class Item(models.Model):
             ),
             # all nulls
             UniqueConstraint(
-                fields=['name', 'args'], condition=Q(test_id=None) & Q(scenario=None) & Q(plugin=None),
+                fields=['name', 'args'],
+                condition=Q(test_id=None) & Q(scenario=None) & Q(plugin=None),
                 name='unique_%(class)s_composite_constraint_with_all_nulls'
             ),
             # two nulls
@@ -257,7 +263,8 @@ class ResultFeature(models.Model):
 
 
 class Result(DiffMixin, models.Model):
-    validation = models.ForeignKey('Validation', null=True, blank=True, on_delete=models.CASCADE, related_name='results')
+    validation = models.ForeignKey('Validation', null=True, blank=True,
+                                   on_delete=models.CASCADE, related_name='results')
     driver = models.ForeignKey(Driver, null=True, blank=True, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.CASCADE)
     component = models.ForeignKey(Component, null=True, blank=True, on_delete=models.CASCADE)
@@ -268,7 +275,8 @@ class Result(DiffMixin, models.Model):
     kernel = models.ForeignKey(Kernel, null=True, blank=True, on_delete=models.CASCADE)
     status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.CASCADE)
     run = models.ForeignKey(Run, null=True, blank=True, on_delete=models.CASCADE)
-    scenario_asset = models.ForeignKey(ScenarioAsset, null=True, blank=True, on_delete=models.CASCADE)
+    scenario_asset = models.ForeignKey(ScenarioAsset, null=True,
+                                       blank=True, on_delete=models.CASCADE)
     msdk_asset = models.ForeignKey(MsdkAsset, null=True, blank=True, on_delete=models.CASCADE)
     os_asset = models.ForeignKey(OsAsset, null=True, blank=True, on_delete=models.CASCADE)
     lucas_asset = models.ForeignKey(LucasAsset, null=True, blank=True, on_delete=models.CASCADE)
@@ -332,7 +340,8 @@ class Result(DiffMixin, models.Model):
         if not isinstance(other, Result):
             # don't attempt to compare against unrelated types
             return NotImplemented
-        fields = ['status_id', 'scenario_asset_id', 'msdk_asset_id', 'os_asset_id', 'lucas_asset_id','fulsim_asset_id', 'simics_id', 'additional_parameters']
+        fields = ['status_id', 'scenario_asset_id', 'msdk_asset_id', 'os_asset_id',
+                  'lucas_asset_id','fulsim_asset_id', 'simics_id', 'additional_parameters']
         for field in fields:
             if getattr(self, field, None) != getattr(other, field, None):
                 return False
@@ -394,6 +403,14 @@ class AliveManager(models.Manager):
         return super().get_queryset().filter(deleted__isnull=True)
 
 
+class ValidationType(models.Model):
+    name = models.CharField(max_length=20, unique=True)
+
+
+def get_default_valtype_id():
+    return ValidationType.objects.get(name=DEFAULT_VAL_TYPE_NAME).id
+
+
 class Validation(models.Model):
     name = models.CharField(max_length=255)
     env = models.ForeignKey(Env, on_delete=models.CASCADE)
@@ -431,6 +448,9 @@ class Validation(models.Model):
 
     components = ArrayField(models.IntegerField(), default=list)
     features = ArrayField(models.IntegerField(), default=list)
+    type = models.ForeignKey(ValidationType,
+                             default=get_default_valtype_id,
+                             on_delete=models.CASCADE)
 
     objects = models.Manager()
     alive_objects = AliveManager()

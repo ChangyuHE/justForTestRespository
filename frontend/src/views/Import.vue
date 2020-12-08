@@ -1,6 +1,6 @@
 <template>
     <v-container fluid>
-        <v-row class="d-flex justify-center">
+        <v-row justify="center">
             <v-col cols="6" class="pt-0">
               <!-- Import type buttons group -->
                 <div class="d-flex justify-space-between">
@@ -40,7 +40,7 @@
                                 v-model="url"
                                 :value="url"
                                 :disabled="uploading"
-                                :rules="[rules.CompViewLinkFormatRules(url)]"
+                                :rules="[importSpecificRules.CompViewLinkFormatRules(url)]"
                                 @change="onImportDataFill"
                                 @click:clear="onImportDataClear"
                                 autofocus
@@ -67,11 +67,11 @@
             </v-col>
         </v-row>
 
-        <v-row class="d-flex justify-center">
-            <!-- New validation fields -->
-            <template v-if="importType == 'new'">
+        <!-- New validation fields -->
+        <template v-if="importType == 'new'">
+            <v-row justify="center">
                 <!-- Date picker -->
-                <v-col cols="1" class="pt-0 pr-0 d-flex">
+                <v-col cols="1" class="pt-0 pr-0">
                     <v-menu
                         v-model="menu"
                         :close-on-content-click="false"
@@ -97,17 +97,17 @@
                     </v-menu>
                 </v-col>
                 <!-- Validation name  -->
-                <v-col cols="3" class="pt-0 d-flex">
+                <v-col cols="3" class="pt-0">
                     <v-text-field
                         color="blue-grey"
                         label="Validation name"
                         hint="At least 10 symbols"
+                        clearable
                         v-model="valName"
                         :disabled="uploading"
-                        clearable
                     ></v-text-field>
                 </v-col>
-                <v-col cols="2" class="pt-0 d-flex">
+                <v-col cols="2" class="pt-0">
                     <v-textarea
                         color="blue-grey"
                         label="Notes"
@@ -117,10 +117,49 @@
                         :disabled="uploading"
                     ></v-textarea>
                 </v-col>
-            </template>
+            </v-row>
+            <v-row justify="center">
+                <v-col cols="3" class="pt-0">
+                    <v-form v-model="valTypeCorrect" ref="valtypeForm">
+                        <v-combobox
+                            label="Validation type"
+                            color="blue-grey"
+                            v-model="selectedValType"
+                            :rules="[rules.required, rules.lengthRange(selectedValType, 3, 20)]"
+                            :hide-no-data="!searchType"
+                            :search-input.sync="searchType"
+                            :items="typesToSelect"
+                            clearable hide-selected
+                            menu-props="auto"
+                        >
+                            <template v-slot:no-data>
+                                <span class="px-2">
+                                    Press <kbd>enter</kbd> to create <strong>{{ searchType }}</strong> type. It will be saved in lower case.
+                                </span>
+                            </template>
 
-            <!-- Existing validation autocomplete selector -->
-            <template v-else>
+                            <template v-slot:append-outer>
+                                <v-tooltip bottom v-model="showTooltip">
+                                    <template v-slot:activator="{ on }">
+                                        <v-icon size="20" @click="showTooltip = !showTooltip">mdi-help-circle</v-icon>
+                                    </template>
+                                    <div>
+                                        Validation type is used for grouping of similar validations<br>
+                                        Examples: <span class="font-italic font-weight-bold">performance, functional, or quality</span> inside one branch<br>
+                                        You can create a new validation type by typing a new value in this input box<br>
+                                        Default value is <span class="font-italic font-weight-bold">{{ defaultValType }}</span>.
+                                    </div>
+                                </v-tooltip>
+                            </template>
+                        </v-combobox>
+                    </v-form>
+                </v-col>
+                <v-col cols="3"></v-col>
+            </v-row>
+        </template>
+        <!-- Existing validation autocomplete selector -->
+        <template v-else>
+            <v-row justify="center">
                 <v-col cols="6">
                     <v-autocomplete v-if="importType == 'existing'"
                         label="Validations"
@@ -137,10 +176,10 @@
                         v-model="selected"
                     ></v-autocomplete>
                 </v-col>
-            </template>
-        </v-row>
+            </v-row>
+        </template>
 
-        <v-row class="d-flex justify-center">
+        <v-row justify="center">
             <v-col cols="6" class="pt-0">
                 <!-- Main dialog -->
                 <v-dialog v-model="errorsDialog" persistent max-width="50%">
@@ -167,8 +206,7 @@
                                         <!-- iterating over error codes -->
                                         <div v-for="(items, eCode) in edata" :key="eCode">
                                             <div v-for="(errors, modelName) in items" :key="modelName">
-                                                <issue-card v-if="(modelName == 'Item' ||
-                                                                   modelName == 'ResultFeature') &&
+                                                <issue-card v-if="['Item', 'ResultFeature', 'ValidationType'].includes(modelName) &&
                                                                    eCode == 'ERR_MISSING_ENTITY'"
                                                     :error-data="errors"
                                                     :priority="priority"
@@ -220,9 +258,10 @@
 
 <script>
     import server from '@/server'
+    import { mapGetters } from 'vuex'
+    import rules from '@/utils/form-rules.js'
     import issueCard from '@/components/IssueCard'
     import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
-    import { mapGetters } from 'vuex'
 
     import axios from 'axios'
 
@@ -250,15 +289,8 @@
                 selected: {'id': 0},
                 search: null,
 
-                rules: {
-                    required(value) {
-                        return !!value || 'Required'
-                    },
-                    isLongEnough(value) {
-                        if (value.length < 5)
-                            return 'At least 5 symbols'
-                        return true
-                    },
+                rules: rules,
+                importSpecificRules: {
                     CompViewLinkFormatRules(value) {
                         const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
                         const fullLinkFormat = new RegExp('(https://gta\\.intel\\.com/#/reports/comparison-view)' +
@@ -301,6 +333,14 @@
                 valNameDefault: '',
                 valNotes: '',
                 reason: '',
+
+                // validation type
+                searchType: null,
+                typesToSelect: [],
+                showTooltip: false,
+                selectedValType: '',
+                defaultValType: '',
+                valTypeCorrect: true
             }
         },
         computed: {
@@ -309,6 +349,9 @@
 
             uploadDisabled() {
                 let inputType = null
+                if (!this.valTypeCorrect) {
+                    return true
+                }
                 if (this.url) {
                     inputType = this.url
                 } else {
@@ -384,6 +427,24 @@
                         }
                     })
                     .finally(() => (this.isLoading = false))
+            },
+            selectedValType(valtype, previous) {
+                // for validations types that are retrieved from backend and for empty input
+                if (valtype === previous || !valtype || this._.isObject(valtype)) {
+                    return
+                }
+                this.$nextTick(() => {
+                    this.$refs.valtypeForm.validate()
+
+                    // for user input (new valtype - string)
+                    if (!this.valTypeCorrect) {
+                        return
+                    }
+                    valtype = valtype.toLowerCase()
+                    this.selectedValType = {text: valtype + ' (0 validations)',
+                                            value: valtype}
+                    this.typesToSelect.push(this.selectedValType)
+                })
             },
         },
         methods: {
@@ -653,6 +714,7 @@
                 if (this.reason) {
                     formData.append('import_reason', this.reason)
                 }
+                formData.append('validation_type', this.selectedValType.value)
 
                 this.$toasted.success('Starting initial checks of importing data<br>\n' +
                                         'Please wait for a while...', { duration: 12000 })
@@ -742,7 +804,30 @@
                     this.uploading = false
                     this.reason = ''
                 })
-            }
+            },
+            loadValTypes() {
+                const url = 'api/validation_types/with_default/'
+                server
+                    .get(url)
+                    .then(response => {
+                        this.typesToSelect = response.data.items.map(type => {
+                            return {text: `${type.name} (${type.val_count} validations)`,
+                                    value: type.name}
+                        })
+                        this.defaultValType = response.data.default
+                        this.selectedValType = this.typesToSelect.find(type => type.value === this.defaultValType)
+                    })
+                    .catch(error => {
+                        if (error.handleGlobally) {
+                            error.handleGlobally('Error during retrieving validation types', url)
+                        } else {
+                            this.$toasted.global.alert_error(error)
+                        }
+                    })
+            },
+        },
+        mounted() {
+            this.loadValTypes()
         }
     }
 </script>

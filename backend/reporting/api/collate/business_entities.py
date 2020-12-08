@@ -1,3 +1,4 @@
+import json
 import time
 from abc import ABC
 from dataclasses import dataclass, field
@@ -35,7 +36,7 @@ class AbstractRequestDTO(ABC):
         if isinstance(request.data, dict):
             return request.data[field_name]
         # request.data can be a QueryDict when it is comes from raw api call
-        return request.data.getlist(field_name, fallback_value)
+        return json.loads(request.data.get(field_name, fallback_value))
 
     @classmethod
     def _extract_boolean(cls, request, field):
@@ -57,6 +58,7 @@ class ImportRequestDTO(AbstractRequestDTO):
     site_url: str
     force_item: bool
     import_reason: str
+    validation_type: str
 
     @classmethod
     def build(cls, request) -> 'ImportRequestDTO':
@@ -74,6 +76,7 @@ class ImportRequestDTO(AbstractRequestDTO):
         dto.site_url = request.build_absolute_uri('/')
         dto.force_item = cls._extract_boolean(request, 'force_item')
         dto.import_reason = cls._get_field(request, 'import_reason')
+        dto.validation_type = cls._get_field(request, 'validation_type')
 
         return dto
 
@@ -170,6 +173,7 @@ class ValidationDTO:
     date: str = None
     source_file: str = None
     owner_id: int = None
+    val_type_id: int = None
 
     def to_dict(self):
         return self.__dict__
@@ -187,7 +191,7 @@ class ValidationDTO:
         dto.date = str(validation.date) if validation.date else None
         dto.source_file = validation.source_file
         dto.owner_id = validation.owner.id if validation.owner else None
-
+        dto.val_type_id = validation.type.id if validation.type else None
         return dto
 
     def to_validation(self):
@@ -203,6 +207,7 @@ class ValidationDTO:
         validation.date = self.date
         validation.source_file = self.source_file
         validation.owner = User.objects.filter(pk=self.owner_id).first()
+        validation.type = api_models.ValidationType.objects.filter(pk=self.val_type_id).first()
 
         return validation
 
@@ -268,7 +273,7 @@ class ImportOutcomeBuilder(AbstractOutcomeBuilder):
 
     def add_missing_field_error(self, missing_field, is_alias=False):
         model_name, fields = missing_field
-        entity=dict(model=model_name, fields=fields)
+        entity = dict(model=model_name, fields=fields)
 
         if is_alias:
             self.add_warning(f"{model_name} with name or alias '{fields['name']}' does not exist.")
@@ -290,7 +295,7 @@ class ImportOutcomeBuilder(AbstractOutcomeBuilder):
         self._add_error('ERR_EXISTING_RUN', message)
 
     def add_date_format_error(self, date, field_type='string'):
-        message=f'Unable to auto-convert {field_type} "{date}" to excel date.'
+        message = f'Unable to auto-convert {field_type} "{date}" to excel date.'
         self._add_error('ERR_DATE_FORMAT', message)
 
     def add_item_changed_error(self, item, old_status, new_status):

@@ -12,7 +12,7 @@ from openpyxl.utils.datetime import from_excel as date_from_excel
 from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
 
 from api.models import Component, Env, Item, Os, Run, Platform, Result, Validation, \
-    Status, ResultFeature
+    Status, ResultFeature, ValidationType
 from api.collate.gta_field_parser import GTAFieldParser
 from api.collate.excel_utils import REVERSE_NAME_MAPPING
 from api.collate.excel_utils import open_excel_file
@@ -161,6 +161,12 @@ def _build_validation(context):
     outcome = context.outcome
     validation_id = context.request.validation_id
 
+    # Verify that all validation types are exist in db
+    val_type_name = context.request.validation_type
+    val_type = ValidationType.objects.filter(name=val_type_name).first()
+    if val_type_name and not val_type:
+        outcome.add_missing_field_error((ValidationType.__name__, dict(name=val_type_name)))
+
     # Use existing validation if validation_id was provided
     if validation_id is not None:
         validation = Validation.alive_objects.filter(pk=validation_id).first()
@@ -200,6 +206,7 @@ def _build_validation(context):
         env=fields['env'],
         platform=fields['platform'],
         os=fields['os'],
+        type=val_type
     )
 
     # Validation record must have unique group of fields
@@ -315,13 +322,13 @@ class RecordBuilder:
         return True
 
     def build(
-        self,
-        force_run=False,
-        force_item=False) \
-        -> Tuple[
-            Optional[Result],
-            Optional[List[ResultFeature]]
-        ]:
+            self,
+            force_run=False,
+            force_item=False) \
+            -> Tuple[
+                Optional[Result],
+                Optional[List[ResultFeature]]
+            ]:
 
         if not self.verify(force_run, force_item):
             return None, None

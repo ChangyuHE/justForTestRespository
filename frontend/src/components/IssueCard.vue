@@ -93,7 +93,7 @@
         'ERR_ITEM_CHANGED': 'Results update attempt'
     }
 
-    const CAN_BE_CREATED = ['Driver', 'Item', 'ResultFeature']
+    const CAN_BE_CREATED = ['Driver', 'Item', 'ResultFeature', 'ValidationType']
     const MUST_BE_REQUESTED = ['Component', 'Env', 'Platform', 'Os', 'Generation']
 
     export default {

@@ -114,7 +114,8 @@ class ItemSerializer(serializers.ModelSerializer):
         """
         Parse item args to get additional plugin, scenario and test_id values
         non-existing plugin and scenario stored as "*__name" fields, existing will have fk ids
-        such naming makes possible common django queryset filtering (see create_entities in api/collate/import_api.py)
+        such naming makes possible common django queryset filtering
+        (see create_entities in api/collate/import_api.py)
         """
         validated_data = super().to_internal_value(data)
         validated_data, non_existing = parse_item_args(validated_data)
@@ -222,6 +223,8 @@ def create_serializer(class_name, instance=None, data=fields.empty, **kwargs):
         return OsSerializer(instance, data, **kwargs)
     elif class_name == 'ResultFeature':
         return ResultFeatureSerializer(instance, data, **kwargs)
+    elif class_name == 'ValidationType':
+        return ValidationTypeSerializer(instance, data, **kwargs)
     else:
         log.warning(f"Serializer for class '{class_name}' is not defined.'")
         return None
@@ -251,7 +254,8 @@ class FeatureMappingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.FeatureMapping
-        fields = ['id', 'name', 'owner', 'codec', 'component', 'platform', 'os', 'public', 'official']
+        fields = ['id', 'name', 'owner', 'codec',
+                  'component', 'platform', 'os', 'public', 'official']
 
 
 class FeatureMappingSimpleSerializer(serializers.ModelSerializer):
@@ -374,7 +378,8 @@ class ResultCutSerializer(serializers.ModelSerializer):
 
 class BulkUpdateListSerializer(serializers.ListSerializer):
     def update(self, instances, validated_data):
-        result = [self.child.update(instance, attrs) for instance, attrs in zip(instances, validated_data)]
+        result = [self.child.update(instance, attrs)
+                  for instance, attrs in zip(instances, validated_data)]
 
         writable_fields = [
             field
@@ -418,3 +423,14 @@ class ValidationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Validation
         fields = ['name', 'date', 'notes']
+
+
+class ValidationTypeSerializer(serializers.ModelSerializer):
+    val_count = serializers.SerializerMethodField()  # count of validations belong to the val type
+
+    def get_val_count(self, obj):
+        return models.Validation.objects.filter(type=obj).count()
+
+    class Meta:
+        model = models.ValidationType
+        fields = ['name', 'val_count']

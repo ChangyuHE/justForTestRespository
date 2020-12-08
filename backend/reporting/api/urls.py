@@ -36,6 +36,11 @@ urlpatterns = [
 
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 
+    path('api/validation_types/', views.ValidationTypeView.as_view(), name='valtype-list'),
+    path('api/validation_types/with_default/',
+         views.ValidationTypeWithDefaultView.as_view(),
+         name='valtype-list-with-default'),
+
     # Reports
     path('api/report/best/<int_list:val_pks>//',
          views.ReportBestView.as_view(),

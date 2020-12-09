@@ -28,39 +28,76 @@
                     </v-btn>
                 </div>
 
-                <v-tabs>
+                <v-tabs height=40>
                     <!-- URL input controller -->
                     <v-tab>from Comparison View</v-tab>
                         <v-tab-item>
                             <v-text-field
-                                prepend-icon="mdi-link-box-variant"
+                                prepend-icon="mdi-link-variant"
                                 label="URL"
                                 placeholder="example: https://gta.intel.com/#/reports/comparison-view.."
                                 hint="Paste a full or short link of Comparison View results"
                                 v-model="url"
                                 :value="url"
                                 :disabled="uploading"
-                                :rules="[importSpecificRules.CompViewLinkFormatRules(url)]"
-                                @change="onImportDataFill"
+                                :loading="isShortLinkRetrieve"
+                                :rules="[rules.CompViewLinkFormatRules(url)]"
+                                @input="onUrlImportDataFill"
                                 @click:clear="onImportDataClear"
                                 autofocus
                                 clearable
                             ></v-text-field>
+                            <template v-if="isUrlImportReady">
+                                <v-container class="pt-0" fluid>
+                                    <v-row>
+                                        <v-subheader class="pt-10 pr-2 pl-8"><strong>Test Runs:</strong></v-subheader>
+                                        <v-col cols="6" align-self="center">
+                                            <v-combobox
+                                                v-model="testRuns"
+                                                :items="testRuns"
+                                                :rules="[rules.isTestRunInputValid(testRuns)]"
+                                                :error-messages="testRunErrors"
+                                                :deletable-chips="testRuns.length > 1"
+                                                :loading="isTestRunCheck"
+                                                :disabled="uploading"
+                                                @input="onTestRunDataFill(testRuns)"
+                                                small-chips multiple single-line
+                                                hide-no-data hide-selected cache-items
+                                                hint="You can edit existing or add new test runs"
+                                            ></v-combobox>
+                                        </v-col>
+                                    </v-row>
+                                    <v-row>
+                                        <v-subheader class="pt-5 pr-2 pl-8"><strong>Base Build:</strong></v-subheader>
+                                        <v-col cols="6" align-self="center">
+                                            <v-text-field
+                                                v-model="buildVersion"
+                                                readonly disabled
+                                                dense
+                                            ></v-text-field>
+                                        </v-col>
+                                    </v-row>
+                                    <v-row>
+                                        <v-divider v-if="isUrlImportReady" light></v-divider>
+                                    </v-row>
+                                </v-container>
+                            </template>
                         </v-tab-item>
+
                     <!-- File input controller -->
                     <v-tab>File</v-tab>
                         <v-tab-item>
                             <dnd-frame @file-drop="onFileDrop">
-                                 <v-file-input
-                                      label="Select File to import"
-                                      full-width show-size counter truncate-length="100"
-                                      class="pt-0" color="blue-grey"
-                                      accept=".xlsx"
-                                      v-model="file"
-                                      :disabled="uploading"
-                                      @change="onImportDataFill"
-                                      @click:clear="onImportDataClear"
-                                  ></v-file-input>
+                                <v-file-input
+                                    label="Select File to import"
+                                    full-width show-size counter truncate-length="100"
+                                    class="pt-0" color="blue-grey"
+                                    accept=".xlsx"
+                                    v-model="file"
+                                    :disabled="uploading"
+                                    @change="onImportDataFill"
+                                    @click:clear="onImportDataClear"
+                                ></v-file-input>
                             </dnd-frame>
                         </v-tab-item>
                 </v-tabs>
@@ -96,15 +133,16 @@
                         ></v-date-picker>
                     </v-menu>
                 </v-col>
+
                 <!-- Validation name  -->
                 <v-col cols="3" class="pt-0">
                     <v-text-field
                         color="blue-grey"
                         label="Validation name"
                         hint="At least 10 symbols"
-                        clearable
                         v-model="valName"
                         :disabled="uploading"
+                        clearable
                     ></v-text-field>
                 </v-col>
                 <v-col cols="2" class="pt-0">
@@ -125,7 +163,7 @@
                             label="Validation type"
                             color="blue-grey"
                             v-model="selectedValType"
-                            :rules="[rules.required, rules.lengthRange(selectedValType, 3, 20)]"
+                            :rules="[basicRules.required, basicRules.lengthRange(selectedValType, 3, 20)]"
                             :hide-no-data="!searchType"
                             :search-input.sync="searchType"
                             :items="typesToSelect"
@@ -230,7 +268,7 @@
                                         color="blue-grey"
                                         class="mx-7"
                                         label="Please provide reason of update"
-                                        :rules="[rules.required(reason), rules.isLongEnough(reason)]"
+                                        :rules="[basicRules.required(reason), basicRules.isLongEnough(reason)]"
                                         v-model="reason"
                                     ></v-text-field>
                                 </v-form>
@@ -247,7 +285,7 @@
                 </v-dialog>
                 <v-btn
                     color="teal" class="white--text"
-                    :disabled="uploadDisabled"
+                    :disabled="uploadDisabled || UrlUploadDisabled"
                     :loading="uploading"
                     @click="onUpload"
                 >Upload</v-btn>
@@ -259,7 +297,7 @@
 <script>
     import server from '@/server'
     import { mapGetters } from 'vuex'
-    import rules from '@/utils/form-rules.js'
+    import basicRules from '@/utils/form-rules.js'
     import issueCard from '@/components/IssueCard'
     import dndFrame from '@/components/helpers/DragAndDropFileInputFrame'
 
@@ -279,8 +317,20 @@
         },
         data() {
             return {
+                // main import types
                 file: null,
                 url: null,
+
+                // flags for CV import preparations
+                isUrlImportReady: false,
+                isShortLinkRetrieve: false,
+                isTestRunValid: true,
+                isTestRunCheck: false,
+                testRunErrors: [],
+
+                // main global data of CV results
+                testRuns: [],
+                buildVersion: null,
 
                 // validations autocomplete selector
                 descriptionLimit: 100,
@@ -289,15 +339,29 @@
                 selected: {'id': 0},
                 search: null,
 
-                rules: rules,
-                importSpecificRules: {
+                basicRules: basicRules,
+                rules: {
+                    isTestRunInputValid(items) {
+                        if (items.length < 1) {
+                            return 'At least one Test Run ID should be selected'
+                        }
+                        for (let value of items) {
+                            if (!(/\d+/.test(value))) {
+                                return 'Test Run ID can be only an integer'
+                            }
+                            if (value.length < 7) {
+                                return 'Too short Test Run ID number. Must be longer than 6 digits'
+                            }
+                        }
+                        return true
+                    },
                     CompViewLinkFormatRules(value) {
                         const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
                         const fullLinkFormat = new RegExp('(https://gta\\.intel\\.com/#/reports/comparison-view)' +
                               '(.*testRun.+?=\\d+)(.*builds+[%\\d\\w]+name)')
 
                         if (value && !(shortLinkFormat.test(value) || fullLinkFormat.test(value))) {
-                            return 'Link has incorrect format.\ ' +
+                            return 'Link has incorrect format. ' +
                                 'Please paste existing Comparison View results link ' +
                                 'or fix current one to the related formats'
                         }
@@ -363,6 +427,9 @@
                     return !(Boolean(inputType) && this.valDate && this.valName ? this.valName.length >= 10 : false)
                 }
             },
+            UrlUploadDisabled() {
+                return this.url && this.isTestRunCheck || (!this.isTestRunValid || !this.isUrlImportReady)
+            },
             /**
              * Validations Autocomplete items to show
              */
@@ -378,8 +445,9 @@
             errorsTabs() {
                 let tabs = Object.keys(this.priority)
                 tabs.forEach(priority => {
-                    if (!(priority in this.importErrors))
+                    if (!(priority in this.importErrors)) {
                         tabs = tabs.filter(e => e !== priority)
+                    }
                 })
                 return tabs
             },
@@ -394,22 +462,28 @@
             },
             priorityWarning() {
                 let priority = this.errorsTabs[this.tab]
-                if (priority == 'blocking') {
+                if (priority === 'blocking') {
                     return 'Fix errors in input file to make import possible'
-                } else if (priority == 'high') {
+                } else if (priority === 'high') {
                     return 'Create items or make request to remove these errors to make import possible'
-                } else if (priority == 'medium') {
+                } else if (priority === 'medium') {
                     return 'Results update detected, confirmation required'
-                } else if (priority == 'low') {
+                } else if (priority === 'low') {
                     return 'Non blocking warnings'
                 }
                 return ''
             },
         },
         watch: {
-            search(val) {
-                if (this.items.length > 0) return       // Items have already been loaded
-                if (this.isLoading) return              // Items have already been requested
+            search() {
+                // Items have already been loaded
+                if (this.items.length > 0) {
+                    return
+                }
+                // Items have already been requested
+                if (this.isLoading) {
+                    return
+                }
                 this.isLoading = true
 
                 // Lazily load input items
@@ -448,60 +522,21 @@
             },
         },
         methods: {
-            parseShortReportURL(url) {
-                let formData = new FormData()
-                formData.append('short_url', url)
-
-                // retrieve full CV report url from its short version
-                const request_url = 'api/import/gta-short-url/'
-                return server
-                      .post(request_url, formData, {
-                          headers: {'Content-Type': 'multipart/form-data'}
-                      })
-                      .then(response => {
-                          return response.data
-                      })
-                      .catch(error => {
-                          this.$toasted.global.alert_error_detailed({
-                              'header': 'Error getting info from short link<br>\n' +
-                                        'GTA API results currently unreachable or link is invalid<br>\n',
-                              'message': `<strong>${error}</strong><br>`
-                              })
-                          return null
-                      })
-            },
-            async parseReportURL(url) {
-                // retrieve full url if its a short link
-                const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
-                if (shortLinkFormat.test(url)) {
-                    url = await this.parseShortReportURL(url)
-                }
-
+            async exportResultsPayload(url) {
                 // decode url to uri format
-                let uri = ''
                 try {
-                    uri = decodeURI(url)
+                    decodeURI(url)
                     // expected output: "..[]=results&complexFilters[0][testRun][]=123456"
                 } catch (error) {
                     // catches a malformed URI
+                    // broken link which couldn't be used
                     throw Error(`URL is broken: ${error}`)
                 }
 
-                // parse needed info from decoded uri
-                let testRun = new RegExp('testRun.+?=(\\d+)')
-                let buildVersion = new RegExp('builds\\[.+\\[name]=(\\S+)')
-                for (let reportSetting of uri.split('&')) {
-                    if (reportSetting.match(testRun)) {
-                        testRun = RegExp.$1
-                    }
-                    if (reportSetting.match(buildVersion)) {
-                        buildVersion = RegExp.$1
-                    }
-                }
                 // build payload for excel preparing request
                 return {
                     'use_api': true,
-                    'export_labels': [buildVersion],
+                    'export_labels': [this.buildVersion],
                     'custom_fields': [{
                             // Additional custom fields from data for exported results
                             'display_name': 'Custom Errors',
@@ -530,13 +565,13 @@
                             'mode': 'DNF',
                             'filters': [{
                                 'build': [{
-                                    'name': buildVersion
+                                    'name': this.buildVersion
                                 }],
                                 // The filter tags which control range of included data
                                 'tagsAnyOf':[],
                                 'tagsExcept': ['notAnIssue', 'obsoleted', 'iteration', 'isolation'],
                                 'tagsAllOf':[],
-                                'testRun': [testRun],
+                                'testRun': this.testRuns,
                             }],
                             'customColumnsFilters': {}
                         }],
@@ -583,11 +618,8 @@
                let responseData = '' // common response data of made query
                try {
                   let resultKey = null // key to generated data in database
-                  let payload = await this.parseReportURL(this.url)
+                  let payload = await this.exportResultsPayload(this.url)
 
-                  if (!payload) {
-                      throw 'Link is broken or data does not exist for the results'
-                  }
                   await excelExportRequest(payload)
                       .then(response => {
                           resultKey = responseData = response.data
@@ -610,12 +642,68 @@
                   return excelUrl
                } catch (error) {
                      this.$toasted.global.alert_error_detailed({
-                         'header': '<strong>Error during retrieving data from GTA</strong><br>\n\n \
-                                   It might be a network issue or GTA API results currently unreachable.\n \
-                                   Please copy error data to clipboard if you want to send it to admins<br>\n\n',
+                         'header': '<strong>Error during retrieving data from GTA</strong><br>\n\n' +
+                                   'It might be a network issue or GTA API results currently unreachable.\n' +
+                                   'Please copy error data to clipboard if you want to send it to admins<br>\n\n',
                          'message': `<strong>${error}</strong><br>Response Data:<br>${JSON.stringify(responseData)}`
                      })
                }
+            },
+            async onUrlImportDataFill() {
+                // work with short link type of url input
+                // full link location will be retrieved from its short version
+                function parseShortLink(url) {
+                    // retrieve full CV report url from its short version
+                    return server
+                          .post('api/import/gta-short-url/', {'short_url': url})
+                          .then(response => {
+                              return response.data
+                          })
+                          .catch(error => {
+                              this.$toasted.global.alert_error_detailed({
+                                  'header': 'Error getting info from short link<br>\n' +
+                                            'GTA API results currently unreachable or link is invalid<br>\n',
+                                  'message': `<strong>${error}</strong><br>`
+                                  })
+                              return null
+                          })
+                }
+
+                // work with full version of Comparison View link
+                // will be used anyway
+                function parseFullReportLink(url) {
+                    const parseBuildVersion = /builds+[%\d\w]+name[%\d\w]+=([\w-]+)/
+                    let buildVersion = null
+                    if (url.match(parseBuildVersion)) {
+                        buildVersion = RegExp.$1
+                    }
+
+                    const parseTestRun = /testRun+[%\d\w]+=([\d-]+)/g
+                    let testRuns = []
+                    if (url.match(parseTestRun)) {
+                        for (let runId of [...url.matchAll(parseTestRun)]) {
+                            testRuns.push(runId[1])
+                        }
+                    }
+                    return [buildVersion, testRuns]
+                }
+
+                if (this.url && this.rules.CompViewLinkFormatRules(this.url) === true) {
+                    // retrieve full url if its a short link
+                    const shortLinkFormat = new RegExp('https://gta\\.intel\\.com/api/results/v1/short/\\d+$')
+                    if (shortLinkFormat.test(this.url)) {
+                        this.isShortLinkRetrieve = true
+                        this.url = await parseShortLink(this.url)
+                    }
+                    [this.buildVersion, this.testRuns] = await parseFullReportLink(this.url)
+                    if (this.buildVersion && this.testRuns) {
+                        this.isUrlImportReady = true
+                        this.isShortLinkRetrieve = false
+                        this.onImportDataFill()
+                    }
+                } else {
+                    this.isUrlImportReady = false
+                }
             },
             onImportDataFill() {
                 let inputType = null
@@ -648,11 +736,53 @@
                             let fn = this.file.name
                             this.valName = fn.substring(0, fn.lastIndexOf('.'))
                         } else {
-                            this.valName = `${this.valDate}_${this.userName}`
+                            if (this.testRuns.length === 1) {
+                                this.valName = `${this.valDate}_${this.userName}_${this.buildVersion}__${this.testRuns[0]}`
+                            } else {
+                                this.valName = `${this.valDate}_${this.userName}_${this.buildVersion}`
+                            }
                         }
                         this.valNameDefault = this.valName
                     }
                 }
+            },
+            async onTestRunDataFill(items) {
+                this.isTestRunCheck = true
+
+                function checkTestRunExists(testRun) {
+                    return server
+                        .post('api/import/test-run-check/', {'test_run': testRun})
+                        .then(response => {
+                            if (response.status === 200 && response.data.items.length === 0) {
+                                // we have response, test run is valid and was launched sometime,
+                                // but it's totally empty for test item's results
+                                return 'No any test results found for this Test Run ID'
+                            }
+                        })
+                        .catch(error => {
+                            if (error.status === 404) {
+                                // No data found for input id
+                                return 'Results do not exist'
+                            } else {
+                                // No data or just no response occasionally
+                                return 'No response from GTA API for this Test Run ID'
+                            }
+                        })
+                }
+                if (this.rules.isTestRunInputValid(items) !== true) {
+                    this.isTestRunValid = false
+                } else {
+                    // start additional check only if basic rules are passed
+                    let msg = await checkTestRunExists(items.slice(-1))
+                    if (msg) {
+                        this.isTestRunValid = false
+                        this.testRunErrors.push(msg)
+                    } else {
+                        this.isTestRunValid = true
+                        this.testRunErrors.pop()
+                    }
+                }
+                this.isTestRunCheck = false
             },
             onImportDataClear() {
                 if (this.valName === this.valNameDefault) {
@@ -661,6 +791,7 @@
                 if (this.valDate === this.valDateDefault) {
                     this.valDate = null
                 }
+                this.isUrlImportReady = false
             },
             onFileDrop(event) {
                 this.file = event
@@ -672,10 +803,14 @@
                     'force_run': false,
                     'force_item': false
                     }
-                if ('low' in this.importErrors && 'ERR_EXISTING_RUN' in this.importErrors['low'])
-                    extra['force_run'] = true
-                if ('medium' in this.importErrors && 'ERR_ITEM_CHANGED' in this.importErrors['medium'])
+                if ('low' in this.importErrors &&
+                    'ERR_EXISTING_RUN' in this.importErrors['low']) {
+                        extra['force_run'] = true
+                }
+                if ('medium' in this.importErrors &&
+                    'ERR_ITEM_CHANGED' in this.importErrors['medium']) {
                     extra['force_item'] = true
+                }
                 this.onUpload(extra)
             },
             async onUpload(extra) {
@@ -685,8 +820,9 @@
                 this.uploading = true
 
                 let valId = null
-                if (this.selected && 'id' in this.selected)
+                if (this.selected && 'id' in this.selected) {
                     valId = this.selected.id
+                }
 
                 // FormData filling
                 let formData = new FormData()
@@ -706,10 +842,12 @@
                 } else {
                     formData.append('validation_id', +valId)
                 }
-                if ('force_run' in extra)
+                if ('force_run' in extra) {
                     formData.append('force_run', extra['force_run'])
-                if ('force_item' in extra)
+                }
+                if ('force_item' in extra) {
                     formData.append('force_item', extra['force_item'])
+                }
 
                 if (this.reason) {
                     formData.append('import_reason', this.reason)
@@ -727,18 +865,8 @@
                                           'You will be notified by email at the end.', { duration: 4000 })
                 })
                 .catch(error => {
-                    if (error.response) {           // Request made and server responded out of range of 2xx codes
-                        if(error.response.status != 422) {
-                            let data = JSON.stringify(error.response.data)
-                            if (data.length > 400)
-                                data = data.slice(0, 400)
-
-                            this.$toasted.global.alert_error_detailed({
-                                'header': `Error during import<br>\n
-                                           Please copy error data to clipboard and send it to admins<br>\n`,
-                                'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${data}`
-                            })
-                        } else {
+                    if (error.response) { // Request made and server responded out of range of 2xx codes
+                        if (error.response.status === 422) {
                             let data = error.response.data
                             this.errorsDialog = true
 
@@ -746,14 +874,16 @@
                             data.errors.forEach(e => {
                                 Object.keys(this.priority).forEach(p => {
                                     if (this.priority[p].includes(e.code)) {
-                                        if (!(e.code in eData[p]))
+                                        if (!(e.code in eData[p])) {
                                             eData[p][e.code] = {}
+                                        }
 
                                         if (e.code in eData[p]) {
                                             // errors bound to models
                                             if (e.entity) {
-                                                if (!(e.entity.model in eData[p][e.code]))
+                                                if (!(e.entity.model in eData[p][e.code])) {
                                                     eData[p][e.code][e.entity.model] = []
+                                                }
 
                                                 eData[p][e.code][e.entity.model].push({
                                                    'message': e.message,
@@ -764,14 +894,16 @@
                                                 })
                                             } else {
                                                 // global (no-model) errors
-                                                if (!('no-model' in eData[p][e.code]))
+                                                if (!('no-model' in eData[p][e.code])) {
                                                     eData[p][e.code]['no-model'] = []
+                                                }
 
                                                 // append amount data from warnings
-                                                if (e.message in data.warnings)
+                                                if (e.message in data.warnings) {
                                                     e.message =
                                                         `${e.message} (${data.warnings[e.message]} \
                                                         item${data.warnings[e.message] > 1 ? 's' : ''})`
+                                                }
                                                 eData[p][e.code]['no-model'].push({
                                                     'message': e.message,
                                                     'entity': e.entity,
@@ -788,11 +920,22 @@
 
                             // delete empty priorities
                             Object.keys(eData).forEach(p => {
-                                if (Object.keys(eData[p]).length == 0)
+                                if (Object.keys(eData[p]).length === 0) {
                                     delete eData[p]
+                                }
                             })
 
                             this.$store.dispatch('setImportErrors', eData)
+                        } else {
+                            let data = JSON.stringify(error.response.data)
+                            if (data.length > 400) {
+                                data = data.slice(0, 400)
+                            }
+                            this.$toasted.global.alert_error_detailed({
+                                'header': 'Error during import<br>\n' +
+                                          'Please copy error data to clipboard and send it to admins<br>\n',
+                                'message': `${error}<br>URL: ${server.defaults.baseURL}/${url}<br>${data}`
+                            })
                         }
                     } else if (error.request) {     // The request was made but no response was received
                         this.$toasted.global.alert_error(`${error}<br> URL: ${server.defaults.baseURL}/${url}`)

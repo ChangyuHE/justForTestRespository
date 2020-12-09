@@ -36,7 +36,10 @@ urlpatterns = [
 
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 
-    path('api/validation_types/', views.ValidationTypeView.as_view(), name='valtype-list'),
+    path('api/validation_types/',
+         views.ValidationTypeView.as_view(),
+         name='valtype-list'),
+
     path('api/validation_types/with_default/',
          views.ValidationTypeWithDefaultView.as_view(),
          name='valtype-list-with-default'),
@@ -69,11 +72,11 @@ urlpatterns = [
          name='cmp-view-special'),  # optional param 'report=excel'
 
     path('api/report/compare/<int_list:val_pks>/<int_list:fmt_pks>/',
-         views.ReportCompareView.as_view(), 
+         views.ReportCompareView.as_view(),
          name='cmp-view'),  # optional param 'report=excel'
 
     path('api/report/extra-data/<list:ti_pks>/',
-         views.ExtraDataView.as_view(), 
+         views.ExtraDataView.as_view(),
          name='api-extra-data'),
 
     path('api/report/issues/<int:pk>/',
@@ -85,6 +88,7 @@ urlpatterns = [
     path('api/objects/request-creation/', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
     path('api/import/gta-short-url/', views.ParseShortUrlView.as_view(), name='gta-short-url'),
+    path('api/import/test-run-check/', views.CheckTestRunExist.as_view(), name='test-run-check'),
 
     # Feature mapping
     # .. import

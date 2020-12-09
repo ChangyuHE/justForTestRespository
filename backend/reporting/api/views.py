@@ -1917,3 +1917,65 @@ class ParseShortUrlView(LoggingMixin, APIView):
         if r.status_code == 302:
             return Response(data=r.headers['Location'], status=status.HTTP_200_OK)
         return Response(status=status.HTTP_404_NOT_FOUND)
+
+
+class CheckTestRunExist(LoggingMixin, APIView):
+    """Send request to GTA Results API to check that manually added
+       Test Run ID contains any of results
+    """
+
+    def post(self, request):
+        test_run: str = request.data['test_run'][0]
+
+        # use minimum possible payload to check existence of results for specific test run
+        payload = {
+            'globalFilterId': None,
+            'compareOn': [
+                'compareIdentifier',
+            ],
+            'filterGroups': [{
+                'mode': 'DNF',
+                'filters': [
+                    {
+                        'testRun':
+                            [test_run],
+                        'tagsExcept': [
+                            'notAnIssue',
+                            'obsoleted',
+                            'iteration',
+                            'isolation',
+                        ]
+                    }
+                ],
+                'customColumnsFilters': {}
+            }],
+            'diffOnly': False,
+            'skipMissing': False,
+            'grouped': True,
+            'columns': [
+                'itemName',
+                'args',
+            ],
+        }
+        # this request has limit just to 3 test items (..&limit=3), to get results response quickly
+        r = requests.post('http://gta.intel.com:80/api/results/v2/results?offset=0&limit=3',
+                          data=json.dumps(payload),
+                          headers={
+                              'Accept': 'application/json',
+                              'Content-Type': 'application/json'
+                          },
+                          auth=HTTPBasicAuth(settings.GTA_API_USER,
+                                             settings.GTA_API_PASSWORD))
+        if r.status_code == 200:
+            # check number of items in response data
+            items_data = json.loads(r.content)['items']
+
+            # at least one test result exists
+            if items_data:
+                items_data = {'items': items_data}
+                return Response(data=items_data, status=status.HTTP_200_OK)
+            else:
+                # if it returns empty dict in items - no results
+                items_data = {'items': []}
+                return Response(data=items_data, status=status.HTTP_200_OK)
+        return Response(data=r.content, status=r.status_code)

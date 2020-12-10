@@ -74,7 +74,7 @@ class MergeValidationsIntegrationTest(DramatiqFixture):
         response = client.post(reverse('collate:merge'), self.request)
         self.assertImportSuccess(response.data)
 
-        new_validation_id = Validation.alive_objects.last().pk
+        new_validation_id = Validation.objects.last().pk
 
         merged_result_values = Result.objects.filter(
                 validation_id=new_validation_id

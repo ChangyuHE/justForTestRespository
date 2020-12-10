@@ -41,7 +41,7 @@ def _verify_request(request_dto: CloneRequestDTO, outcome: CloneOutcomeBuilder):
         return
 
     # source validation should exists
-    source_validation = Validation.alive_objects.filter(pk=request_dto.validation_id).first()
+    source_validation = Validation.objects.filter(pk=request_dto.validation_id).first()
     if not source_validation:
         outcome.add_nonexistent_validation_error()
         return
@@ -54,5 +54,5 @@ def _verify_request(request_dto: CloneRequestDTO, outcome: CloneOutcomeBuilder):
             platform_id=source_validation.platform_id,
             os_id=source_validation.os_id
         )
-        if Validation.alive_objects.filter(**query_filter).exists():
+        if Validation.objects.filter(**query_filter).exists():
             outcome.add_duplicated_validation_error()

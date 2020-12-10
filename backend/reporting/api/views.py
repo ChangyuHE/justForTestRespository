@@ -90,10 +90,10 @@ class UserSpecificFilterSet(django_filters.FilterSet):
     )
     ids__in = NumberInFilter(field_name='id', lookup_expr='in')
 
-    def validations_empty(self, queryset, name, value):
-        # construct the full lookup expression.
-        lookup = '__'.join([name, 'isnull'])
-        return queryset.filter(**{lookup: not value}).distinct('id')
+    def validations_empty(self, queryset, _, value):
+        return queryset \
+                .filter(**{'validations__isnull': not value}) \
+                .distinct('id')
 
     class Meta:
         model = get_user_model()
@@ -541,7 +541,7 @@ class ValidationsView(LoggingMixin, APIView):
 
         tree = Node('')
 
-        validations_qs = Validation.alive_objects.all() \
+        validations_qs = Validation.objects.all() \
             .select_related('os__group', 'platform__generation', 'env', 'owner')
         for validation in validations_qs.order_by('-platform__generation__weight',
                                                   'platform__weight', 'os__group__name',
@@ -669,7 +669,7 @@ class IsAdminOrOwner(permissions.BasePermission):
 class ValidationDetailsView(LoggingMixin, generics.RetrieveAPIView):
     """ Retrieve validation object """
 
-    queryset = Validation.alive_objects.all()
+    queryset = Validation.objects.all()
     serializer_class = ValidationSerializer
 
 
@@ -680,7 +680,7 @@ class ValidationUpdateDeleteView(LoggingMixin, generics.UpdateAPIView, generics.
         delete: Soft-delete of validation object
     """
 
-    queryset = Validation.alive_objects.all()
+    queryset = Validation.objects.all()
     serializer_class = ValidationUpdateSerializer
     permission_classes = [IsAdminOrOwner]
 
@@ -691,7 +691,7 @@ class ValidationUpdateDeleteView(LoggingMixin, generics.UpdateAPIView, generics.
 
 
 class ValidationsDeleteByIdView(LoggingMixin, generics.DestroyAPIView):
-    queryset = Validation.objects.all()
+    queryset = Validation.all_objects.all()
     permission_classes = [IsAdminOrOwner]
 
     @transaction.atomic
@@ -714,9 +714,9 @@ class ValidationsFlatView(LoggingMixin, APIView):
         ids = request.GET.get('ids', '')
         if ids:
             id_list = ids.split(',')
-            validations_qs = Validation.alive_objects.filter(id__in=id_list).order_by('-id')
+            validations_qs = Validation.objects.filter(id__in=id_list).order_by('-id')
         else:
-            validations_qs = Validation.alive_objects.all().order_by('-id')
+            validations_qs = Validation.objects.all().order_by('-id')
         for v in validations_qs:
             d.append({
                 'name': f'{v.name} ({v.platform.name}, {v.env.name}, {v.os.name})',
@@ -750,9 +750,9 @@ class ValidationMappings(LoggingMixin, generics.GenericAPIView):
         ids = self.request.query_params.get('ids', None)
         if ids is not None:
             ids = [int(x) for x in ids.split(',')]
-            return Validation.alive_objects.filter(pk__in=ids)
+            return Validation.objects.filter(pk__in=ids)
         else:
-            return Validation.alive_objects.all()
+            return Validation.objects.all()
 
     def get(self, request, *args, **kwargs):
         validations = self.get_queryset()
@@ -770,22 +770,22 @@ class ValidationsStructureView(LoggingMixin, APIView):
             {'level': 'os', 'label': 'OS', 'items': []}
         ]
         gens = Generation.objects.filter(
-            id__in=Validation.alive_objects.values_list('platform__generation', flat=True)
+            id__in=Validation.objects.values_list('platform__generation', flat=True)
                 .order_by('-platform__generation__weight').distinct())
         d[0]['items'] = GenerationSerializer(gens, many=True).data
 
         platforms = Platform.objects.filter(
-            id__in=Validation.alive_objects.values_list('platform', flat=True)
+            id__in=Validation.objects.values_list('platform', flat=True)
                 .order_by('-platform__weight').distinct())
         d[1]['items'] = PlatformSerializer(platforms, many=True).data
 
         os_groups = Os.objects.filter(
-            id__in=Validation.alive_objects.values_list('os__group', flat=True)
+            id__in=Validation.objects.values_list('os__group', flat=True)
                 .order_by('os__group__name').distinct())
         d[2]['items'] = OsSerializer(os_groups, many=True).data
 
         oses = Os.objects.filter(
-            id__in=Validation.alive_objects.values_list('os', flat=True).order_by('os__name').distinct())
+            id__in=Validation.objects.values_list('os', flat=True).order_by('os__name').distinct())
         d[3]['items'] = OsSerializer(oses, many=True).data
 
         return Response(d)
@@ -800,7 +800,7 @@ class ReportBestView(LoggingMixin, APIView):
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
         grouping = request.GET.get('group-by', 'feature')
-        validations = Validation.alive_objects.filter(pk__in=val_pks)
+        validations = Validation.objects.filter(pk__in=val_pks)
 
         # Looking for best items in target validations
         ibest = Result.sa \
@@ -902,7 +902,7 @@ class ReportLastView(LoggingMixin, APIView):
         if 'report' in request.GET and request.GET['report'] == 'excel':
             do_excel = True
         grouping = request.GET.get('group-by', 'feature')
-        validations = Validation.alive_objects.filter(pk__in=val_pks)
+        validations = Validation.objects.filter(pk__in=val_pks)
         # Looking for last items in target validations with best status priority
         ilast = Result.sa \
             .query(Result.sa.item_id, func.max(Validation.sa.date).label('last_validation_date'),
@@ -1027,7 +1027,7 @@ def fmt_rules(fmt_pks: Optional[List[int]] = None) -> Query:
 
 def validation_id_to_name(validation_ids: List[int]) -> Dict[int, str]:
     result = {}
-    for v in Validation.alive_objects.filter(id__in=validation_ids):
+    for v in Validation.objects.filter(id__in=validation_ids):
         result[int(v.id)] = f'{v.name}\n({v.platform.short_name}, {v.env.name}, {v.os.name})'
     return result
 
@@ -1416,7 +1416,7 @@ class ReportFromSearchView(LoggingMixin, APIView):
             recognized_parts.append(f' {part.number} {part.env.lower()} {part.os.lower()} '
                                     f'{platform_reverse_map[part.platform]}')
             part.validation_ids = \
-                Validation.alive_objects.filter(
+                Validation.objects.filter(
                     env__name__in=[part.env],
                     platform__short_name__in=[part.platform],
                     os__name__in=[part.os]
@@ -1433,7 +1433,7 @@ class ReportFromSearchView(LoggingMixin, APIView):
             return Response(data=hint, status=status.HTTP_404_NOT_FOUND)
 
         original_order = Case(*[When(pk=pk, then=position) for position, pk in enumerate(validation_ids)])
-        validation_data = Validation.alive_objects.filter(pk__in=validation_ids) \
+        validation_data = Validation.objects.filter(pk__in=validation_ids) \
             .values_list(
                 'platform__generation__name', 'platform__short_name', 'os__group__name', 'os__name', 'env__name', 'name'
             ).order_by(original_order)
@@ -1500,7 +1500,7 @@ class ReportFromSearchView(LoggingMixin, APIView):
                     found_oses.append(os_group_.lower())
             if os:  # os group is found in query
                 os_group_id = Os.objects.filter(name__in=[os]).values_list('id', flat=True)
-                existed_oses = Validation.alive_objects \
+                existed_oses = Validation.objects \
                     .filter(env__name__in=[env], platform__short_name__in=[platform]) \
                     .values_list('os', flat=True).distinct()
                 os = os_group
@@ -1719,7 +1719,7 @@ class ReportIndicatorView(APIView):
             return Response({'headers': headers, 'items': items})
         else:
             # Excel part
-            validation = Validation.alive_objects.get(id=id)
+            validation = Validation.objects.get(id=id)
 
             if mode == 'combined':
                 excel_data = {'items': data, 'total': total_counters}
@@ -1778,7 +1778,7 @@ class ResultFeatureFilter(django_filters.FilterSet):
             # flatten list of lists
             itertools.chain.from_iterable(
                 list(
-                    Validation.alive_objects.values_list(
+                    Validation.objects.values_list(
                         'features',
                         flat=True).distinct()
                     )
@@ -1810,7 +1810,7 @@ class ComponentFilter(django_filters.FilterSet):
             # flatten list of lists
             itertools.chain.from_iterable(
                 list(
-                    Validation.alive_objects.values_list(
+                    Validation.objects.values_list(
                         'components',
                         flat=True).distinct()
                     )

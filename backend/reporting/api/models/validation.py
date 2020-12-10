@@ -452,8 +452,8 @@ class Validation(models.Model):
                              default=get_default_valtype_id,
                              on_delete=models.CASCADE)
 
-    objects = models.Manager()
-    alive_objects = AliveManager()
+    all_objects = models.Manager()
+    objects = AliveManager()
 
     def get_by_status(self, status: str) -> int:
         return getattr(self, status.lower())

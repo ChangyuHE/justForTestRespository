@@ -276,7 +276,7 @@ def do_issues_report(pk, failed_groups, error_groups):
     wb = Workbook()
     ws = wb.active
 
-    val = Validation.alive_objects.get(pk=pk)
+    val = Validation.objects.get(pk=pk)
     ws['B1'] = f"Issues report for '{val.name}'"
     ws['B1'].font = Font(bold=True, size=12)
 

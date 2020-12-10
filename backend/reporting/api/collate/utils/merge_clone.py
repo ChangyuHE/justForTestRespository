@@ -18,11 +18,11 @@ class MODE(Enum):
 def create_validation(job, validation_ids: List[int], mode: MODE) -> Validation:
     """ Create new Validation entity for merged or cloned results.
     """
-    validation = Validation.alive_objects.get(pk=validation_ids[0])
+    validation = Validation.objects.get(pk=validation_ids[0])
     validation.id = None
     validation.name = job.validation_name
 
-    source_names = Validation.alive_objects.filter(pk__in=validation_ids) \
+    source_names = Validation.objects.filter(pk__in=validation_ids) \
         .values_list('name', flat=True)
     validation.notes = (
         ('Merge of validations: ' if mode == MODE.MERGE else 'Clone of validation: ')

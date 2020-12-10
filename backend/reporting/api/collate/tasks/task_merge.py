@@ -42,7 +42,7 @@ def do_merge(job_id, validation_ids):
 
 
 def _send_merge_notification(job, validation, validation_ids):
-    merged_validations = tuple(Validation.alive_objects.filter(pk__in=validation_ids)
+    merged_validations = tuple(Validation.objects.filter(pk__in=validation_ids)
                                .values_list('id', 'name'))
 
     context = dict(

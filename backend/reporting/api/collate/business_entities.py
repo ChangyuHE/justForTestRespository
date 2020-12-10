@@ -196,7 +196,7 @@ class ValidationDTO:
 
     def to_validation(self):
         if self.id:
-            return api_models.Validation.alive_objects.filter(pk=self.id).first()
+            return api_models.Validation.objects.filter(pk=self.id).first()
 
         validation = api_models.Validation()
         validation.name = self.name

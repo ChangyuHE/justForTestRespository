@@ -60,7 +60,7 @@ def _verify_consistence(request_dto: MergeRequestDTO, outcome: MergeOutcomeBuild
         return
 
     # Check validation constraints
-    base_validation = Validation.alive_objects.get(pk=request_dto.validation_ids[0])
+    base_validation = Validation.objects.get(pk=request_dto.validation_ids[0])
     query_filter = dict(
         name=request_dto.validation_name,
         env=base_validation.env,
@@ -68,7 +68,7 @@ def _verify_consistence(request_dto: MergeRequestDTO, outcome: MergeOutcomeBuild
         platform=base_validation.platform,
     )
 
-    if Validation.alive_objects.filter(**query_filter).count() > 0:
+    if Validation.objects.filter(**query_filter).count() > 0:
         message = 'Validation with such parameters already exists'
         outcome.add_existing_validation_error(message, query_filter.items())
 

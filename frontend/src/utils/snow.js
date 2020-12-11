@@ -53,9 +53,10 @@ function cleanup() {
 
 function setCanvasSize() {
     function setSize() {
+        if (!snowCanvas) return
         let size = window.getComputedStyle(container)
         width = size.width.replace('px', '')
-        height = size.height.replace('px', '')
+        height = window.innerHeight
         snowCanvas.width = width
         snowCanvas.height = height
     }

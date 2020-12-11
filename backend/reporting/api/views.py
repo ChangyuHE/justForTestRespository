@@ -1831,7 +1831,7 @@ class ComponentView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
     filterset_class = ComponentFilter
 
 
-class ValidationTypeView(LoggingMixin, generics.ListAPIView):
+class ValidationTypeView(LoggingMixin, generics.ListCreateAPIView):
     """ List of ValidationType objects """
     queryset = ValidationType.objects.all()
     serializer_class = ValidationTypeSerializer

@@ -4,6 +4,7 @@
         max-width="50%"
     >
         <v-overlay :value="pageReload">
+            <h1 class="d-inline-flex mr-4">Reloading page &hellip;</h1>
             <v-progress-circular indeterminate size="64"></v-progress-circular>
         </v-overlay>
         <v-card>

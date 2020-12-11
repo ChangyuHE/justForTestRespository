@@ -123,7 +123,4 @@
         height: 18px;
         margin-top: 4px;
     }
-    .v-tooltip__content > .search-tooltip {
-        pointer-events: auto;
-    }
 </style>

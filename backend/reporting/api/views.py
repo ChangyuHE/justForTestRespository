@@ -525,6 +525,7 @@ ICONS = [
     (('windows', 'mdi-microsoft-windows'), ('linux', 'mdi-linux')),     # os group
     (('windows', 'mdi-microsoft-windows'), ('linux', 'mdi-linux')),     # os
     'mdi-memory',                                                       # env
+    'mdi-select-group',                                                 # validation type
     'mdi-format-list-bulleted-type'                                     # validation
 ]
 
@@ -557,8 +558,8 @@ class ValidationsView(LoggingMixin, APIView):
                 {'obj': os.group, 'name': os.group.name, 'level': 'os_group'},
                 {'obj': os.group, 'name': os.name, 'level': 'os'},
                 {'obj': validation.env, 'name': validation.env.name, 'level': 'env'},
-                {'obj': validation, 'name': validation.name, 'owner': validation.owner.id,
-                 'level': 'validation'}
+                {'obj': validation.type, 'name': validation.type.name, 'level': 'validation_type'},
+                {'obj': validation, 'name': validation.name, 'level': 'validation'}
             )
 
             # filter by input data
@@ -586,7 +587,7 @@ class ValidationsView(LoggingMixin, APIView):
 
                             # filter validation nodes by owner/component/feature
                             if node['level'] == 'validation':
-                                if f['level'] == 'user' and node['owner'] in f['value']:
+                                if f['level'] == 'user' and node['obj'].owner.id in f['value']:
                                     ok.append(True)
                                     break
                                 if f['level'] == 'component' and \
@@ -1835,6 +1836,23 @@ class ValidationTypeView(LoggingMixin, generics.ListAPIView):
     queryset = ValidationType.objects.all()
     serializer_class = ValidationTypeSerializer
     filterset_fields = ['name']
+
+
+class ValidationTypeDetailsView(LoggingMixin, generics.RetrieveUpdateAPIView):
+    """ ValidationType single object management """
+    queryset = ValidationType.objects.all()
+    serializer_class = ValidationTypeSerializer
+    filterset_fields = ['name']
+
+
+class ValidationTypeTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
+    """ ValidationType table view formatted for DataTable """
+    queryset = ValidationType.objects.all()
+    serializer_class = ValidationTypeSerializer
+    filterset_fields = ['name']
+
+    def get(self, request, *args, **kwargs):
+        return get_datatable_json(self)
 
 
 class ValidationTypeWithDefaultView(LoggingMixin, generics.ListAPIView):

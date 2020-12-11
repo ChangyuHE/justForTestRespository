@@ -83,11 +83,3 @@
         }
     }
 </script>
-<style scoped>
-    .v-application .v-tooltip__content a {
-        color: rgb(247, 248, 201);
-    }
-    .v-tooltip__content {
-        pointer-events: initial;
-    }
-</style>>

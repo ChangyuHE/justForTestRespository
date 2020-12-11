@@ -13,11 +13,10 @@ export default {
             let statuses = ''
             for (const status of ['passed', 'failed', 'error', 'blocked', 'skipped', 'canceled']) {
                 const cls = getTextColorFromStatus(status)
-                // trailing underscore required to remove conflict with standard Vue error class
-                statuses += `<span class='${cls} gta_status' title='${_.upperFirst(status)}'>${lst[5][status]}</span>`
+                statuses += `<span class='${cls} gta_status' title='${_.upperFirst(status)}'>${lst[6][status]}</span>`
             }
-            const firstLine = `${statuses}${lst[5].text} (${lst[1]}, ${lst[3]}, ${lst[4]})`
-            const secondLine = `<span class='grey--text text--lighten-1'>at ${lst[5].date} by ${lst[5].owner}</span>`
+            const firstLine = `${statuses}${lst[6].text} (${lst[2]}, ${lst[4]}, ${lst[5]})`
+            const secondLine = `<span class='grey--text text--lighten-1'>at ${lst[6].date} by ${lst[6].owner}</span>`
             return firstLine + '<br/>' + secondLine
         })
     },
@@ -29,8 +28,9 @@ export default {
         ADD_SELECTED(state, { validations, branches }) {
             state.validations = _.union(state.validations, validations)
             branches.forEach(b => {
-                if (_.findIndex(state.limbs, limb => _.isMatch(limb, b)) == -1)
+                if (_.findIndex(state.limbs, limb => _.isMatch(limb, b)) == -1) {
                     state.limbs.push(b)
+                }
             })
         },
         REMOVE_SELECTED(state, { validations, branches }) {
@@ -38,8 +38,9 @@ export default {
 
             branches.forEach(b => {
                 let index = _.findIndex(state.limbs, limb => _.isMatch(limb, b))
-                if (index !== -1)
+                if (index !== -1) {
                     state.limbs.splice(index, 1)
+                }
             })
         },
         SET_TREE_LOADING: (state, status) =>  state.treeLoading = status,

@@ -703,6 +703,14 @@
                 } else if (parsed.selected) {
                     validations = [+parsed.selected]
                 }
+
+                let branches = this.branchesFromValidations(validations)
+                if (validations.length) {
+                    this.$store.dispatch('tree/setSelected', { validations, branches: this.prepareBranches(branches) })
+                }
+
+            },
+            branchesFromValidations(validations) {
                 let branches = Array(validations.length)
 
                 this.$refs.tree.handleRecursionNodeChilds(this.$refs.tree,
@@ -715,9 +723,7 @@
                         }
                     }
                 )
-                if (validations.length) {
-                    this.$store.dispatch('tree/setSelected', { validations, branches: this.prepareBranches(branches) })
-                }
+                return branches
             },
             /**
              * Get filtering params from URL and apply to tree
@@ -987,6 +993,12 @@
         mounted() {
             EventBus.$on('update-counters', payload => {
                 this.updateStatusCounters(payload.old, payload.new, payload.validation)
+
+                // update selected branches after status(es) change
+                let branches = this.branchesFromValidations(this.validations)
+                this.$store.dispatch('tree/setSelected',
+                    { validations: this.validations, branches: this.prepareBranches(branches) }
+                )
             })
         }
     }

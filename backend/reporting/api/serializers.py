@@ -404,17 +404,30 @@ class BulkResultSerializer(serializers.ModelSerializer):
         list_serializer_class = BulkUpdateListSerializer
 
 
+class ValidationTypeSerializer(serializers.ModelSerializer):
+    # number of validations belong to this validation type
+    validations_number = serializers.SerializerMethodField()
+
+    def get_validations_number(self, obj):
+        return models.Validation.objects.filter(type=obj).count()
+
+    class Meta:
+        model = models.ValidationType
+        fields = ['id', 'name', 'validations_number']
+
+
 class ValidationSerializer(serializers.ModelSerializer):
     os = OsSerializer()
     env = EnvSerializer()
     platform = PlatformSerializer()
     owner = UserSerializer()
     date = fields.DateTimeField(format='%Y-%m-%d', read_only=True)
+    type = ValidationTypeSerializer()
 
     class Meta:
         model = models.Validation
         fields = ['id', 'name', 'notes', 'owner', 'date', 'os', 'env', 'platform',
-                  'components', 'features']
+                  'components', 'features', 'type']
 
 
 class ValidationUpdateSerializer(serializers.ModelSerializer):
@@ -422,15 +435,4 @@ class ValidationUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Validation
-        fields = ['name', 'date', 'notes']
-
-
-class ValidationTypeSerializer(serializers.ModelSerializer):
-    val_count = serializers.SerializerMethodField()  # count of validations belong to the val type
-
-    def get_val_count(self, obj):
-        return models.Validation.objects.filter(type=obj).count()
-
-    class Meta:
-        model = models.ValidationType
-        fields = ['name', 'val_count']
+        fields = ['name', 'date', 'type', 'notes']

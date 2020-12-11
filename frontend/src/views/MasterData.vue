@@ -214,6 +214,7 @@
                             { name: 'os', label: 'Os', requested: true }, { name: 'divider' },
                             { name: 'env', label: 'Env', requested: true }, { name: 'divider' },
                             { name: 'codec', label: 'Codec', requested: false }, { name: 'divider' },
+                            { name: 'validation_types', label: 'Validation Type', requested: false }, { name: 'divider' }
                         ]
                     },
                     {
@@ -298,18 +299,6 @@
             },
             // Create or save edited item
             save() {
-                // prepare item object to create/edit
-                let item = {}
-                for (let [k, v] of Object.entries(this.editedItem)) {
-                    if (typeof(v) === 'object') {
-                        item[k] = v !== null ? v.id : null
-                    } else if (v === undefined || v === '') {
-                        item[k] = null
-                    } else {
-                        item[k] = v
-                    }
-                }
-
                 // back: create new item back request ..
                 if (this.editedIndex == -1) {
                     const url = `api/${this.model}/`

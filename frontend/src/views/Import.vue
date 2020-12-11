@@ -954,7 +954,7 @@
                     .get(url)
                     .then(response => {
                         this.typesToSelect = response.data.items.map(type => {
-                            return {text: `${type.name} (${type.val_count} validations)`,
+                            return {text: `${type.name} (${type.validations_number} validations)`,
                                     value: type.name}
                         })
                         this.defaultValType = response.data.default

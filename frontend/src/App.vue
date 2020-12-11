@@ -220,4 +220,12 @@
     .horizontal-line {
         border-color: rgba(0, 0, 0, 0.3) !important;
     }
+    /* "a" tag color inside tooltip */
+    .v-application .v-tooltip__content a {
+        color: rgb(247, 248, 201);
+    }
+    /* tooltip content can be selected by cursor */
+    .v-tooltip__content {
+        pointer-events: auto !important;
+    }
 </style>

@@ -33,6 +33,9 @@ const fields = {
     codec: [
         { label: 'Name', name: 'name', type: 'text' }
     ],
+    validation_types: [
+        { label: 'Name', name: 'name', type: 'text' }
+    ],
 }
 
 const request = {

@@ -5,6 +5,10 @@
         max-width="45%"
         scrollable
     >
+        <v-overlay :value="pageReload">
+            <h1 class="d-inline-flex mr-4">Reloading page &hellip;</h1>
+            <v-progress-circular indeterminate size="64"></v-progress-circular>
+        </v-overlay>
         <v-card>
             <v-card-title>{{ cardTitle }}</v-card-title>
             <v-card-text>
@@ -17,15 +21,34 @@
                                     v-for="(field, i) in fields"
                                     :key="i"
                                 >
+                                    <!-- Titles column -->
                                     <td style="width: 15%">
-                                        <span
+                                        <template
                                             v-if="field !== 'divider'"
-                                            class="text-subtitle-1 font-size-medium row-title"
                                         >
-                                            {{ field }}
-                                        </span>
+                                            <!-- Field name -->
+                                            <span
+                                                class="text-subtitle-1 font-size-medium row-title"
+                                            >
+                                                {{ field }}
+                                            </span>
+                                            <!-- Help tooltips -->
+                                            <v-tooltip
+                                                v-if="field == 'type'"
+                                                bottom
+                                                v-model="typeTooltip"
+                                            >
+                                                <template v-slot:activator="{ on }">
+                                                    <v-icon size="20" @click="typeTooltip = !typeTooltip">mdi-help-circle</v-icon>
+                                                </template>
+                                                Validation type can be created on <router-link to="/master-data" target="_blank">Master data</router-link> page
+                                            </v-tooltip>
+                                        </template>
+                                        <!-- Divider -->
                                         <v-divider v-else></v-divider>
                                     </td>
+
+                                    <!-- Field controls -->
                                     <td class="py-2 px-1">
                                         <v-col
                                             v-if="field !== 'divider'"
@@ -37,9 +60,9 @@
                                                 v-if="field == 'name'"
                                                 :color="getChangeColor('name')"
                                                 class="py-0"
-                                                :clearable="isOwner"
-                                                :readonly="!isOwner"
-                                                :rules="isOwner ? [rules.isLongEnough(validation.name, 10), noDuplicates(validation.name)] : []"
+                                                :clearable="isApproved"
+                                                :readonly="!isApproved"
+                                                :rules="isApproved ? [rules.isLongEnough(validation.name, 10), noDuplicates(validation.name)] : []"
                                                 v-model="validation.name"
                                             >
                                                 <template v-slot:append-outer>
@@ -61,7 +84,7 @@
                                                 min-width="290px"
                                                 transition="scale-transition"
                                                 :close-on-content-click="false"
-                                                :disabled="!isOwner"
+                                                :disabled="!isApproved"
                                                 v-model="menu"
                                             >
                                                 <template v-slot:activator="{ on }">
@@ -70,7 +93,7 @@
                                                         :color="getChangeColor('date')"
                                                         class="py-0"
                                                         hide-details
-                                                        :readonly="!isOwner"
+                                                        :readonly="!isApproved"
                                                         v-on="on"
                                                         v-model="validation.date"
                                                     >
@@ -95,7 +118,8 @@
                                             </v-menu>
 
                                             <!-- Owner -->
-                                            <div v-if="field == 'owner'"
+                                            <div
+                                                v-if="field == 'owner'"
                                                 class="text-subtitle-2 d-flex-inline align-self-center"
                                             >
                                                 <span v-html="ownerData"></span>
@@ -108,6 +132,29 @@
                                                     </a>
                                                 </v-hover>
                                             </div>
+
+                                            <!-- Type -->
+                                            <v-autocomplete
+                                                v-if="field == 'type'"
+                                                color="blue-grey"
+                                                item-text="name"
+                                                item-value="id"
+                                                :items="types"
+                                                :readonly="!isApproved"
+                                                hide-selected hide-no-data return-object
+                                                menu-props="auto"
+                                                v-model="validation.type"
+                                            >
+                                                <template v-slot:append-outer>
+                                                    <v-icon
+                                                        v-if="isChanged('type')"
+                                                        color="primary"
+                                                        small
+                                                    >
+                                                        mdi-asterisk
+                                                    </v-icon>
+                                                </template>
+                                            </v-autocomplete>
 
                                             <!-- Gen -->
                                             <span
@@ -165,8 +212,8 @@
                                                 class="py-0 text-body-2"
                                                 rows="1"
                                                 auto-grow clearable hide-details
-                                                :clearable="isOwner"
-                                                :readonly="!isOwner"
+                                                :clearable="isApproved"
+                                                :readonly="!isApproved"
                                                 v-model="validation.notes"
                                             >
                                                 <template v-slot:append-outer>
@@ -198,7 +245,7 @@
                     Close
                 </v-btn>
                 <v-btn
-                    v-if="isOwner"
+                    v-if="isApproved"
                     text
                     color="primary"
                     :disabled="!isFormValid || _.isEqual(originalValidation, validation)"
@@ -231,20 +278,25 @@
                 isFormValid: false,
                 fields: [
                     'name', 'date', 'owner', 'divider',
+                    'type', 'divider',
                     'gen', 'os', 'family', 'platform', 'env', 'divider',
                     'components', 'features', 'divider',
                     'notes'
                 ],
                 canBeChanged: [
-                    'name', 'date', 'notes'
+                    'name', 'date', 'type', 'notes'
                 ],
-                menu: null
+                menu: null,
+
+                types: [],
+                typeTooltip: false,
+                pageReload: false,
             }
         },
         computed: {
             ...mapState(['userData']),
-            isOwner() {
-                return this.validation.owner.id == this.userData.id
+            isApproved() {
+                return this.validation.owner.id == this.userData.id || this.userData.is_staff === true
             },
             noDuplicates() {
                 return value => {
@@ -258,18 +310,18 @@
                 return this.node.$parent.$children.map(node => node.model.text_flat)
             },
             cardTitle() {
-                return this.isOwner ? 'Edit validation properties' : 'Validation properties'
+                return this.isApproved ? 'Edit validation properties' : 'Validation properties'
             },
             branch() {
-                let nodes = this._.map(getBranchForLeaf(this.node), node => node.model.text_flat).reverse()
+                const nodes = this._.map(getBranchForLeaf(this.node), node => node.model.text_flat).reverse()
                 return `${nodes[5]} (${nodes[1]}, ${nodes[3]}, ${nodes[4]})`
             },
             ownerData() {
-                let owner = this.validation.owner
+                const owner = this.validation.owner
                 return `${owner.fullname} (${owner.username})`
             },
             today() {
-                let date = new Date()
+                const date = new Date()
                 return date.toISOString()
             },
             aliases() {
@@ -279,6 +331,8 @@
                 return name => {
                     if (name === 'date') {
                         return 2
+                    } else if (name === 'type') {
+                        return 4
                     } else {
                         return 12
                     }
@@ -301,7 +355,11 @@
                 let data = {}
                 this.canBeChanged.forEach(field => {
                     if (!this._.isEqual(this.validation[field], this.originalValidation[field])) {
-                        data[field] = this.validation[field]
+                        if (field == 'type') {
+                            data[field] = this.validation[field].id
+                        } else {
+                            data[field] = this.validation[field]
+                        }
                     }
                 })
 
@@ -309,10 +367,13 @@
                 server
                     .patch(url, data)
                     .then(response => {
-                        this.$toasted.success('Validation data succesfully updated')
                         // reload page in case of validation "outer" data update
-                        if ('name' in data) {
+                        if (['name', 'type'].some(key => key in data)) {
+                            this.pageReload = true
                             window.location.reload()
+                        } else {
+                            this.dialog = false
+                            this.$toasted.success('Validation data succesfully updated')
                         }
                     })
                     .catch(error => {
@@ -325,8 +386,8 @@
                                 this.$toasted.global.alert_error(error)
                             }
                         }
+                        this.dialog = false
                     })
-                    .finally(() => this.dialog = false)
             }
         },
         created() {
@@ -348,6 +409,21 @@
                 .catch(error => {
                     if (error.handleGlobally) {
                         error.handleGlobally('Could not get validation data', url)
+                    } else {
+                        this.$toasted.global.alert_error(error)
+                    }
+                })
+        },
+        mounted() {
+            const url = 'api/validation_types/'
+            server
+                .get(url)
+                .then(response => {
+                    this.types = response.data
+                })
+                .catch(error => {
+                    if (error.handleGlobally) {
+                        error.handleGlobally('Error during retrieving validation types', url)
                     } else {
                         this.$toasted.global.alert_error(error)
                     }

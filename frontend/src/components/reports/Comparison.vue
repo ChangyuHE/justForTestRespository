@@ -636,7 +636,11 @@
                     })
             },
             updateStatusCounters(stats, newStats) {
-                EventBus.$emit('update-counters', {'old': stats, 'new': newStats, 'validation': this.validations[0]})
+                EventBus.$emit('update-counters', {
+                    'old': stats,
+                    'new': newStats,
+                    'validation': this.validations[0]
+                })
             }
         },
         mounted() {

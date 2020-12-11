@@ -767,7 +767,7 @@
                                 'old': oldStatus,
                                 'new': newStatus,
                                 'validation': this.resultItem.validation.id
-                                })
+                            })
                         }
                         Object.assign(this.resultItem, response.data)
 

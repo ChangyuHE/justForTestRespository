@@ -233,9 +233,6 @@
 </script>
 
 <style scoped>
-    .v-tooltip__content > .tooltip {
-        pointer-events: auto;
-    }
     .v-list-item__content > *:last-child {
         margin-bottom: 0;
     }

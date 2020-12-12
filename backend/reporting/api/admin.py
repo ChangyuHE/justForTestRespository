@@ -71,3 +71,12 @@ class StatusAdmin(admin.ModelAdmin):
     ordering = ('test_status', 'priority')
     search_fields = ('test_status', 'priority')
     list_filter = ('test_status', 'priority')
+
+
+@admin.register(Issue)
+class IssueAdmin(admin.ModelAdmin):
+    date_hierarchy = 'updated'
+    list_display = ('name', 'summary', 'status', 'exposure')
+    search_fields = ('summary', 'description')
+    ordering = ('-updated',)
+    list_filter = ('status', 'exposure', 'closed_reason')

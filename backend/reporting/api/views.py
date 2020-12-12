@@ -47,14 +47,14 @@ from . import excel
 from api.models import Generation, Platform, Env, Component, Item, Kernel, Driver, ResultFeature, \
     Status, Os, OsGroup, Validation, Action, \
     Result, Run, ScenarioAsset, LucasAsset, MsdkAsset, FulsimAsset, Simics, \
-    FeatureMapping, FeatureMappingRule, Feature, Profile, ValidationType, DEFAULT_VAL_TYPE_NAME
-from api.serializers import UserSerializer, UserCutSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
+    FeatureMapping, FeatureMappingRule, Feature, Profile, ValidationType, DEFAULT_VAL_TYPE_NAME, Issue
+from api.serializers import UserSerializer, GenerationSerializer, PlatformSerializer, ComponentSerializer, \
     EnvSerializer, OsSerializer, ResultFullSerializer, ScenarioAssetSerializer, \
     ResultCutSerializer, LucasAssetSerializer, MsdkAssetSerializer, FulsimAssetSerializer, SimicsSerializer, \
     FeatureMappingSerializer, BulkResultSerializer, \
     ScenarioAssetFullSerializer, LucasAssetFullSerializer, MsdkAssetFullSerializer, FulsimAssetFullSerializer, \
     KernelFullSerializer, DriverFullSerializer, StatusFullSerializer, ResultFeatureSerializer, ProfileSerializer, \
-    ValidationSerializer, ValidationUpdateSerializer, ValidationTypeSerializer
+    ValidationSerializer, ValidationUpdateSerializer, ValidationTypeSerializer, JiraIssueSerializer
 from test_verifier.models import Codec
 from test_verifier.serializers import CodecSerializer
 
@@ -1997,3 +1997,86 @@ class CheckTestRunExist(LoggingMixin, APIView):
                 items_data = {'items': []}
                 return Response(data=items_data, status=status.HTTP_200_OK)
         return Response(data=r.content, status=r.status_code)
+
+
+class AssingJiraView(LoggingMixin, APIView):
+
+    def get(self, request: HttpRequest, pk: int, *args, **kwargs) -> Response:
+        """
+            Return list of Test Items and attached Jira issues
+            for validation with id=pk
+        """
+        validation = get_object_or_404(Validation.objects, pk=pk)
+
+        items = []
+        for result in validation.results.values_list(
+                        'id',
+                        'item__name',
+                        'status__test_status',
+                        'issues',
+                        named=True
+                    ):
+            for existing in items:
+                if existing['c0'] == result.item__name:
+                    existing['c2'].append(result.issues)
+                    break
+            else:
+                items.append({
+                    'c0': result.item__name,
+                    'c1': result.status__test_status,
+                    'c2': [result.issues] if result.issues else [],
+                    'c3': result.id
+                })
+
+        headers = [
+            {
+                'text': 'Test Item',
+                'value': 'c0'
+            },
+            {
+                'text': 'Status',
+                'value': 'c1'
+            },
+            {
+                'text': 'Jira Issues',
+                'value': 'c2'
+            }
+        ]
+
+        return Response({'headers': headers, 'items': items, 'total': len(items)})
+
+    def post(
+        self,
+        request: HttpRequest,
+        pk: int,
+        test_result_id: int,
+        defect_id: str
+    ) -> Response:
+        """ Add new issue with defect_id to test_result_id """
+
+        validation = get_object_or_404(Validation.objects, pk=pk)
+        test_result = get_object_or_404(validation.results, pk=test_result_id)
+        test_result.issues.add(defect_id)
+        return Response(status=status.HTTP_200_OK)
+
+    def delete(
+        self,
+        request: HttpRequest,
+        pk: int,
+        test_result_id: int,
+        defect_id: str
+    ) -> Response:
+        """ Remove issue with defect_id from test_result_id """
+        validation = get_object_or_404(Validation.objects, pk=pk)
+        test_result = get_object_or_404(validation.results, pk=test_result_id)
+        if defect_id in test_result.issues.values_list('name', flat=True):
+            test_result.issues.remove(defect_id)
+            return Response(status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+class JiraIssuesView(LoggingMixin, generics.ListAPIView):
+    """ List of imported Jira Issues """
+    queryset = Issue.objects.exclude(status__startswith='Closed').order_by('-updated')
+    serializer_class = JiraIssueSerializer
+    filterset_fields = ['name']

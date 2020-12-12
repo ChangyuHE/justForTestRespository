@@ -436,3 +436,9 @@ class ValidationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Validation
         fields = ['name', 'date', 'type', 'notes']
+
+
+class JiraIssueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Issue
+        fields = ['name', 'summary']

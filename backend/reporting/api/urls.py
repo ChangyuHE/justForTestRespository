@@ -12,6 +12,7 @@ from . import converters
 
 register_converter(converters.CommaSeparatedOptionalPathConverter, 'list')
 register_converter(converters.CommaSeparatedIntegersPathConverter, 'int_list')
+register_converter(converters.DefectIdPathConverter, 'defect')
 
 
 schema_view = get_swagger_view(title='Reporting API')
@@ -84,6 +85,20 @@ urlpatterns = [
     path('api/report/issues/<int:pk>/',
          views.ReportIssuesView.as_view(),
          name='issues-report'),  # optional param 'report=excel'
+
+    path('api/report/defects/<int:pk>/',
+         views.AssingJiraView.as_view(),
+         name='assign-jira-report'),
+    path('api/report/defects/<int:pk>/<int:test_result_id>/add/<defect:defect_id>/',
+         views.AssingJiraView.as_view(),
+         name='assign-jira-report-add-issue'),
+    path('api/report/defects/<int:pk>/<int:test_result_id>/remove/<defect:defect_id>/',
+         views.AssingJiraView.as_view(),
+         name='assign-jira-report-remove-issue'),
+
+    path('api/jira-issues/',
+          views.JiraIssuesView.as_view(),
+          name='jira-issues'),
 
     # Import
     # with mandatory parameters model, fields, emails (staff emails), requester

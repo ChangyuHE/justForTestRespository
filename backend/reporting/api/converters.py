@@ -18,3 +18,14 @@ class CommaSeparatedIntegersPathConverter:
 
     def to_url(self, value):
         return ','.join(map(str, value))
+
+
+class DefectIdPathConverter:
+
+    regex = r'((?:VSMGWL)|(?:MDP))-\d+'
+
+    def to_python(self, value):
+        return value
+
+    def to_url(self, value):
+        return value

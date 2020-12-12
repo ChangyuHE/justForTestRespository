@@ -77,6 +77,16 @@
                                 >
                                     Issues
                                 </v-btn>
+
+                                <!-- Jira Issues report -->
+                                <v-btn small class="outlined"
+                                    :disabled="!validations.length || (validations.length !== 1)"
+                                    :loading="reportTypeLoading('jira')"
+                                    value="jira"
+                                    title="Assign issues"
+                                >
+                                    Jira
+                                </v-btn>
                             </v-btn-toggle>
 
                             <!-- Help icon -->
@@ -124,6 +134,7 @@
     import bestOrLastReport from '@/components/reports/BestOrLast.vue'
     import indicatorReport from '@/components/reports/Indicator.vue'
     import issuesReport from '@/components/reports/Issues.vue'
+    import jiraReport from '@/components/reports/JiraIssues.vue'
     import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
 
@@ -141,6 +152,7 @@
             'last-report': bestOrLastReport,
             'indicator-report': indicatorReport,
             'issues-report': issuesReport,
+            'jira-report': jiraReport,
         },
         data() {
             return {

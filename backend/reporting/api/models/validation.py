@@ -12,6 +12,7 @@ from simple_history.models import HistoricalRecords
 
 from reporting.settings import AUTH_USER_MODEL
 from .assets import *
+from .issues import Issue
 
 
 __all__ = [
@@ -299,6 +300,8 @@ class Result(DiffMixin, models.Model):
     result_reason = models.TextField(null=True, blank=True)
     history = HistoricalRecords()
     _changed = models.BooleanField(default=False)
+
+    issues = models.ManyToManyField(Issue)
 
     def save(self, *args, **kwargs):
         skip_stats_update = kwargs.pop('skip_stats_update', False)

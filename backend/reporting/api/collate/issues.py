@@ -8,7 +8,7 @@ import pytz
 from django.core.exceptions import ObjectDoesNotExist
 from jira import JIRA
 
-from api.models import Issues
+from api.models import Issue
 from reporting.settings import BASE_DIR, JIRA_SERVER, JIRA_AUTH
 
 JIRA_CERTIFICATE = Path(BASE_DIR) / 'IntelSHA256RootCA-Base64.crt'
@@ -126,7 +126,7 @@ class JiraDefect:
         return self.name < other.name
 
     def to_db_record(self):
-        return Issues(name=self.name,
+        return Issue(name=self.name,
                       self_url=self.self_url,
                       summary=self.summary,
                       description=self.description,
@@ -143,7 +143,7 @@ class JiraDefect:
 
 def update_defects():
     try:
-        last_updated = Issues.objects.latest('updated').updated.astimezone(pytz.timezone('Europe/Moscow'))
+        last_updated = Issue.objects.latest('updated').updated.astimezone(pytz.timezone('Europe/Moscow'))
     except ObjectDoesNotExist:
         last_updated = datetime.now() - timedelta(days=365 * 2)
 
@@ -161,4 +161,4 @@ def update_defects():
     updated_defects = [JiraDefect(defect).to_db_record() for defect in get_raw_issues(query)]
 
     fields_to_update = ['self_url', 'summary', 'description', 'status', 'updated', 'product', 'closed_reason', 'root_cause', 'oses', 'exposure', 'components', 'platforms']
-    Issues.objects.bulk_update_or_create(updated_defects, fields_to_update, match_field='name')
+    Issue.objects.bulk_update_or_create(updated_defects, fields_to_update, match_field='name')

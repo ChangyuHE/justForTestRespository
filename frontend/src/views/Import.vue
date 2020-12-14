@@ -428,7 +428,7 @@
                 }
             },
             UrlUploadDisabled() {
-                return this.url && this.isTestRunCheck || (!this.isTestRunValid || !this.isUrlImportReady)
+                return this.url && (this.isTestRunCheck || !this.isTestRunValid || !this.isUrlImportReady)
             },
             /**
              * Validations Autocomplete items to show

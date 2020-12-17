@@ -8,4 +8,7 @@ urlpatterns = [
     path('form/', views.index, name='index'),
     path('merge/', views.MergeValidationsView.as_view(), name='merge'),
     path('clone/', views.CloneValidationsView.as_view(), name='clone'),
+    path('gta-short-url/', views.ParseShortUrlView.as_view(), name='gta-short-url'),
+    path('test-run-check/', views.CheckTestRunExist.as_view(), name='test-run-check'),
+
 ]

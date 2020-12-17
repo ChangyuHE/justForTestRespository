@@ -152,15 +152,3 @@ def model_cut_serializer(model):
     return type(f'{model.__name__}CutSerializer', (ModelSerializer,),
                 {'Meta': type('Meta', (object,),
                               {'model': model, 'fields': ['name', 'id']})})
-
-
-def asset_view(model, full_serializer, out_serializer):
-    """ Returns asset view class
-        get: List of asset objects (url and id fields)
-        post: Create new asset, obtain url field, returns url and id fields
-    """
-    from api.views import AbstractAssetView
-    return type(f'{model.__name__}View', (AbstractAssetView,),
-                {'queryset': model.objects.all(),
-                 'serializer_class': full_serializer,
-                 'serializer_output_class': out_serializer})

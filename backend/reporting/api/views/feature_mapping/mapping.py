@@ -1,35 +1,41 @@
 import logging
+from datetime import datetime
 from itertools import combinations
 from collections import defaultdict
-
-from typing import Union, Optional, List, Dict, Tuple
+from typing import Optional, Union, List, Dict, Tuple
 
 from django.db import transaction
-from django.db.utils import DatabaseError, IntegrityError
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.db.utils import IntegrityError, DatabaseError
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
-from rest_framework import generics, status
+from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import FileUploadParser
 from rest_framework.exceptions import ParseError
 
-from datetime import datetime
 from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter as to_letter
 from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
-from api.models import FeatureMapping, FeatureMappingRule, Milestone, Feature, TestScenario
-from api.forms import FeatureMappingFileForm
-from api.serializers import FeatureMappingSimpleSerializer, FeatureMappingSerializer, FeatureMappingRuleSerializer, \
-    FeatureMappingSimpleRuleSerializer, MilestoneSerializer, FeatureSerializer, TestScenarioSerializer
-
 from utils.api_logging import LoggingMixin, get_user_object
-from utils.api_helpers import get_datatable_json, DefaultNameOrdering
-from utils import api_helpers
+from utils.api_helpers import get_datatable_json, DefaultNameOrdering, UpdateWOutputAPIView
+
+from api.models import Feature, FeatureMapping, FeatureMappingRule, Milestone, TestScenario
+from api.serializers import FeatureMappingSimpleSerializer, FeatureMappingSerializer
+
+__all__ = [
+    'FeatureMappingPostView',
+    'FeatureMappingConflictCheckView',
+    'FeatureMappingListView',
+    'FeatureMappingCloneView',
+    'FeatureMappingTableView',
+    'FeatureMappingDetailsView',
+    'FeatureMappingExportView'
+]
 
 log = logging.getLogger(__name__)
 
@@ -68,67 +74,11 @@ class FeatureMappingPostView(LoggingMixin, APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-def check_mappings(ids):
-    # prevent selection of mappings with the same codec and platform
-    codecs = FeatureMapping.objects.filter(id__in=ids).values('codec', 'platform').distinct()
-    if len(ids) != codecs.count():
-        return False
-    return True
-
-
 class FeatureMappingConflictCheckView(LoggingMixin, APIView):
     """ Check for conflicts through selected mappings """
     def get(self, request):
         ids = request.query_params.get('ids', '').split(',')
         return Response(check_mappings(ids))
-
-
-def check_rules_conflicts(ids_list, scenario_name, issues):
-    # ids_list example: [[1,2,3], None, [4,5]]
-    # first check - None with other ids in rules for one scenario
-    for ids_tuple in combinations(ids_list, 2):
-        if None in ids_tuple and any(e is not None for e in ids_tuple):
-            issues[scenario_name].append('No empty Ids allowed if there are other rules with specified Ids exist')
-            break
-
-    # second check - same ids in rules for one scenario
-    ids_wo_none = [ids.split(',') for ids in ids_list if ids is not None]
-    for ids_tuple in combinations(ids_wo_none, 2):
-        if set(ids_tuple[0]) & set(ids_tuple[1]):
-            issues[scenario_name].append('There must be no same ids in different rules for the same scenario')
-            break
-    return issues
-
-
-class FeatureMappingRulesConflictCheckView(LoggingMixin, APIView):
-    """ Check for conflicts through mapping rules """
-    def get(self, request, pk, *args, **kwargs):
-        issues = defaultdict(list)
-        rule_to_exclude = None
-
-        # prepare data for edited/created rule
-        new_ids = request.query_params.get('new_ids')
-        if new_ids == 'none':
-            new_ids = None
-        scenario_id = request.query_params.get('scenario_id')
-
-        # rule.id for edit or 'none' for new rule creation
-        rule_id = request.query_params.get('rule_id')
-        if rule_id != 'none':
-            rule_to_exclude = rule_id
-
-        scenario_name = TestScenario.objects.get(id=scenario_id).name
-        rules = FeatureMappingRule.objects.filter(scenario_id=scenario_id, mapping_id=pk)
-        # exclude ids for edited rule, because we passed new ones
-        if rule_to_exclude:
-            rules = rules.exclude(id=rule_to_exclude)
-
-        # add new items to examine list
-        ids_list = list(rules.values_list('ids', flat=True))
-        ids_list.append(new_ids)
-
-        issues = check_rules_conflicts(ids_list, scenario_name, issues)
-        return Response(issues)
 
 
 class FeatureMappingListView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
@@ -163,7 +113,8 @@ class FeatureMappingCloneView(LoggingMixin, APIView):
         except DatabaseError as e:
             return Response({'errors': e}, status=status.HTTP_400_BAD_REQUEST)
 
-        # trick to allow public foreign tables cloning without changing their names to pass in serializer
+        # trick to allow public foreign tables cloning without
+        # changing their names to pass in serializer
         data = {k: v for k, v in request.data.items() if k != 'owner'}
         fm_serializer = FeatureMappingSimpleSerializer(cloned_fmt, data=data, partial=True)
         if not fm_serializer.is_valid():
@@ -187,7 +138,8 @@ class FeatureMappingTableView(LoggingMixin, DefaultNameOrdering, generics.ListAP
         return get_datatable_json(self, exclude=exclude)
 
 
-class FeatureMappingDetailsView(LoggingMixin, generics.RetrieveDestroyAPIView, api_helpers.UpdateWOutputAPIView):
+class FeatureMappingDetailsView(
+    LoggingMixin, generics.RetrieveDestroyAPIView, UpdateWOutputAPIView):
     """ FeatureMapping single object management """
     queryset = FeatureMapping.objects.all()
     serializer_class = FeatureMappingSimpleSerializer
@@ -204,13 +156,16 @@ class FeatureMappingExportView(LoggingMixin, APIView):
         try:
             mapping = FeatureMapping.objects.get(pk=pk)
         except ObjectDoesNotExist:
-            return Response({'details': f'Could not find mapping by id {pk}'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'details': f'Could not find mapping by id {pk}'},
+                            status=status.HTTP_404_NOT_FOUND)
         except MultipleObjectsReturned:
-            return Response({'details': f'More than one objects found by id {pk}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'details': f'More than one objects found by id {pk}'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         workbook = export_mapping(mapping)
         filename = f'FMT_{mapping.name}_{datetime.now():%Y-%m-%d_%H:%M:%S}.xlsx'
-        response = HttpResponse(save_virtual_workbook(workbook), content_type="application/ms-excel")
+        response = HttpResponse(save_virtual_workbook(workbook),
+                                content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
@@ -250,149 +205,17 @@ def export_mapping(mapping):
     return wb
 
 
-# FeatureMapping Rules views
-
-class FeatureMappingRuleDetailsView(LoggingMixin, generics.RetrieveDestroyAPIView, api_helpers.UpdateWOutputAPIView):
-    """ FeatureMappingRule single object management """
-    queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingSimpleRuleSerializer
-    serializer_output_class = FeatureMappingRuleSerializer
-
-
-class FeatureMappingRuleView(LoggingMixin, generics.ListAPIView, api_helpers.CreateWOutputApiView):
+def check_mappings(ids: List[int]) -> bool:
     """
-        get: List FeatureMappingRule objects according to filters
-        post: Create FeatureMappingRule object using simple serializer, output with fill data
+        Prevent selection of mappings with the same codec and platform
+
+        :param ids: List of FeatureMapping Ids
+        :return: True if no conflicts and False in opposite case
     """
-    queryset = FeatureMappingRule.objects.all()
-    serializer_output_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping', 'total']
-
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return FeatureMappingRuleSerializer
-        return FeatureMappingSimpleRuleSerializer
-
-
-class FeatureMappingRuleTableView(LoggingMixin, generics.ListAPIView):
-    """ FeatureMappingRule table view formatted for DataTable """
-    queryset = FeatureMappingRule.objects.all()
-    serializer_class = FeatureMappingRuleSerializer
-    filterset_fields = ['milestone', 'feature', 'scenario', 'mapping', 'total']
-
-    def get(self, request, *args, **kwargs):
-        return get_datatable_json(self)
-
-
-# Milestone views
-class FeatureMappingMilestoneView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
-    """ List FeatureMapping Milestone objects """
-    queryset = Milestone.objects.all()
-    serializer_class = MilestoneSerializer
-    filterset_fields = ['name']
-
-
-class FeatureMappingMilestoneDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
-    """ FeatureMapping Milestone single object management """
-    queryset = Milestone.objects.all()
-    serializer_class = MilestoneSerializer
-
-
-class FeatureMappingMilestoneTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
-    """ FeatureMapping Milestone table view formatted for DataTable """
-    queryset = Milestone.objects.all()
-    serializer_class = MilestoneSerializer
-    filterset_fields = ['name']
-
-    def get(self, request, *args, **kwargs):
-        return get_datatable_json(self, actions=False)
-
-
-# Feature views
-class FeatureMappingFeatureView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
-    """
-        get: List FeatureMapping Feature objects according to filters
-        post: Create FeatureMapping Feature object
-    """
-    queryset = Feature.objects.all()
-    serializer_class = FeatureSerializer
-    filterset_fields = ['name']
-
-
-class FeatureMappingFeatureDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
-    """ FeatureMapping Feature single object management """
-    queryset = Feature.objects.all()
-    serializer_class = FeatureSerializer
-
-
-class FeatureMappingFeatureTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
-    """ FeatureMapping Feature table view formatted for DataTable """
-    queryset = Feature.objects.all()
-    serializer_class = FeatureSerializer
-    filterset_fields = ['name']
-
-    def get(self, request, *args, **kwargs):
-        return get_datatable_json(self)
-
-
-# Scenario views
-class FeatureMappingScenarioView(LoggingMixin, DefaultNameOrdering, generics.ListCreateAPIView):
-    """
-        get: List FeatureMapping Test Scenario objects according to filters
-        post: Create FeatureMapping Test Scenario object
-    """
-    queryset = TestScenario.objects.all()
-    serializer_class = TestScenarioSerializer
-    filterset_fields = ['name']
-
-
-class FeatureMappingScenarioDetailsView(LoggingMixin, generics.RetrieveUpdateDestroyAPIView):
-    """ FeatureMapping Test Scenario single object management """
-    queryset = TestScenario.objects.all()
-    serializer_class = TestScenarioSerializer
-
-
-class FeatureMappingScenarioTableView(LoggingMixin, DefaultNameOrdering, generics.ListAPIView):
-    """ FeatureMapping Test Scenario table view formatted for DataTable """
-    queryset = TestScenario.objects.all()
-    serializer_class = TestScenarioSerializer
-    filterset_fields = ['name']
-
-    def get(self, request, *args, **kwargs):
-        return get_datatable_json(self)
-
-
-# for development needs
-def feature_mapping_form(request):
-    form = FeatureMappingFileForm()
-    return render(request, 'api/feature_mapping_import.html', {'form': form})
-
-
-def check_total(
-        total: Optional[Union[int,str]],
-        test_ids: Optional[Union[int,str]],
-        ERROR_IN_ROW: str
-    ) -> Tuple[Optional[int], List[Dict[str,str]]]:
-    errors = []
-
-    if not total:
-        if not test_ids:
-            errors.append({ERROR_IN_ROW: 'Missing total value for scenario without test ids'})
-    else:
-        try:
-            total = int(total)
-            if total <= 0:
-                errors.append({ERROR_IN_ROW: 'Total value should be positive'})
-
-            if test_ids:
-                if total != len(test_ids.split(',')):
-                    errors.append({ERROR_IN_ROW: 'Total value does not match number of test ids'})
-        except ValueError:
-            errors.append({ERROR_IN_ROW: 'Non-integer total value'})
-            total = None
-
-    return total, errors
-
+    codecs = FeatureMapping.objects.filter(id__in=ids).values('codec', 'platform').distinct()
+    if len(ids) != codecs.count():
+        return False
+    return True
 
 def import_feature_mapping(file, serializer):
     WORKBOOK_FORMAT_ERROR = 'There must be 5 columns with "milestone", "feature", "scenario", "ids", and "total" data (column headers do not matter)'
@@ -427,13 +250,16 @@ def import_feature_mapping(file, serializer):
     fm_rules = []
     try:
         with transaction.atomic():
-            mapping = FeatureMapping.objects.create(name=data['name'], owner_id=data['owner'], codec_id=data['codec'],
-                                                    component_id=data['component'], platform_id=data['platform'],
-                                                    os_id=data['os'])
+            mapping = FeatureMapping.objects.create(
+                name=data['name'], owner_id=data['owner'],
+                codec_id=data['codec'], component_id=data['component'],
+                platform_id=data['platform'], os_id=data['os'])
 
             for i, row in enumerate(rows):
                 ERROR_IN_ROW = f'workbook error (row {i + 2})'
-                milestone_name, feature_name, scenario_name, ids_value, total = [cell.value for cell in row]
+                milestone_name, feature_name, scenario_name, ids_value, total = [
+                    cell.value for cell in row
+                ]
                 total, total_errors = check_total(total, ids_value, ERROR_IN_ROW)
                 errors.extend(total_errors)
 
@@ -470,3 +296,51 @@ def import_feature_mapping(file, serializer):
         errors.append(e.args[0])
 
     return errors
+
+
+def check_total(
+        total: Optional[Union[int,str]],
+        test_ids: Optional[Union[int,str]],
+        ERROR_IN_ROW: str
+    ) -> Tuple[Optional[int], List[Dict[str,str]]]:
+    errors = []
+
+    if not total:
+        if not test_ids:
+            errors.append({ERROR_IN_ROW: 'Missing total value for scenario without test ids'})
+    else:
+        try:
+            total = int(total)
+            if total <= 0:
+                errors.append({ERROR_IN_ROW: 'Total value should be positive'})
+
+            if test_ids:
+                if total != len(test_ids.split(',')):
+                    errors.append({ERROR_IN_ROW: 'Total value does not match number of test ids'})
+        except ValueError:
+            errors.append({ERROR_IN_ROW: 'Non-integer total value'})
+            total = None
+
+    return total, errors
+
+
+def check_rules_conflicts(ids_list, scenario_name, issues):
+    # ids_list example: [[1,2,3], None, [4,5]]
+    # first check - None with other ids in rules for one scenario
+    for ids_tuple in combinations(ids_list, 2):
+        if None in ids_tuple and any(e is not None for e in ids_tuple):
+            issues[scenario_name].append(
+                'No empty Ids allowed if there are other rules with specified Ids exist'
+            )
+            break
+
+    # second check - same ids in rules for one scenario
+    ids_wo_none = [ids.split(',') for ids in ids_list if ids is not None]
+    for ids_tuple in combinations(ids_wo_none, 2):
+        if set(ids_tuple[0]) & set(ids_tuple[1]):
+            issues[scenario_name].append(
+                'There must be no same ids in different rules for the same scenario'
+            )
+            break
+    return issues
+

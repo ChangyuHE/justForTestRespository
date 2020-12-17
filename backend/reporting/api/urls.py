@@ -6,7 +6,6 @@ from django.conf.urls.static import static
 from rest_framework_swagger.views import get_swagger_view
 
 from api import views
-from api.view import feature_mapping
 
 from . import converters
 
@@ -37,16 +36,6 @@ urlpatterns = [
 
     path('api/validations/mappings/', views.ValidationMappings.as_view()),
 
-    path('api/validation_types/',
-         views.ValidationTypeView.as_view(),
-         name='valtype-list'),
-
-    path('api/validation_types/with_default/',
-         views.ValidationTypeWithDefaultView.as_view(),
-         name='valtype-list-with-default'),
-    path('api/validation_types/table/', views.ValidationTypeTableView().as_view()),
-    path('api/validation_types/<int:pk>/', views.ValidationTypeDetailsView.as_view()),
-
     # Reports
     path('api/report/best/<int_list:val_pks>//',
          views.ReportBestView.as_view(),
@@ -64,7 +53,7 @@ urlpatterns = [
          views.ReportLastView.as_view(),
          name='last-report'),  # optional param 'report=excel'
 
-    re_path(r'^api/report/search/$',
+    path('api/report/search/',
             views.ReportFromSearchView.as_view()),  # mandatory param 'query'
 
     path('api/report/indicator/<int:id>/',
@@ -104,66 +93,64 @@ urlpatterns = [
     # with mandatory parameters model, fields, emails (staff emails), requester
     path('api/objects/request-creation/', views.RequestModelCreation.as_view()),
     path('api/import/', include('api.collate.urls')),
-    path('api/import/gta-short-url/', views.ParseShortUrlView.as_view(), name='gta-short-url'),
-    path('api/import/test-run-check/', views.CheckTestRunExist.as_view(), name='test-run-check'),
 
     # Feature mapping
     # .. import
-    path('api/feature_mapping/form/', feature_mapping.feature_mapping_form),   # debug only
+    path('api/feature_mapping/form/', views.feature_mapping_form),   # debug only
 
     path('api/feature_mapping/import/',
-         feature_mapping.FeatureMappingPostView.as_view(),
+         views.FeatureMappingPostView.as_view(),
          name='fmt-import'),
 
     # .. mappings
     path('api/feature_mapping/table/',
-         feature_mapping.FeatureMappingTableView.as_view()),
+         views.FeatureMappingTableView.as_view()),
 
     path('api/feature_mapping/<int:pk>/',
-         feature_mapping.FeatureMappingDetailsView.as_view()),
+         views.FeatureMappingDetailsView.as_view()),
 
     path('api/feature_mapping/clone/<int:pk>/',
-         feature_mapping.FeatureMappingCloneView.as_view()),
+         views.FeatureMappingCloneView.as_view()),
 
     path('api/feature_mapping/export/<int:pk>/',
-         feature_mapping.FeatureMappingExportView.as_view()),
+         views.FeatureMappingExportView.as_view()),
 
     path('api/feature_mapping/',
-         feature_mapping.FeatureMappingListView.as_view()),
+         views.FeatureMappingListView.as_view()),
 
     path('api/feature_mapping/conflicts/',
-         feature_mapping.FeatureMappingConflictCheckView.as_view()),
+         views.FeatureMappingConflictCheckView.as_view()),
 
     path('api/feature_mapping/<int:pk>/rules_conflicts/',
-         feature_mapping.FeatureMappingRulesConflictCheckView.as_view()),
+         views.FeatureMappingRulesConflictCheckView.as_view()),
 
     # .. rules
     path('api/feature_mapping/rules/table/',
-         feature_mapping.FeatureMappingRuleTableView.as_view()),
+         views.FeatureMappingRuleTableView.as_view()),
 
     path('api/feature_mapping/rules/<int:pk>/',
-         feature_mapping.FeatureMappingRuleDetailsView.as_view()),
+         views.FeatureMappingRuleDetailsView.as_view()),
 
     path('api/feature_mapping/rules/',
-         feature_mapping.FeatureMappingRuleView.as_view()),
+         views.FeatureMappingRuleView.as_view()),
 
     # .. rules components
     path('api/milestone/table/',
-         feature_mapping.FeatureMappingMilestoneTableView.as_view()),
+         views.FeatureMappingMilestoneTableView.as_view()),
 
     path('api/milestone/<int:pk>/',
-         feature_mapping.FeatureMappingMilestoneDetailsView.as_view()),
+         views.FeatureMappingMilestoneDetailsView.as_view()),
 
     path('api/milestone/',
-         feature_mapping.FeatureMappingMilestoneView.as_view()),
+         views.FeatureMappingMilestoneView.as_view()),
 
-    path('api/feature/table/', feature_mapping.FeatureMappingFeatureTableView.as_view()),
-    path('api/feature/<int:pk>/', feature_mapping.FeatureMappingFeatureDetailsView.as_view()),
-    path('api/feature/', feature_mapping.FeatureMappingFeatureView.as_view()),
+    path('api/feature/table/', views.FeatureMappingFeatureTableView.as_view()),
+    path('api/feature/<int:pk>/', views.FeatureMappingFeatureDetailsView.as_view()),
+    path('api/feature/', views.FeatureMappingFeatureView.as_view()),
 
-    path('api/scenario/table/', feature_mapping.FeatureMappingScenarioTableView.as_view()),
-    path('api/scenario/<int:pk>/', feature_mapping.FeatureMappingScenarioDetailsView.as_view()),
-    path('api/scenario/', feature_mapping.FeatureMappingScenarioView.as_view()),
+    path('api/scenario/table/', views.FeatureMappingScenarioTableView.as_view()),
+    path('api/scenario/<int:pk>/', views.FeatureMappingScenarioDetailsView.as_view()),
+    path('api/scenario/', views.FeatureMappingScenarioView.as_view()),
 
     # Common
     path('api/result_feature/', views.ResultFeatureView.as_view(), name='result_feature'),
@@ -199,6 +186,14 @@ urlpatterns = [
     path('api/msdk_asset/', views.MsdkAssetView().as_view()),
     path('api/fulsim_asset/', views.FulsimAssetView().as_view()),
     path('api/simics/', views.SimicsView().as_view()),
+
+    path('api/validation_types/', views.ValidationTypeView.as_view(),
+         name='valtype-list'),
+    path('api/validation_types/with_default/', views.ValidationTypeWithDefaultView.as_view(),
+         name='valtype-list-with-default'),
+    path('api/validation_types/table/', views.ValidationTypeTableView().as_view()),
+    path('api/validation_types/<int:pk>/', views.ValidationTypeDetailsView.as_view()),
+
 
     # Test Verifier
     path('', include('test_verifier.urls')),

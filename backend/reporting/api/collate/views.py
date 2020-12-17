@@ -116,11 +116,11 @@ class ParseShortUrlView(LoggingMixin, APIView):
 
 class CheckTestRunExist(LoggingMixin, APIView):
     """Send request to GTA Results API to check that manually added
-       Test Run ID contains any results
+       Test Run ID contains any of results
     """
 
     def post(self, request):
-        test_run: str = request.data['test_run'][0]
+        test_run: str = request.data['test_run']
 
         # use minimum possible payload to check existence of results for specific test run
         payload = {
@@ -150,6 +150,7 @@ class CheckTestRunExist(LoggingMixin, APIView):
             'columns': [
                 'itemName',
                 'args',
+                'buildName'
             ],
         }
         # this request has limit just to 3 test items (..&limit=3), to get results response quickly
@@ -167,11 +168,14 @@ class CheckTestRunExist(LoggingMixin, APIView):
 
             # at least one test result exists
             if items_data:
-                items_data = {'items': items_data}
+                if request.data['manual_input']:
+                    build_name = items_data[0]['buildName'][0]
+                else:
+                    build_name = None
+                items_data = {'items': items_data, 'buildName': build_name}
                 return Response(data=items_data, status=status.HTTP_200_OK)
             else:
                 # if it returns empty dict in items - no results
                 items_data = {'items': []}
                 return Response(data=items_data, status=status.HTTP_200_OK)
         return Response(data=r.content, status=r.status_code)
-

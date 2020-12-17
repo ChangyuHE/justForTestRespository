@@ -28,79 +28,96 @@
                     </v-btn>
                 </div>
 
-                <v-tabs height=40>
+                <v-tabs  v-model="importTab" class="pt-3" height=40>
+                    <v-tab
+                        v-for="tabName in _.values(importTabs)"
+                        :key="tabName"
+                        @click="testRun = tabName === importTabs.fromTestRun"
+                    >
+                        {{ tabName }}
+                    </v-tab>
+                </v-tabs>
+
+                <v-tabs-items v-model="importTab">
                     <!-- URL input controller -->
-                    <v-tab>from Comparison View</v-tab>
-                        <v-tab-item>
-                            <v-text-field
-                                prepend-icon="mdi-link-variant"
-                                label="URL"
-                                placeholder="example: https://gta.intel.com/#/reports/comparison-view.."
-                                hint="Paste a full or short link of Comparison View results"
-                                v-model="url"
-                                :value="url"
-                                :disabled="uploading"
-                                :loading="isShortLinkRetrieve"
-                                :rules="[rules.CompViewLinkFormatRules(url)]"
-                                @input="onUrlImportDataFill"
-                                @click:clear="onImportDataClear"
-                                autofocus
-                                clearable
-                            ></v-text-field>
-                            <template v-if="isUrlImportReady">
-                                <v-container class="pt-0" fluid>
-                                    <v-row>
-                                        <v-subheader class="pt-10 pr-2 pl-8"><strong>Test Runs:</strong></v-subheader>
-                                        <v-col cols="6" align-self="center">
-                                            <v-combobox
-                                                v-model="testRuns"
-                                                :items="testRuns"
-                                                :rules="[rules.isTestRunInputValid(testRuns)]"
-                                                :error-messages="testRunErrors"
-                                                :deletable-chips="testRuns.length > 1"
-                                                :loading="isTestRunCheck"
-                                                :disabled="uploading"
-                                                @input="onTestRunDataFill(testRuns)"
-                                                small-chips multiple single-line
-                                                hide-no-data hide-selected cache-items
-                                                hint="You can edit existing or add new test runs"
-                                            ></v-combobox>
-                                        </v-col>
-                                    </v-row>
-                                    <v-row>
-                                        <v-subheader class="pt-5 pr-2 pl-8"><strong>Base Build:</strong></v-subheader>
-                                        <v-col cols="6" align-self="center">
-                                            <v-text-field
-                                                v-model="buildVersion"
-                                                readonly disabled
-                                                dense
-                                            ></v-text-field>
-                                        </v-col>
-                                    </v-row>
-                                    <v-row>
-                                        <v-divider v-if="isUrlImportReady" light></v-divider>
-                                    </v-row>
-                                </v-container>
-                            </template>
-                        </v-tab-item>
+                    <v-tab-item
+                        v-for="tabName in [importTabs.fromUrl, importTabs.fromTestRun]"
+                        :key="tabName"
+                    >
+                        <v-text-field v-if="!testRun"
+                            prepend-icon="mdi-link-variant" color="blue-grey"
+                            label="URL"
+                            placeholder="example: https://gta.intel.com/#/reports/comparison-view.."
+                            hint="Paste a full or short link of Comparison View results"
+                            v-model="url"
+                            :value="url"
+                            :disabled="uploading"
+                            :loading="isShortLinkRetrieve"
+                            :rules="[rules.CompViewLinkFormatRules(url)]"
+                            @input="onUrlImportDataFill"
+                            @click:clear="onImportDataClear"
+                            autofocus
+                            clearable
+                        ></v-text-field>
+
+                    <!-- Test Run input controller -->
+                        <template v-if="isUrlImportReady || testRun">
+                            <v-container class="pt-0" fluid>
+                                <v-row>
+                                    <v-subheader class="pt-10 pr-2 pl-8"><strong>Test Runs:</strong></v-subheader>
+                                    <v-col cols="6" align-self="center">
+                                        <v-combobox
+                                            v-model="testRuns"
+                                            :items="testRuns"
+                                            :rules="[rules.isTestRunInputValid(testRuns)]"
+                                            :error-messages="testRunErrors"
+                                            :deletable-chips="testRuns.length > 1"
+                                            :loading="isTestRunCheck"
+                                            :disabled="uploading"
+                                            @input="onTestRunDataFill(testRuns)"
+                                            small-chips multiple single-line
+                                            hide-no-data hide-selected cache-items
+                                            :hint="testRun ? 'Add Test Run ID of results that you need to import' :
+                                            'You can edit existing or add new test runs'"
+                                            :persistent-hint="testRun"
+                                        ></v-combobox>
+                                    </v-col>
+                                </v-row>
+                                <v-row>
+                                    <v-subheader class="pt-5 pr-2 pl-8"><strong>Base Build:</strong></v-subheader>
+                                    <v-col cols="6" align-self="center">
+                                        <v-text-field
+                                            v-model="buildVersion"
+                                            readonly disabled
+                                            dense
+                                            :hint="testRun ? 'You can see here a related build' : ''"
+                                            :persistent-hint="testRun"
+                                        ></v-text-field>
+                                    </v-col>
+                                </v-row>
+                                <v-row>
+                                    <v-divider v-if="isUrlImportReady || testRun" light></v-divider>
+                                </v-row>
+                            </v-container>
+                        </template>
+                    </v-tab-item>
 
                     <!-- File input controller -->
-                    <v-tab>File</v-tab>
-                        <v-tab-item>
-                            <dnd-frame @file-drop="onFileDrop">
-                                <v-file-input
-                                    label="Select File to import"
-                                    full-width show-size counter truncate-length="100"
-                                    class="pt-0" color="blue-grey"
-                                    accept=".xlsx"
-                                    v-model="file"
-                                    :disabled="uploading"
-                                    @change="onImportDataFill"
-                                    @click:clear="onImportDataClear"
-                                ></v-file-input>
-                            </dnd-frame>
-                        </v-tab-item>
-                </v-tabs>
+                    <v-tab-item>
+                        <dnd-frame @file-drop="onFileDrop">
+                            <v-file-input
+                                label="Select File to import"
+                                full-width show-size counter truncate-length="100"
+                                class="pt-0" color="blue-grey"
+                                accept=".xlsx"
+                                v-model="file"
+                                :disabled="uploading"
+                                @change="onImportDataFill"
+                                @click:clear="onImportDataClear"
+                            ></v-file-input>
+                        </dnd-frame>
+                    </v-tab-item>
+                </v-tabs-items>
             </v-col>
         </v-row>
 
@@ -285,7 +302,7 @@
                 </v-dialog>
                 <v-btn
                     color="teal" class="white--text"
-                    :disabled="uploadDisabled || UrlUploadDisabled"
+                    :disabled="uploadDisabled || UrlUploadDisabled || manualUploadDisabled"
                     :loading="uploading"
                     @click="onUpload"
                 >Upload</v-btn>
@@ -320,6 +337,15 @@
                 // main import types
                 file: null,
                 url: null,
+                testRun: false,
+
+                // import type's tabs
+                importTab: null,
+                importTabs: {
+                    fromUrl: 'from url',
+                    fromTestRun: 'from test run',
+                    fromFile: 'from file'
+                },
 
                 // flags for CV import preparations
                 isUrlImportReady: false,
@@ -346,11 +372,14 @@
                             return 'At least one Test Run ID should be selected'
                         }
                         for (let value of items) {
-                            if (!(/\d+/.test(value))) {
+                            if (!/\d+/.test(value) || /\D+/.test(value)) {
                                 return 'Test Run ID can be only an integer'
                             }
                             if (value.length < 7) {
-                                return 'Too short Test Run ID number. Must be longer than 6 digits'
+                                return 'Too short Test Run ID number. Must be longer than 6 digits.'
+                            }
+                            if (value.length > 9) {
+                                return 'Too long Test Run ID number. Must be shorter than 10 digits.'
                             }
                         }
                         return true
@@ -363,7 +392,7 @@
                         if (value && !(shortLinkFormat.test(value) || fullLinkFormat.test(value))) {
                             return 'Link has incorrect format. ' +
                                 'Please paste existing Comparison View results link ' +
-                                'or fix current one to the related formats'
+                                'or fix current one to the supported formats.'
                         }
                         return true
                     },
@@ -418,8 +447,10 @@
                 }
                 if (this.url) {
                     inputType = this.url
-                } else {
+                } else if (this.file) {
                     inputType = this.file
+                } else if (this.testRun) {
+                    inputType = this.testRun
                 }
                 if (this.importType == 'existing') {
                     return !(Boolean(inputType) && this.selected && 'id' in this.selected && this.selected.id !== 0)
@@ -429,6 +460,9 @@
             },
             UrlUploadDisabled() {
                 return this.url && (this.isTestRunCheck || !this.isTestRunValid || !this.isUrlImportReady)
+            },
+            manualUploadDisabled() {
+                return this.testRun && (this.isTestRunCheck || !this.isTestRunValid)
             },
             /**
              * Validations Autocomplete items to show
@@ -523,14 +557,17 @@
         },
         methods: {
             async exportResultsPayload(url) {
-                // decode url to uri format
-                try {
-                    decodeURI(url)
-                    // expected output: "..[]=results&complexFilters[0][testRun][]=123456"
-                } catch (error) {
-                    // catches a malformed URI
-                    // broken link which couldn't be used
-                    throw Error(`URL is broken: ${error}`)
+                if (url) {
+                    // decode url to uri format
+                    try {
+                        decodeURI(url)
+                        // expected output: "..[]=results&complexFilters[0][testRun][]=123456"
+                    }
+                    catch (error) {
+                        // catches a malformed URI
+                        // broken link which couldn't be used
+                        throw Error(`URL is broken: ${error}`)
+                    }
                 }
 
                 // build payload for excel preparing request
@@ -708,12 +745,16 @@
             onImportDataFill() {
                 let inputType = null
                 if (this.url) {
-                    this.file = null
+                    this.file = this.testRun = null
                     inputType = this.url
                 }
                 if (this.file) {
-                    this.url = null
+                    this.url = this.testRun = null
                     inputType = this.file
+                }
+                if (this.testRun) {
+                    this.url = this.file = null
+                    inputType = this.testRun
                 }
                 if (inputType !== null) {
                     if (this._.isEmpty(this.valDate)) {
@@ -749,14 +790,33 @@
             async onTestRunDataFill(items) {
                 this.isTestRunCheck = true
 
-                function checkTestRunExists(testRun) {
+                function checkTestRunExists(testRun, buildVersion, manualInput) {
+                    let formData = new FormData()
+                    formData.append('test_run', testRun)
+
+                    if (manualInput) {
+                        formData.append('manual_input', 'true')
+                    } else {
+                        formData.append('manual_input', 'false')
+                    }
+
                     return server
-                        .post('api/import/test-run-check/', {'test_run': testRun})
+                        .post('api/import/test-run-check/', formData)
                         .then(response => {
-                            if (response.status === 200 && response.data.items.length === 0) {
-                                // we have response, test run is valid and was launched sometime,
-                                // but it's totally empty for test item's results
-                                return 'No any test results found for this Test Run ID'
+                            if (response.status === 200) {
+                                if (response.data.items.length === 0) {
+                                    // we have response, test run is valid and was launched sometime,
+                                    // but it's totally empty for test item's results
+                                    return 'No any test results found for this Test Run ID'
+                                } else {
+                                    let newBuildVersion = response.data['buildName']
+
+                                    if (!manualInput && (newBuildVersion !== buildVersion)) {
+                                        return `The new specified Test Run has another build version: ${newBuildVersion}`
+                                    } else if (manualInput) {
+                                        return [newBuildVersion]
+                                    }
+                                }
                             }
                         })
                         .catch(error => {
@@ -773,10 +833,17 @@
                     this.isTestRunValid = false
                 } else {
                     // start additional check only if basic rules are passed
-                    let msg = await checkTestRunExists(items.slice(-1))
-                    if (msg) {
+                    const response = await checkTestRunExists(items.slice(-1), this.buildVersion, this.testRun)
+
+                    if (this.testRun && Array.isArray(response)) {
+                        // Find build version if we have a manual input data import by Test Run ID
+                        this.buildVersion = response[0]
+
+                        // automatically add default name if we use manual input of data by Test Run ID
+                        this.onImportDataFill()
+                    } else if (response) {
                         this.isTestRunValid = false
-                        this.testRunErrors.push(msg)
+                        this.testRunErrors.push(response)
                     } else {
                         this.isTestRunValid = true
                         this.testRunErrors.pop()
@@ -828,7 +895,7 @@
                 let formData = new FormData()
                 let file = this.file
 
-                if (this.url) {
+                if (this.url || this.testRun) {
                     file = await this.getFromCompViewLink()
                     formData.append('is_url_import', 'true')
                 } else {

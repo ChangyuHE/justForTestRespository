@@ -88,6 +88,11 @@ class ReportIndicatorView(APIView):
                 if ids is not None:
                     total_value = len(ids.split(','))
 
+                # show Indicator report even if FMT is incorrect i.e. it does
+                # not have total value set
+                if total_value is None:
+                    total_value = 0
+
                 mapping_data[milestone][feature_name] = {
                     'passed': 0,
                     'failed': 0,
@@ -102,11 +107,6 @@ class ReportIndicatorView(APIView):
                     'notrun': 0,
                     'total': total_value
                 }
-
-                # show Indicator report even if FMT is incorrect i.e. it does
-                # not have total value set
-                if total_value is None:
-                    total_value = 0
 
                 mapping_total['total'] += total_value
 

@@ -59,8 +59,9 @@
         <v-divider class="horizontal-line"></v-divider>
 
         <!-- DataTable(s) -->
-        <template v-if="(mode == 'single' && Object.keys(singleItems).length == mappings.length) ||
-                        (mode == 'combined' && originalItems.length)">
+        <template v-if="(mode === 'single' && Object.keys(singleItems).length === mappings.length) ||
+                        (mode === 'combined' && originalItems.length)"
+        >
             <v-data-table v-for="mapping in getMappings()" :key="mapping.id"
                 class="results-table-indicator elevation-5 mb-2"
                 :headers="getData(mapping.id, 'headers')"
@@ -70,7 +71,7 @@
                 disable-pagination hide-default-footer multi-sort dense
                 group-by="milestone"
             >
-                <template v-slot:top v-if="mode == 'single'">
+                <template v-slot:top v-if="mode === 'single'">
                     <v-toolbar color="white" flat dense>
                         <v-toolbar-title>
                             {{ singleItems[mapping.id].obj.codec.name }}
@@ -185,14 +186,16 @@
         methods: {
             onMappingsChange() {
                 // switch mode to single if only one mapping selected
-                if (this.mappings.length == 1 && this.mode == 'combined')
+                if (this.mappings.length === 1 && this.mode === 'combined') {
                     this.mode = 'single'
+                }
 
                 // remove items data on selection change
-                if (this.mode == 'single') {
+                if (this.mode === 'single') {
                     this._.each(this.singleItems, (value, key) => {
-                        if (!(this._.map(this.mappings, 'id').includes(value.obj.id)))
+                        if (!(this._.map(this.mappings, 'id').includes(value.obj.id))) {
                             delete this.singleItems[value.obj.id]
+                        }
                     })
                 } else {
                     this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
@@ -200,23 +203,23 @@
             },
             // Return selected mappings for single mode or fake object with id for data-table :key
             getMappings() {
-                if (this.mode == 'single') {
+                if (this.mode === 'single') {
                     return this.mappings
                 } else {
                     return { id: 'combined_table' }
                 }
             },
             getData(id, key) {
-                if (this.mode == 'single') {
+                if (this.mode === 'single') {
                     return this.singleItems[id][key]
-                } else {
-                    if (key == 'headers')
-                        return this.originalHeaders
-                    else if (key == 'items')
-                        return this.originalItems
-                    else
-                        return this.grandTotal
                 }
+                if (key === 'headers') {
+                    return this.originalHeaders
+                }
+                if (key === 'items') {
+                    return this.originalItems
+                }
+                return this.grandTotal
             },
             onModeChange() {
                 this.$store.commit('reports/SET_STATE', { originalItems: [], originalHeaders: [] })
@@ -229,29 +232,39 @@
                     return
                 }
                 // one data-table per mapping
-                if (this.mode == 'single') {
+                if (this.mode === 'single') {
                     this.mappings.forEach(mapping => {
                         // get back request only for not stored mappings
-                        if (!(mapping.id in this.singleItems))
+                        if (!(mapping.id in this.singleItems)) {
                             this.$store
-                                .dispatch('reports/reportWeb', { url: `api/report/indicator/${this.validations[0]}/?fmt_id=${mapping.id}&mode=${this.mode}` })
+                                .dispatch('reports/reportWeb', {
+                                    url: `api/report/indicator/${this.validations[0]}/?fmt_id=${mapping.id}&mode=${this.mode}`
+                                })
                                 .then(() => {
                                     let items = [...this.originalItems]
                                     let grandTotal = items.pop()
 
-                                    Vue.set(this.singleItems, mapping.id,
-                                        { headers: this.originalHeaders, items: items, total: grandTotal, obj: mapping }
+                                    Vue.set(
+                                        this.singleItems,
+                                        mapping.id,
+                                        {
+                                          headers: this.originalHeaders,
+                                          items: items,
+                                          total: grandTotal,
+                                          obj: mapping
+                                        }
                                     )
                                 })
                                 .catch(error => {
                                     if (error.handleGlobally) {
-                                        error.handleGlobally(`Failed in "${this.type}" web report`, url)
+                                        error.handleGlobally(`Failed in "${this.type}" web report`, this.url)
                                     } else {
                                         this.$toasted.global.alert_error(error)
                                     }
                                 })
+                        }
                     })
-                // one data-table for all mappigns an once
+                // one data-table for all mappings an once
                 } else {
                     this.$store
                         .dispatch('reports/reportWeb', { url: this.url })
@@ -262,7 +275,7 @@
                         })
                         .catch(error => {
                             if (error.handleGlobally) {
-                                error.handleGlobally(`Failed in "${this.type}" web report`, url)
+                                error.handleGlobally(`Failed in "${this.type}" web report`, this.url)
                             } else {
                                 this.$toasted.global.alert_error(error)
                             }

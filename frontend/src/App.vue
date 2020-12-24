@@ -84,8 +84,6 @@
 </template>
 
 <script>
-    import server from './server.js'
-    import { Splitpanes, Pane } from 'splitpanes'
     import 'splitpanes/dist/splitpanes.css'
     import { alterHistory } from '@/utils/history-management.js'
     import userCard from '@/components/UserCard.vue'
@@ -177,6 +175,7 @@
         },
         mounted() {
            this.$root.$confirm = this.$refs.confirm.open
+           console.log(`Working on '${process.env.VUE_APP_MODE}' mode`)
 
            snowing()
         }

@@ -1,16 +1,19 @@
 const BundleTracker = require("webpack-bundle-tracker");
 
 let publicPathUrl = '', publicApiPathUrl = '';
-if (process.env.NODE_ENV !== 'production'){
-    publicPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.PORT;
-    publicApiPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.VUE_APP_API_PORT;
-} else {
+if (process.env.NODE_ENV === 'production') {
     publicPathUrl = process.env.VUE_APP_API_BASE_URL;
     publicApiPathUrl = process.env.VUE_APP_API_BASE_URL;
+} else {
+    publicPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.PORT;
+    publicApiPathUrl = process.env.VUE_APP_API_BASE_URL + ':' + process.env.VUE_APP_API_PORT;
 }
 
 module.exports = {
     publicPath: publicPathUrl,
+    configureWebpack: {
+        mode: process.env.VUE_APP_MODE === 'development' ? 'development' : 'production'
+    },
     outputDir: './dist/',
     assetsDir: 'static',
 
